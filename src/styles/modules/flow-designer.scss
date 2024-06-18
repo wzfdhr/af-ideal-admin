@@ -1,0 +1,24 @@
+$ns: '.x6-widget';
+
+// selection box around single node
+#{$ns}-selection-box {
+  @apply border border-dashed;
+}
+
+// selection box of the whole group
+#{$ns}-selection-inner {
+  @apply border;
+}
+
+// stencil
+#{$ns}-stencil {
+  &-title {
+    @apply hidden;
+  }
+  &-content {
+    @apply bg-white;
+  }
+  &-group-title {
+    @apply hidden;
+  }
+}

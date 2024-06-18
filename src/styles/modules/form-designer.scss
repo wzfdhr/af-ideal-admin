@@ -1,0 +1,55 @@
+.ghost {
+  @apply w-full h-2 bg-green-400 outline-none p-0 m-0 content-none overflow-hidden text-transparent #{!important};
+  * {
+    @apply bg-green-400;
+  }
+  .widget-action-icon, label {
+    @apply opacity-0;
+  }
+}
+
+.widget-wrapper {
+  @apply relative px-6 py-2 mb-1 last:mb-0 outline-dashed outline-gray-300 outline-1
+  before:absolute before:w-full before:h-full before:top-0 before:left-0
+  hover:outline hover:outline-blue-400 hover:bg-blue-50;
+
+  &.is-selected {
+    @apply outline outline-2 outline-blue-400;
+  }
+
+  .widget-wrapper:not(.grid-nested-wrapper) {
+    @apply px-2 #{!important};
+  }
+}
+
+.widget-action-icon {
+  @apply inline-flex items-center justify-center h-6 w-6 bg-blue-400 text-white;
+}
+
+.ast-pre .arco-collapse-item-content-expend {
+  overflow-x: auto;
+}
+
+.config-panel {
+  .label {
+    @apply block text-sm mb-2;
+    color: var(--color-text-2);
+  }
+  .boolean-config {
+    @apply flex items-center justify-between;
+    .label {
+      @apply mb-0;
+    }
+  }
+}
+
+.arco-tabs-pane {
+  // for the selection outline box to show correctly:
+  & > .nested-widget-list {
+    padding: 2px;
+  }
+  // remove padding of the nested widgets inside nested rows:
+  & .widget-wrapper.arco-row {
+    @apply px-0 #{!important};
+  }
+}
