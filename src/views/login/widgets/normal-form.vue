@@ -73,8 +73,8 @@ const router = useRouter()
 const loginForm = ref()
 
 const loginInfo = reactive({
-  username: '',
-  password: '',
+  username: 'admin',
+  password: 'admin',
 })
 const loginConfig = useStorage('login-config', {
   shouldStorePassword: false,
