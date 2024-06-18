@@ -108,6 +108,7 @@ const onSubmit = async ({
       await userStore.login(values as LoginData)
       // check for redirect
       const { redirect, ...otherParams } = router.currentRoute.value.query
+      console.log(redirect)
       router.push({
         name: (redirect as string) || 'workplace',
         query: {
