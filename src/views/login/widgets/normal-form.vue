@@ -32,6 +32,25 @@
         </template>
       </a-input-password>
     </a-form-item>
+    <!-- <a-form-item
+      field="captcha"
+      :rules="rules.captchas"
+      validate-trigger="blur"
+      hide-label
+    >
+      <a-input v-model="loginInfo.captcha" placeholder="验证码">
+        <template #prefix>
+          <s-icon :name="EmotionHappy" :size="20" />
+        </template>
+        <template #append>
+          <img
+            :src="imgUrl"
+            style="height: 100%"
+            @click="refreshVerification()"
+          />
+        </template>
+      </a-input>
+    </a-form-item> -->
     <div class="flex items-center justify-between">
       <a-checkbox
         v-model="loginConfig.shouldStorePassword"
@@ -57,7 +76,7 @@
 
 <script lang="ts" setup>
 import { ref, reactive } from 'vue'
-import { UserFill, LockFill } from '@salmon-ui/icons'
+import { UserFill, LockFill, EmotionHappy } from '@salmon-ui/icons'
 import { FieldRule, Message, ValidatedError } from '@arco-design/web-vue'
 import { useStorage } from '@vueuse/core'
 import { useRouter } from 'vue-router'
@@ -75,7 +94,10 @@ const loginForm = ref()
 const loginInfo = reactive({
   username: 'admin',
   password: 'admin',
+  captcha: '',
+  checkKey: Math.random() * (99999 - 10000) + 10000,
 })
+const imgUrl = ref()
 const loginConfig = useStorage('login-config', {
   shouldStorePassword: false,
   username: '',
@@ -90,6 +112,10 @@ const rules: Record<string, FieldRule> = {
   password: {
     required: true,
     message: '请填写密码',
+  },
+  captchas: {
+    required: true,
+    message: '请填写验证码',
   },
 }
 
@@ -108,7 +134,6 @@ const onSubmit = async ({
       await userStore.login(values as LoginData)
       // check for redirect
       const { redirect, ...otherParams } = router.currentRoute.value.query
-      console.log(redirect)
       router.push({
         name: (redirect as string) || 'workplace',
         query: {
@@ -120,7 +145,7 @@ const onSubmit = async ({
       // process login for post-login
       const { shouldStorePassword } = loginConfig.value
       const { password, username } = values
-
+      console.log(loginConfig.value)
       loginConfig.value.username = shouldStorePassword ? encrypt(username) : ''
       loginConfig.value.password = shouldStorePassword ? encrypt(password) : ''
     } catch (err) {
@@ -129,6 +154,10 @@ const onSubmit = async ({
       setLoading(false)
     }
   }
+}
+// 切换验证码图片
+const refreshVerification = () => {
+  console.log(loginInfo.checkKey)
 }
 
 const setRememberPassword = (val: boolean) => {

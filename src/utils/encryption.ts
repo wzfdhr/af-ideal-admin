@@ -3,4 +3,6 @@
  */
 
 // eslint-disable-next-line import/prefer-default-export
-export const encrypt = (raw: string) => raw
+export const encrypt = (raw: string) => {
+  console.log(raw)
+}
