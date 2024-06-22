@@ -9,7 +9,7 @@ const dashboardRoutes: AppRouteRecordRaw = {
   meta: {
     locale: 'menu.permissions',
     requireAuth: true,
-    order: 0,
+    order: 1,
     icon: 'icon-apps',
   },
   children: [
