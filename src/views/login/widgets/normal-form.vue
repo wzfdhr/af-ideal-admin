@@ -94,8 +94,7 @@ const loginForm = ref()
 const loginInfo = reactive({
   username: 'admin',
   password: 'admin',
-  captcha: '',
-  checkKey: Math.random() * (99999 - 10000) + 10000,
+  // captcha: '',
 })
 const imgUrl = ref()
 const loginConfig = useStorage('login-config', {
@@ -113,10 +112,10 @@ const rules: Record<string, FieldRule> = {
     required: true,
     message: '请填写密码',
   },
-  captchas: {
-    required: true,
-    message: '请填写验证码',
-  },
+  // captchas: {
+  //   required: true,
+  //   message: '请填写验证码',
+  // },
 }
 
 const onSubmit = async ({
@@ -145,7 +144,7 @@ const onSubmit = async ({
       // process login for post-login
       const { shouldStorePassword } = loginConfig.value
       const { password, username } = values
-      console.log(loginConfig.value)
+      // console.log(loginConfig.value)
       loginConfig.value.username = shouldStorePassword ? encrypt(username) : ''
       loginConfig.value.password = shouldStorePassword ? encrypt(password) : ''
     } catch (err) {
