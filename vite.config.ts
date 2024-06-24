@@ -6,7 +6,7 @@ import eslint from 'vite-plugin-eslint'
 
 export default defineConfig(({ mode }) => {
   console.log(mode)
-  const { VITE_BASE_URL } = loadEnv(mode, process.cwd())
+  const { VITE_BASE_URL, VITE_BOOT_URL } = loadEnv(mode, process.cwd())
   return {
     base: VITE_BASE_URL,
     plugins: [
@@ -40,14 +40,15 @@ export default defineConfig(({ mode }) => {
       ],
       extensions: ['.ts', '.js'],
     },
+    server: {
+      proxy: {
+        '/api': {
+          target: VITE_BOOT_URL,
+          changeOrigin: true,
+          rewrite: (pathRewrite) => pathRewrite.replace(/^\/api/, '/af/'),
+        },
+      },
+      cors: true,
+    },
   }
-  // server: {
-  //   proxy: {
-  //     '/api': {
-  //       target: 'http://localhost:8080',
-  //       changeOrigin: true
-  //     }
-  //   },
-  //   cors: true
-  // }
 })

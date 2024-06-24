@@ -12,8 +12,8 @@ export interface LoginRes {
 }
 
 export const login = (data: LoginData) =>
-  axios.post<LoginRes>('/api/user/login', data)
-export const getUserInfo = () => axios.post<UserState>('/api/user/info')
+  axios.post<LoginRes>('/user/login', data)
+export const getUserInfo = () => axios.post<UserState>('/user/info')
 export const getMenu = () =>
   axios.post<RouteRecordNormalized[]>('/api/user/menu')
 export const logout = () => axios.post('/api/user/logout')

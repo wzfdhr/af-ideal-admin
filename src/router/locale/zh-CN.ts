@@ -1,6 +1,6 @@
 export default {
-  'menu.dashboard': '工作台',
-  'menu.dashboard.workplace': '主页',
+  'menu.dashboard': '仪表盘',
+  'menu.dashboard.workplace': '工作台',
   'menu.user': '用户中心',
   'menu.user.info': '信息维护',
   'menu.salmon-icons': 'Salmon Icons',
@@ -11,4 +11,5 @@ export default {
   'menu.permissions.button': '按钮权限',
   'menu.permissions.backend': '后台权限管理',
   'menu.permissions.testing': '权限测试页',
+  'menu.dashboard.analyse': '分析台',
 }

@@ -1,6 +1,6 @@
 export default {
-  'menu.dashboard': 'workbench',
-  'menu.dashboard.workplace': 'homePage',
+  'menu.dashboard': 'Dashboard',
+  'menu.dashboard.workplace': 'workbench',
   'menu.user': 'UserCenter',
   'menu.user.info': 'InformationMaintenance',
   'menu.salmon-icons': 'Salmon Icons',
@@ -11,4 +11,5 @@ export default {
   'menu.permissions.button': 'ButtonPermissions',
   'menu.permissions.testing': 'backendPermissions',
   'menu.permissions.backend': 'TestingPermissions',
+  'menu.dashboard.analyse': 'AnalyseBench',
 }
