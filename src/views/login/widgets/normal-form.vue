@@ -145,8 +145,8 @@ const onSubmit = async ({
       const { shouldStorePassword } = loginConfig.value
       const { password, username } = values
       // console.log(loginConfig.value)
-      // loginConfig.value.username = shouldStorePassword ? encrypt(username) : ''
-      // loginConfig.value.password = shouldStorePassword ? encrypt(password) : ''
+      loginConfig.value.username = shouldStorePassword ? encrypt(username) : ''
+      loginConfig.value.password = shouldStorePassword ? encrypt(password) : ''
     } catch (err) {
       console.error(err)
       errorMessage.value = (err as Error).message
