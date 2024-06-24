@@ -26,6 +26,7 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   (response: AxiosResponse<HTTPResponse>) => {
     const res = response.data
+    console.log('res', res)
     if (res.code !== 200) {
       Message.error({
         content: res.msg || 'Error',
@@ -41,7 +42,7 @@ axios.interceptors.response.use(
   (error) => {
     Message.error({
       content: error.msg || 'Request Error',
-      duration: 5000,
+      duration: 500,
     })
     console.error('请求错误', error)
     return Promise.reject(error)
