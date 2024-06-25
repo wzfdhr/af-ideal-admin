@@ -35,18 +35,13 @@
 </template>
 
 <script lang="ts" setup>
-import { reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { IOption } from '@/types'
+import { useUserStore } from '@/store'
 
-const form = reactive({
-  name: '',
-  birthday: '',
-  dept: '',
-  job: '',
-  email: '',
-  intro: '',
-  address: '',
-})
+const { userInfo } = useUserStore()
+const form = ref()
 
+form.value = userInfo
 const depts = ref<IOption[]>([])
 </script>
