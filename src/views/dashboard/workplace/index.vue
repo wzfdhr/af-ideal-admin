@@ -12,11 +12,14 @@
         </div>
 
         <a-row :gutter="16" class="mt-4">
-          <a-col :span="12"></a-col>
-          <a-col :span="12"></a-col>
+          <a-col :span="12"><todoPanel /></a-col>
+          <a-col :span="12"><serviceChart /></a-col>
         </a-row>
       </a-col>
-      <a-col :span="6"></a-col>
+      <a-col :span="6">
+        <actionPanel />
+        <noticePanel class="mt-4" />
+      </a-col>
     </a-row>
   </main>
 </template>
@@ -25,6 +28,10 @@
 import { useUserStore } from '@/store'
 import DataPanel from './widgets/data-panel.vue'
 import dataAvatar from './widgets/data-avatar.vue'
+import todoPanel from './widgets/todo-panel.vue'
+import actionPanel from './widgets/action-panel.vue'
+import noticePanel from './widgets/notice-panel.vue'
+import serviceChart from './widgets/service-chart.vue'
 
 const { userInfo } = useUserStore()
 </script>
