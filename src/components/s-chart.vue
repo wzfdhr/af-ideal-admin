@@ -30,7 +30,7 @@ const props = defineProps({
     default: () => ({}),
   },
 })
-
+console.log(props)
 const renderChart = ref(false)
 
 const computedSize = computed(() => {

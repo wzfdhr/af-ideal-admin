@@ -1,6 +1,6 @@
 <template>
   <main class="px-6 pb-6">
-    <s-navs :navs="['menu.dashboard']" />
+    <s-navs :navs="['menu.dashboard', 'menu.dashboard.workplace']" />
 
     <a-row :gutter="16" class="w-full">
       <a-col :span="18" class="w-full">
@@ -8,7 +8,6 @@
           <data-avatar />
           <a-divider />
           <data-panel />
-          <a-divider />
         </div>
 
         <a-row :gutter="16" class="mt-4">
