@@ -1,9 +1,11 @@
 <template>
   <main>
     <div>
-      <span class="text-lg font-black">项目</span>
-      <a-divider />
-      <div class="flex flex-wrap">
+      <div class="text-lg font-black flex justify-between items-center px-2">
+        <div>项目</div>
+        <div class="text-blue-300 text-sm cursor-pointer">更多>></div>
+      </div>
+      <div class="flex flex-wrap mt-4">
         <a-card class="card" title="Arco Card" hoverable>
           <div class="card-gap">
             <s-icon :name="GithubFill" class="text-4xl" />

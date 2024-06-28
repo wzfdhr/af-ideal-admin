@@ -51,7 +51,7 @@
             <img :src="avatar" />
           </a-avatar>
           <template #content>
-            <a-doption>
+            <a-doption @click="handUserInfo">
               <a-space>
                 <s-icon :name="User" />
                 <span>用户中心</span>
@@ -80,6 +80,7 @@
 import { computed } from 'vue'
 import { IconNotification, IconLanguage } from '@arco-design/web-vue/es/icon'
 import { Settings, LogoutBox, User } from '@salmon-ui/icons'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store'
 import useLogout from '@/hooks/use-logout'
 import useLocale from '@/hooks/use-locale'
@@ -91,6 +92,7 @@ defineProps({
     default: undefined,
   },
 })
+const router = useRouter()
 
 const userStore = useUserStore()
 const { changeLocale } = useLocale()
@@ -98,6 +100,9 @@ const avatar = computed(() => userStore.avatar)
 const { logout } = useLogout()
 const handleLogout = () => {
   logout()
+}
+const handUserInfo = () => {
+  router.push('/user/info')
 }
 </script>
 
