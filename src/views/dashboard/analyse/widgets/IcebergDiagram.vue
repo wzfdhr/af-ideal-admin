@@ -10,8 +10,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { EChartsOption } from 'echarts'
 import SChart from '@/components/s-chart.vue'
-import type { EChartsOption } from 'echarts'
 
 const seriesData = ref([
   {
@@ -140,7 +140,7 @@ const option = ref<EChartsOption>({
       },
     },
   ],
-  series: seriesData,
+  series: seriesData.value,
 })
 </script>
 

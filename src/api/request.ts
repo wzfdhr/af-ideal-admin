@@ -38,6 +38,7 @@ axios.interceptors.response.use(
         content: res.msg || 'Error',
         duration: 500,
       })
+      clearToken()
       console.error('请求错误', res)
       return Promise.reject(new Error(res.msg || '未命名的错误'))
     }
