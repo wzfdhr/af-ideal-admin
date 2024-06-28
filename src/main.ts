@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import Arco from '@arco-design/web-vue'
 import ArcoIcon from '@arco-design/web-vue/es/icon'
+// import ECharts from 'vue-echarts'
 import App from '@/App.vue'
 import router from '@/router'
 import store from '@/store'
@@ -16,8 +17,10 @@ import '@/styles/index.scss'
 
 import SIcon from '@/components/s-icon.vue'
 import SNavs from '@/components/s-navs.vue'
+import 'echarts'
 
 const app = createApp(App)
+// app.component('Chart', ECharts)
 
 app.use(Arco)
 app.use(router)

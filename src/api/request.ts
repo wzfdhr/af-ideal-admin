@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { Message } from '@arco-design/web-vue'
-import { getToken } from '@/utils/auth'
+import { getToken, clearToken } from '@/utils/auth'
 import { requestBaseUrl, HTTPResponse } from '@config'
 import type { AxiosResponse } from 'axios'
 
@@ -26,13 +26,18 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   (response: AxiosResponse<HTTPResponse>) => {
     const res = response.data
-    console.log('res', res)
+    if (res.code === 402) {
+      clearToken()
+      Message.error({
+        content: '登录已过期,请重新登录',
+        duration: 500,
+      })
+    }
     if (res.code !== 200) {
       Message.error({
         content: res.msg || 'Error',
         duration: 500,
       })
-
       console.error('请求错误', res)
       return Promise.reject(new Error(res.msg || '未命名的错误'))
     }
