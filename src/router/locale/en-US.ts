@@ -12,4 +12,6 @@ export default {
   'menu.permissions.testing': 'backendPermissions',
   'menu.permissions.backend': 'TestingPermissions',
   'menu.dashboard.analyse': 'AnalyseBench',
+  'menu.about': 'SystemInformation',
+  'menu.about.temp': 'About',
 }

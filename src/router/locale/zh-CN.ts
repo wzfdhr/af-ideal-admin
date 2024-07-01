@@ -12,4 +12,6 @@ export default {
   'menu.permissions.backend': '后台权限管理',
   'menu.permissions.testing': '权限测试页',
   'menu.dashboard.analyse': '分析台',
+  'menu.about': '系统信息',
+  'menu.about.temp': '关于',
 }
