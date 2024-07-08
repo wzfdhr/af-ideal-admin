@@ -16,7 +16,6 @@ export interface HTTPResponse<T = unknown> {
 
 // HTTP 请求的公共路径前缀
 export const requestBaseUrl = '/api'
-console.log(import.meta.env.VITE_BASE_URL)
 // 应用是否应当从服务端获取侧边菜单栏
 export const menuFromServer = false
 
