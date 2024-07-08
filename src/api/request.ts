@@ -26,6 +26,9 @@ axios.interceptors.request.use(
 axios.interceptors.response.use(
   (response: AxiosResponse<HTTPResponse>) => {
     const res = response.data
+    if (response.headers['content-type'] === 'image/jpeg') {
+      return res
+    }
     if (res.code === 402) {
       clearToken()
       Message.error({
