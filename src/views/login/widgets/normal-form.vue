@@ -43,11 +43,7 @@
           <s-icon :name="EmotionHappy" :size="20" />
         </template>
         <template #append>
-          <img
-            :src="imgUrl"
-            style="height: 100%"
-            @click="refreshVerification()"
-          />
+          <img src="http://localhost:10888/af/user/code" style="height: 100%" />
         </template>
       </a-input>
     </a-form-item>
@@ -163,14 +159,8 @@ const onSubmit = async ({
     }
   }
 }
-// 切换验证码图片
-const refreshVerification = () => {
-  // console.log(loginInfo.checkKey)
-  getCode().then((res) => {
-    console.log(res)
-  })
-}
-refreshVerification()
+
+// refreshVerification()
 const setRememberPassword = (val: boolean) => {
   loginConfig.value.shouldStorePassword = val
 }
