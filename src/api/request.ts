@@ -17,7 +17,10 @@ axios.interceptors.request.use(
       }
       config.headers['X-Access-Token'] = token
     }
-
+    if (config.url === '/user/code') {
+      config.responseType = 'blob'
+      return config
+    }
     return config
   },
   (error) => Promise.reject(error)

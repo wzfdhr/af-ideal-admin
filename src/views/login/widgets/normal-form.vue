@@ -76,7 +76,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { UserFill, LockFill, EmotionHappy } from '@salmon-ui/icons'
 import { FieldRule, Message, ValidatedError } from '@arco-design/web-vue'
 import { useStorage } from '@vueuse/core'
@@ -165,13 +165,18 @@ const onSubmit = async ({
 }
 // 切换验证码图片
 const refreshVerification = async () => {
+  // 接收后端接口返回
   const result = await getCode()
+  // 接收后转为blob对象
   const blob = new Blob([result], { type: 'image/png' })
+  // 转换为url对象
   const url = window.URL.createObjectURL(blob)
-  console.log(url)
+
   imgUrl.value = url
 }
-refreshVerification()
+onMounted(() => {
+  refreshVerification()
+})
 const setRememberPassword = (val: boolean) => {
   loginConfig.value.shouldStorePassword = val
 }
