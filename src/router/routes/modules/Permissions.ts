@@ -21,7 +21,6 @@ const dashboardRoutes: AppRouteRecordRaw = {
         locale: 'menu.permissions.front',
         requireAuth: true,
         roles: ['*'],
-        activeMenu: 'permissions',
       },
       children: [
         {
@@ -32,7 +31,6 @@ const dashboardRoutes: AppRouteRecordRaw = {
             locale: 'menu.permissions.page',
             requireAuth: true,
             roles: ['*'],
-            activeMenu: 'permissions',
           },
         },
         {
@@ -43,7 +41,6 @@ const dashboardRoutes: AppRouteRecordRaw = {
             locale: 'menu.permissions.button',
             requireAuth: true,
             roles: ['*'],
-            activeMenu: 'permissions',
           },
         },
         {
@@ -54,7 +51,6 @@ const dashboardRoutes: AppRouteRecordRaw = {
             locale: 'menu.permissions.testing',
             requireAuth: true,
             roles: ['*'],
-            activeMenu: 'permissions',
           },
         },
       ],
@@ -67,7 +63,6 @@ const dashboardRoutes: AppRouteRecordRaw = {
         locale: 'menu.permissions.backend',
         requireAuth: true,
         roles: ['*'],
-        activeMenu: 'permissions',
       },
       children: [
         {
@@ -78,7 +73,6 @@ const dashboardRoutes: AppRouteRecordRaw = {
             locale: 'menu.permissions.page',
             requireAuth: true,
             roles: ['*'],
-            activeMenu: 'permissions',
           },
         },
         {
@@ -90,7 +84,6 @@ const dashboardRoutes: AppRouteRecordRaw = {
             locale: 'menu.permissions.button',
             requireAuth: true,
             roles: ['*'],
-            activeMenu: 'permissions',
           },
         },
       ],

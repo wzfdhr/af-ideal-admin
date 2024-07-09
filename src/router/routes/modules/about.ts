@@ -19,7 +19,6 @@ const aboutRoutes: AppRouteRecordRaw = {
       meta: {
         locale: 'menu.about.temp',
         icon: 'icon-question',
-        requireAuth: true,
         roles: ['*'],
       },
     },

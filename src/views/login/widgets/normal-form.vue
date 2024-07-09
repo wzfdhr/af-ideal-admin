@@ -33,8 +33,8 @@
       </a-input-password>
     </a-form-item>
     <a-form-item
-      field="captcha"
-      :rules="rules.captchas"
+      field="code"
+      :rules="rules.code"
       validate-trigger="blur"
       hide-label
     >
@@ -43,9 +43,9 @@
           <s-icon :name="EmotionHappy" :size="20" />
         </template>
         <template #append>
-          <img
+          <a-image
             :src="imgUrl"
-            style="height: 100%"
+            style="height: 100%; width: 100%"
             @click="refreshVerification()"
           />
         </template>
@@ -83,7 +83,7 @@ import { useStorage } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store'
 import useLoading from '@/hooks/use-loading'
-import { encrypt } from '@/utils/encryption'
+import { encrypt, decrypt } from '@/utils/encryption'
 import { LoginData, getCode } from '@/api/user'
 // import guidedTour from '@/components/tour/guidedTour.vue'
 
@@ -94,8 +94,8 @@ const router = useRouter()
 const loginForm = ref()
 
 const loginInfo = reactive({
-  username: 'admin',
-  password: 'admin',
+  username: '',
+  password: '',
   code: '',
 })
 const showGuidedTour = ref()
@@ -117,12 +117,22 @@ const rules: Record<string, FieldRule> = {
     required: true,
     message: '请填写密码',
   },
-  // captchas: {
-  //   required: true,
-  //   message: '请填写验证码',
-  // },
+  code: {
+    required: true,
+    message: '请填写验证码',
+  },
 }
+// 切换验证码图片
+const refreshVerification = async () => {
+  // 接收后端接口返回
+  const result = await getCode()
+  // 接收后转为blob对象
+  const blob = new Blob([result], { type: 'image/png' })
+  // 转换为url对象
+  const url = window.URL.createObjectURL(blob)
 
+  imgUrl.value = url
+}
 const onSubmit = async ({
   errors,
   values,
@@ -150,33 +160,26 @@ const onSubmit = async ({
       const { shouldStorePassword } = loginConfig.value
       const { password, username } = values
       // console.log(loginConfig.value)
-      loginConfig.value.username = shouldStorePassword
-        ? encrypt(username)
-        : ('' as any)
+      loginConfig.value.username = shouldStorePassword ? username : ('' as any)
       loginConfig.value.password = shouldStorePassword
         ? encrypt(password)
         : ('' as any)
     } catch (err) {
+      refreshVerification()
       console.error(err)
       errorMessage.value = (err as Error).message
       setLoading(false)
     }
   }
 }
-// 切换验证码图片
-const refreshVerification = async () => {
-  // 接收后端接口返回
-  const result = await getCode()
-  // 接收后转为blob对象
-  const blob = new Blob([result], { type: 'image/png' })
-  // 转换为url对象
-  const url = window.URL.createObjectURL(blob)
-
-  imgUrl.value = url
-}
 onMounted(() => {
   refreshVerification()
 })
+if (loginConfig.value.shouldStorePassword) {
+  const res = decrypt(loginConfig.value.password)
+  loginInfo.password = res
+  loginInfo.username = loginConfig.value.username
+}
 const setRememberPassword = (val: boolean) => {
   loginConfig.value.shouldStorePassword = val
 }
