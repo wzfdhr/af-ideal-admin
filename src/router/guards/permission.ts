@@ -13,7 +13,7 @@ const setupPermissionGuard = (router: Router) => {
     const permission = usePermission()
     // 此方法 用于处理权限验证逻辑
     const permissionAllow = permission.hasAccessToRoute(to)
-    console.log(permissionAllow)
+    console.log()
     // 是否从服务器获取路由 如果选择从服务器获取 则调用menu中获取menu的方法
     if (menuFromServer) {
       // TODO: implement permisison logic

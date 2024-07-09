@@ -15,4 +15,4 @@ export const login = (data: LoginData) =>
 export const getUserInfo = () => axios.post<UserState>('/user/info')
 export const getCode = () => axios.get('/user/code')
 export const getMenu = () => axios.get('api/user/code')
-export const logout = () => axios.post('/api/user/logout')
+export const logout = () => axios.post('/user/logout')
