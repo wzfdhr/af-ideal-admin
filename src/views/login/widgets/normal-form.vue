@@ -43,7 +43,7 @@
           <s-icon :name="EmotionHappy" :size="20" />
         </template>
         <template #append>
-          <a-image
+          <img
             :src="imgUrl"
             style="height: 100%; width: 100%"
             @click="refreshVerification()"

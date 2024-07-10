@@ -1,8 +1,8 @@
 <template>
   <div class="s-section">
-    <h2 class="text-base">服务类型分布</h2>
+    <h2 class="text-base">一周的体温变化</h2>
 
-    <div class="mt-4">
+    <div>
       <SChart :height="230" :option="option" />
     </div>
   </div>
@@ -13,7 +13,64 @@ import { ref } from 'vue'
 import { EChartsOption } from 'echarts'
 import SChart from '@/components/s-chart.vue'
 
-const option = ref<EChartsOption>()
+const option = ref<EChartsOption>({
+  xAxis: {
+    type: 'category',
+    boundaryGap: false,
+    data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  },
+  yAxis: {
+    type: 'value',
+    axisLabel: {
+      formatter: '{value} °C',
+    },
+  },
+  series: [
+    {
+      name: 'Highest',
+      type: 'line',
+      data: [10, 11, 13, 11, 12, 12, 9],
+      markPoint: {
+        data: [
+          { type: 'max', name: 'Max' },
+          { type: 'min', name: 'Min' },
+        ],
+      },
+      markLine: {
+        data: [{ type: 'average', name: 'Avg' }],
+      },
+    },
+    {
+      name: 'Lowest',
+      type: 'line',
+      data: [1, -2, 2, 5, 3, 2, 0],
+      markPoint: {
+        data: [{ name: '周最低', value: -2, xAxis: 1, yAxis: -1.5 }],
+      },
+      markLine: {
+        data: [
+          { type: 'average', name: 'Avg' },
+          [
+            {
+              symbol: 'none',
+              x: '90%',
+              yAxis: 'max',
+            },
+            {
+              symbol: 'circle',
+              label: {
+                position: 'start',
+                formatter: 'Max',
+              },
+              type: 'max',
+              name: '最高点',
+            },
+          ],
+        ],
+      },
+    },
+  ],
+})
 </script>
 
 <style lang="scss" scoped></style>

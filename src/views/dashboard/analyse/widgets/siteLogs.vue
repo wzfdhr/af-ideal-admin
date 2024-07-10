@@ -4,7 +4,7 @@
       <div>记录日志</div>
       <div class="text-blue-500 text-xs cursor-pointer">更多>></div>
     </div>
-
+    <a-divider />
     <div>
       <div v-for="(item, index) in data" :key="index" class="flex mt-4 gap-2">
         <div>

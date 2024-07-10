@@ -2,7 +2,7 @@
   <div class="s-section">
     <h2 class="text-base">往年财政对比</h2>
 
-    <div class="mt-4">
+    <div>
       <SChart :height="230" :option="option" />
     </div>
   </div>

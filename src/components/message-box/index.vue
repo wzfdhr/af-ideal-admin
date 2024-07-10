@@ -26,7 +26,7 @@
       </a-tab-pane>
       <a-tab-pane key="todo">
         <template #title>
-          <span>待办(4)</span>
+          <span>待办(0)</span>
         </template>
         <a-result v-if="!todoList.length" status="404">
           <template #subtitle>没有待办事项</template>
