@@ -8,7 +8,7 @@
           <Notification />
         </div>
       </a-col>
-      <a-col :span="10" class="w-full">
+      <a-col :span="10" class="w-full bg-white">
         <a-tabs default-active-key="2">
           <a-tab-pane key="1" title="财政收入">
             <div>
