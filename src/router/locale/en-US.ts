@@ -14,4 +14,6 @@ export default {
   'menu.dashboard.analyse': 'AnalyseBench',
   'menu.about': 'SystemInformation',
   'menu.about.temp': 'About',
+  'menu.system': 'System Configuration',
+  'menu.system.user': 'User Configuration',
 }

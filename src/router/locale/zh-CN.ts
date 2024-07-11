@@ -16,4 +16,6 @@ export default {
   'menu.dashboard.analyse': '分析台',
   'menu.about': '系统信息',
   'menu.about.temp': '关于',
+  'menu.system': '系统配置',
+  'menu.system.user': '用户配置',
 }
