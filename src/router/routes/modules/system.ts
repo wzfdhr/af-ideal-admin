@@ -22,6 +22,16 @@ const aboutRoutes: AppRouteRecordRaw = {
         roles: ['*'],
       },
     },
+    {
+      path: 'roleSystem',
+      name: 'roleSystem',
+      component: () => import('@/views/system/roleSystem/index.vue'),
+      meta: {
+        locale: 'menu.system.role',
+        // icon: 'icon-question',
+        roles: ['*'],
+      },
+    },
   ],
 }
 
