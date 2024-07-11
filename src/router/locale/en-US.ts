@@ -16,4 +16,5 @@ export default {
   'menu.about.temp': 'About',
   'menu.system': 'System Configuration',
   'menu.system.user': 'User Configuration',
+  'menu.system.role': 'Role Configuration',
 }

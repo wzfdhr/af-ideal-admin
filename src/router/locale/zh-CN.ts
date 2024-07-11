@@ -18,4 +18,5 @@ export default {
   'menu.about.temp': '关于',
   'menu.system': '系统配置',
   'menu.system.user': '用户配置',
+  'menu.system.role': '角色配置',
 }

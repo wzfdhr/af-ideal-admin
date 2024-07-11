@@ -1,21 +1,14 @@
 <template>
   <main class="px-6">
-    <s-navs :navs="['menu.system', 'menu.system.user']" />
+    <s-navs :navs="['menu.system', 'menu.system.role']" />
 
     <div class="s-section">
       <a-form label-width="68px">
         <div class="flex">
           <a-form-item>
-            <a-input placeholder="请输入用户名称" :style="{ width: '240px' }">
+            <a-input placeholder="请输入角色名称" :style="{ width: '240px' }">
               <template #prefix>
                 <s-icon :name="UserFill" :size="20" />
-              </template>
-            </a-input>
-          </a-form-item>
-          <a-form-item>
-            <a-input placeholder="请输入手机号码" :style="{ width: '240px' }">
-              <template #prefix>
-                <s-icon :name="Phone" :size="20" />
               </template>
             </a-input>
           </a-form-item>
@@ -42,12 +35,25 @@
     <div class="s-section mt-6">
       <a-table :data="data">
         <template #columns>
-          <a-table-column title="账号名称" data-index="username" />
-          <a-table-column title="用户姓名" data-index="name" />
-          <a-table-column title="手机号" data-index="phone" />
-          <a-table-column title="Email" data-index="email" />
-          <a-table-column title="所在部门" data-index="dept" />
-          <a-table-column title="是否启用" data-index="isState" />
+          <a-table-column title="角色编号" data-index="roleId" />
+          <a-table-column title="角色名称" data-index="roleName" />
+          <a-table-column title="权限字符" data-index="roleKey" />
+          <a-table-column title="显示顺序" data-index="roleSort" />
+          <a-table-column title="状态">
+            <template #cell="{ record }">
+              <a-switch
+                :model-value="record.state"
+                type="round"
+                checked-value="1"
+                unchecked-value="0"
+              >
+                <template #checked>ON</template>
+                <template #unchecked>OFF</template>
+              </a-switch>
+            </template>
+          </a-table-column>
+          <a-table-column title="创建时间" data-index="createTime" />
+          <a-table-column title="备注" data-index="beizhu" />
           <a-table-column title="操作">
             <template #cell="{ record, rowIndex }">
               <a-space>
@@ -77,36 +83,18 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { UserFill, Phone, Group } from '@salmon-ui/icons'
-
-const option = ref([
-  {
-    label: '停用',
-    value: '0',
-  },
-  {
-    label: '启用',
-    value: '1',
-  },
-])
 
 const data = reactive([
   {
-    key: '1',
-    username: 'admin',
-    name: '王宗凡',
-    phone: '17666666666',
-    email: 'jane.doe@example.com',
-    dept: '软件部',
-    isState: '1',
+    roleId: '1',
+    roleName: '超级管理员',
+    roleKey: 'admin',
+    roleSort: '1',
+    state: '1',
+    createTime: '2014-06-27 22:06:45',
+    beizhu: '亲几都别习需列向和民查属也及着相格共切',
   },
 ])
-const handleEdit = (row: any, idx: number) => {
-  console.log(row)
-}
-const handleRemove = (row: any) => {
-  console.log(row)
-}
 </script>
 
-<style lang="scss" scoped></style>
+<style scoped></style>
