@@ -14,7 +14,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, provide, PropType } from 'vue'
+import { ref, provide, PropType, onMounted } from 'vue'
 import type { AST } from '@/components/form-designer/types'
 import WidgetRenderer from './renderer/index.vue'
 import { formData } from './renderer/use-form-preview'
@@ -28,6 +28,9 @@ defineProps({
 
 const data = ref({})
 
+onMounted(() => {
+  console.log(data.value)
+})
 provide(formData, data)
 
 defineExpose({
