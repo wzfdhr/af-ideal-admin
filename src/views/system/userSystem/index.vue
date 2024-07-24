@@ -3,23 +3,19 @@
     <s-navs :navs="['menu.system', 'menu.system.user']" />
 
     <div class="s-section">
-      <a-form label-width="68px">
+      <a-form label-width="18px">
         <div class="flex">
-          <a-form-item>
-            <a-input placeholder="请输入用户名称" :style="{ width: '240px' }">
-              <template #prefix>
-                <s-icon :name="UserFill" :size="20" />
-              </template>
-            </a-input>
+          <a-form-item label="用户名称">
+            <a-input placeholder="请输入用户名称" :style="{ width: '240px' }" />
           </a-form-item>
-          <a-form-item>
+          <a-form-item label="手机号码">
             <a-input placeholder="请输入手机号码" :style="{ width: '240px' }">
               <template #prefix>
                 <s-icon :name="Phone" :size="20" />
               </template>
             </a-input>
           </a-form-item>
-          <a-form-item>
+          <a-form-item label="用户状态">
             <a-select placeholder="用户状态" :style="{ width: '200px' }">
               <a-option
                 v-for="dict in option"
@@ -40,14 +36,29 @@
       </a-form>
     </div>
     <div class="s-section mt-6">
-      <a-table :data="data">
+      <div>
+        <a-button>新增</a-button>
+      </div>
+      <a-table :data="data" class="mt-4">
         <template #columns>
           <a-table-column title="账号名称" data-index="username" />
           <a-table-column title="用户姓名" data-index="name" />
           <a-table-column title="手机号" data-index="phone" />
           <a-table-column title="Email" data-index="email" />
           <a-table-column title="所在部门" data-index="dept" />
-          <a-table-column title="是否启用" data-index="isState" />
+          <a-table-column title="是否启用" data-index="isState">
+            <template #cell="{ record }">
+              <a-switch
+                :model-value="record.isState"
+                type="round"
+                checked-value="1"
+                unchecked-value="0"
+              >
+                <template #checked>ON</template>
+                <template #unchecked>OFF</template>
+              </a-switch>
+            </template>
+          </a-table-column>
           <a-table-column title="操作">
             <template #cell="{ record, rowIndex }">
               <a-space>

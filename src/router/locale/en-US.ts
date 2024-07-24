@@ -16,6 +16,10 @@ export default {
   'menu.about.temp': 'About',
   'menu.system': 'System Configuration',
   'menu.system.user': 'User Configuration',
+  'menu.system.role': 'Role Configuration',
+  'menu.system.department': 'Department Configuration',
+  'menu.system.menu': 'Menu Configuration',
+  'menu.system.dict': 'Dict Configuration',
   'menu.formDesign': 'Scalability',
   'menu.Scalability.formDesign': 'Form design',
 }

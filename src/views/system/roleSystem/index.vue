@@ -5,24 +5,20 @@
     <div class="s-section">
       <a-form label-width="68px">
         <div class="flex">
-          <a-form-item>
-            <a-input placeholder="请输入角色名称" :style="{ width: '240px' }">
-              <template #prefix>
-                <s-icon :name="UserFill" :size="20" />
-              </template>
-            </a-input>
+          <a-form-item label="角色名称">
+            <a-input placeholder="请输入角色名称" :style="{ width: '240px' }" />
           </a-form-item>
-          <a-form-item>
-            <a-select placeholder="用户状态" :style="{ width: '200px' }">
+          <a-form-item label="权限字符">
+            <a-input placeholder="请输入权限字符" :style="{ width: '240px' }" />
+          </a-form-item>
+          <a-form-item label="角色状态">
+            <a-select placeholder="请选择角色状态" :style="{ width: '200px' }">
               <a-option
                 v-for="dict in option"
                 :key="dict.label"
                 :value="dict.value"
                 :label="dict.label"
               ></a-option>
-              <template #prefix>
-                <s-icon :name="Group" :size="20" />
-              </template>
             </a-select>
           </a-form-item>
           <a-form-item>
@@ -33,12 +29,20 @@
       </a-form>
     </div>
     <div class="s-section mt-6">
-      <a-table :data="data">
+      <div>
+        <a-button>新增</a-button>
+      </div>
+      <a-table :data="data" class="mt-4">
         <template #columns>
           <a-table-column title="角色编号" data-index="roleId" />
           <a-table-column title="角色名称" data-index="roleName" />
           <a-table-column title="权限字符" data-index="roleKey" />
           <a-table-column title="显示顺序" data-index="roleSort" />
+          <a-table-column title="数据权限" data-index="rolePermissions">
+            <template #cell="{ record }">
+              {{ record.rolePermissions }}
+            </template>
+          </a-table-column>
           <a-table-column title="状态">
             <template #cell="{ record }">
               <a-switch
@@ -90,6 +94,7 @@ const data = reactive([
     roleName: '超级管理员',
     roleKey: 'admin',
     roleSort: '1',
+    rolePermissions: '1',
     state: '1',
     createTime: '2014-06-27 22:06:45',
     beizhu: '亲几都别习需列向和民查属也及着相格共切',

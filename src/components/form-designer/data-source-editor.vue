@@ -58,7 +58,6 @@ const props = defineProps({
     required: true,
   },
 })
-
 const emit = defineEmits(['update:config'])
 
 const selectedIndex = ref(0)

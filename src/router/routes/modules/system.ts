@@ -8,7 +8,7 @@ const aboutRoutes: AppRouteRecordRaw = {
   meta: {
     locale: 'menu.system',
     requireAuth: true,
-    order: 999,
+    order: 6,
     icon: 'icon-settings',
   },
   children: [
@@ -28,6 +28,36 @@ const aboutRoutes: AppRouteRecordRaw = {
       component: () => import('@/views/system/roleSystem/index.vue'),
       meta: {
         locale: 'menu.system.role',
+        // icon: 'icon-question',
+        roles: ['*'],
+      },
+    },
+    {
+      path: 'menuSystem',
+      name: 'menuSystem',
+      component: () => import('@/views/system/menuSystem/index.vue'),
+      meta: {
+        locale: 'menu.system.menu',
+        // icon: 'icon-question',
+        roles: ['*'],
+      },
+    },
+    {
+      path: 'departmentSystem',
+      name: 'departmentSystem',
+      component: () => import('@/views/system/departmentSystem/index.vue'),
+      meta: {
+        locale: 'menu.system.department',
+        // icon: 'icon-question',
+        roles: ['*'],
+      },
+    },
+    {
+      path: 'dictSystem',
+      name: 'dictSystem',
+      component: () => import('@/views/system/dictSystem/index.vue'),
+      meta: {
+        locale: 'menu.system.dict',
         // icon: 'icon-question',
         roles: ['*'],
       },
