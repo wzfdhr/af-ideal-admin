@@ -47,6 +47,13 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (pathRewrite) => pathRewrite.replace(/^\/api/, '/af/'),
         },
+        '/mock': {
+          // 你可以选择一个不与现有路径冲突的新路径
+          target: 'http://localhost:5173', // Mock 服务的地址，这里假设你在本地运行 Mock 服务
+          changeOrigin: true, // 如果需要，设置为 true 以允许跨域请求
+          // 通常情况下，你可能不需要重写路径，因为 Mock 服务会处理特定的路径
+          // 但如果你需要，也可以添加 rewrite 配置
+        },
       },
       cors: true,
     },

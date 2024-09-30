@@ -27,4 +27,13 @@ export default {
   'menu.visualization': '数据可视化',
   'menu.visualization.analysis': '分析页',
   'menu.visualization.multidimensionalAnalysis': '多维数据分析',
+  'menu.form': '表单页',
+  'menu.form.complex-step': '复杂分步表单',
+  'menu.form.advanced-form': '高级表单',
+  'menu.form.step': '分步表单',
+  'menu.form.grouped': '分组表单',
+  'menu.form.dynamic': '动态表单',
+  'menu.list': '列表页',
+  'menu.list.card': '业务办理',
+  'menu.list.normal': '业务明细',
 }
