@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Article } from '@salmon-ui/icons'
+// import { Article } from '@salmon-ui/icons'
 import { fromNow } from '@/utils/time'
 import { noticeTypeMap } from '@config'
 

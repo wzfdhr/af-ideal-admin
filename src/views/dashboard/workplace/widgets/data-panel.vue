@@ -45,7 +45,7 @@
 </template>
 
 <script setup>
-import { GithubFill, LogoutBox, User } from '@salmon-ui/icons'
+import { GithubFill } from '@salmon-ui/icons'
 </script>
 
 <style lang="scss" scoped>
