@@ -24,4 +24,7 @@ export default {
   'menu.system.menu': '菜单配置',
   'menu.Scalability': '扩展能力',
   'menu.Scalability.formDesign': '表单设计器',
+  'menu.visualization': '数据可视化',
+  'menu.visualization.analysis': '分析页',
+  'menu.visualization.multidimensionalAnalysis': '多维数据分析',
 }

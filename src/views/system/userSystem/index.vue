@@ -3,19 +3,23 @@
     <s-navs :navs="['menu.system', 'menu.system.user']" />
 
     <div class="s-section">
-      <a-form label-width="18px">
+      <a-form label-width="40px">
         <div class="flex">
-          <a-form-item label="用户名称">
-            <a-input placeholder="请输入用户名称" :style="{ width: '240px' }" />
+          <a-form-item>
+            <a-input placeholder="请输入用户名称">
+              <template #prefix>
+                <s-icon :name="Group" :size="20" />
+              </template>
+            </a-input>
           </a-form-item>
-          <a-form-item label="手机号码">
-            <a-input placeholder="请输入手机号码" :style="{ width: '240px' }">
+          <a-form-item>
+            <a-input placeholder="请输入手机号码">
               <template #prefix>
                 <s-icon :name="Phone" :size="20" />
               </template>
             </a-input>
           </a-form-item>
-          <a-form-item label="用户状态">
+          <a-form-item>
             <a-select placeholder="用户状态" :style="{ width: '200px' }">
               <a-option
                 v-for="dict in option"

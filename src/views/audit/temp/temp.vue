@@ -70,7 +70,7 @@ console.log(formattedDevDependencies)
 const data = ref([
   {
     label: '版本',
-    value: '0.0.0.01',
+    value: '0.0.0.1',
   },
   {
     label: '最后编译时间',
