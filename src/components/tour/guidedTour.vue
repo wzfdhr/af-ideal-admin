@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, watch } from 'vue'
 
 const emit = defineEmits(['update:showTour'])
 
@@ -55,7 +55,7 @@ const tourSteps: TourStep[] = [
 // const currentIndex = ref(0)
 watch(props, () => {
   console.log(currentIndex.value)
-  console.log(currentStep)
+  // console.log(currentStep)
 })
 const currentStep = computed(() => tourSteps[currentIndex.value])
 

@@ -88,7 +88,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue'
+import { ref } from 'vue'
 import Draggable from 'vuedraggable'
 import SForm from '../s-form/index.vue'
 import { fields, useWidgetActions } from './use-widgets'

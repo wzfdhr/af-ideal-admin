@@ -5,7 +5,7 @@ import CryptoJS from 'crypto-js'
 
 const key = '1231231231231231'
 // 加密
-export const encrypt = (data: string, secretKey: string) => {
+export const encrypt = (data: string) => {
   // const key = CryptoJS.enc.Utf8.parse(secretKey)
   const encrypted = CryptoJS.AES.encrypt(data, key, {
     mode: CryptoJS.mode.ECB,
@@ -15,7 +15,7 @@ export const encrypt = (data: string, secretKey: string) => {
 }
 
 // 解密
-export const decrypt = (encryptedData: string, secretKey: string) => {
+export const decrypt = (encryptedData: string) => {
   // const key = CryptoJS.enc.Utf8.parse(secretKey)
   const decrypted = CryptoJS.AES.decrypt(encryptedData, key, {
     mode: CryptoJS.mode.ECB,

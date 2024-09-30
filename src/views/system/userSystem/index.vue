@@ -92,7 +92,7 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
-import { UserFill, Phone, Group } from '@salmon-ui/icons'
+import { Phone, Group } from '@salmon-ui/icons'
 
 const option = ref([
   {
@@ -116,7 +116,7 @@ const data = reactive([
     isState: '1',
   },
 ])
-const handleEdit = (row: any, idx: number) => {
+const handleEdit = (row: any) => {
   console.log(row)
 }
 const handleRemove = (row: any) => {

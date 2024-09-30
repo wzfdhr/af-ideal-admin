@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { Message } from '@arco-design/web-vue'
 import { getToken, clearToken } from '@/utils/auth'
-import { requestBaseUrl, HTTPResponse } from '@config'
+import { HTTPResponse } from '@config'
 import type { AxiosResponse } from 'axios'
 
 // if (requestBaseUrl) {

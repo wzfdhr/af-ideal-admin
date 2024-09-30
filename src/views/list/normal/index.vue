@@ -122,7 +122,6 @@
 </template>
 
 <script lang="ts" setup>
-import { type } from 'os'
 import { ref } from 'vue'
 import { IconSearch, IconRefresh } from '@arco-design/web-vue/es/icon'
 import useLoading from '@/hooks/use-loading'

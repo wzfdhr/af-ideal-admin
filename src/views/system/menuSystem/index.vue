@@ -74,7 +74,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { reactive } from 'vue'
 
 const data = reactive([
   {
@@ -124,7 +124,7 @@ const data = reactive([
     ],
   },
 ])
-const handleEdit = (row: any, idx: number) => {
+const handleEdit = (row: any) => {
   console.log(row)
 }
 const handleRemove = (row: any) => {
