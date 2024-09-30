@@ -20,7 +20,7 @@ AF-workflows 是vue3解决可视化工作流的项目，使用了如下的技术
 
 ## 命令说明
 
-安装项目依赖（仅当首次下载项目和当`package.json`文件更新时）：
+安装项目依赖（仅当首次下载项目和当`package.json`文件更新时,注意需要node版本在16以上）：
 
 ```sh
 npm install
@@ -29,7 +29,8 @@ npm install
 运行服务：
 
 ```sh
-npm run dev
+npm run dev --开发环境
+npm run test --生产环境
 
 # 如需运行服务并暴露到局域网，则使用`--host`参数：
 npm run dev -- --host
