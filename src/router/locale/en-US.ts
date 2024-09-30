@@ -25,4 +25,13 @@ export default {
   'menu.visualization': 'dataVisualization',
   'menu.visualization.analysis': 'analysis',
   'menu.visualization.multidimensionalAnalysis': 'multidimensionalAnalysis',
+  'menu.form': 'Form Page',
+  'menu.form.complex-step': 'Complex Stepped Form',
+  'menu.form.advanced-form': 'Advanced Form',
+  'menu.form.step': 'Stepped Form',
+  'menu.form.grouped': 'Grouped Form',
+  'menu.form.dynamic': 'Dynamic Form',
+  'menu.list': 'List Page',
+  'menu.list.card': 'Business',
+  'menu.list.normal': 'Business Records',
 }

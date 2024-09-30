@@ -4,9 +4,9 @@ import { getToken, clearToken } from '@/utils/auth'
 import { requestBaseUrl, HTTPResponse } from '@config'
 import type { AxiosResponse } from 'axios'
 
-if (requestBaseUrl) {
-  axios.defaults.baseURL = requestBaseUrl
-}
+// if (requestBaseUrl) {
+//   axios.defaults.baseURL = requestBaseUrl
+// }
 
 axios.interceptors.request.use(
   (config) => {
@@ -17,7 +17,7 @@ axios.interceptors.request.use(
       }
       config.headers['X-Access-Token'] = token
     }
-    if (config.url === '/user/code') {
+    if (config.url === '/api/user/code') {
       config.responseType = 'blob'
       return config
     }
