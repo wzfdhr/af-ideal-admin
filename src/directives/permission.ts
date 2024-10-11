@@ -16,7 +16,7 @@ const checkPermission = (el: HTMLElement, binding: DirectiveBinding) => {
       }
     }
   } else {
-    throw new Error('[XT-Admin] requires `v-allow=[]` to be set')
+    throw new Error('[AF-Admin] requires `v-allow=[]` to be set')
   }
 }
 
