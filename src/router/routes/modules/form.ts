@@ -8,7 +8,7 @@ const formRoutes: AppRouteRecordRaw = {
   meta: {
     icon: 'icon-file',
     requireAuth: true,
-    order: 1,
+    order: 2,
     locale: 'menu.form',
   },
   children: [
