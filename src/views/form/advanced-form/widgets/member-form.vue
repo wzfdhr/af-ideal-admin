@@ -66,11 +66,6 @@ const edittedData = ref<MembersData>({
 
 const data = reactive<MembersData[]>([
   {
-    dept: '体验技术部',
-    name: '蔡仲晨',
-    id: 'mm0212c',
-  },
-  {
     dept: '软件部',
     name: '张三',
     id: '9sj3nn2',

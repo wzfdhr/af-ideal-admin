@@ -20,7 +20,7 @@ const dashboardRoutes: AppRouteRecordRaw = {
       meta: {
         locale: 'menu.permissions.front',
         requireAuth: true,
-        roles: ['admin'],
+        roles: ['user'],
       },
       children: [
         {

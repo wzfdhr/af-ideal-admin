@@ -33,7 +33,7 @@ const data = Mock.mock({
 
 setupMock({
   setup() {
-    Mock.mock(new RegExp('/mock/business/groups'), () => {
+    Mock.mock(new RegExp('/api/business/groups'), () => {
       if (isAuthed()) {
         return responseWrap<GroupedBusinessEntry[]>([
           {
@@ -90,7 +90,7 @@ setupMock({
       return failedResponseWrap(null, '未登录', 50000)
     })
 
-    Mock.mock(new RegExp('/mock/business/records'), (params: MockParams) => {
+    Mock.mock(new RegExp('/api/business/records'), (params: MockParams) => {
       if (isAuthed()) {
         const { current = 1, pageSize = 20 } = qs.parseUrl(params.url).query
         const p = current as number
