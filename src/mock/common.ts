@@ -3,14 +3,14 @@ import setupMock, { responseWrap } from '@/utils/mock'
 
 setupMock({
   setup() {
-    Mock.mock(new RegExp('/mock/sys/dic/gender'), () =>
+    Mock.mock(new RegExp('/api/sys/dic/gender'), () =>
       responseWrap([
         { label: '女', value: 0 },
         { label: '男', value: 1 },
       ])
     )
 
-    Mock.mock(new RegExp('/mock/sys/dic/degree'), () =>
+    Mock.mock(new RegExp('/api/sys/dic/degree'), () =>
       responseWrap([
         { value: 0, label: '高中及以下' },
         { value: 1, label: '大学专科' },
@@ -20,7 +20,7 @@ setupMock({
       ])
     )
 
-    Mock.mock(new RegExp('/mock/sys/dic/diploma'), () =>
+    Mock.mock(new RegExp('/api/sys/dic/diploma'), () =>
       responseWrap([
         { value: 0, label: '无' },
         { value: 1, label: '学士' },
@@ -29,7 +29,7 @@ setupMock({
       ])
     )
 
-    Mock.mock(new RegExp('/mock/sys/dic/field'), () =>
+    Mock.mock(new RegExp('/api/sys/dic/field'), () =>
       responseWrap([
         { value: 0, label: '计算机科学' },
         { value: 1, label: '软件工程' },

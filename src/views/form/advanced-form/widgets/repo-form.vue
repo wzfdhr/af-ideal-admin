@@ -31,7 +31,6 @@
           :rules="[{ required: true, message: '请选择管理员' }]"
         >
           <a-select v-model="formData.manager" placeholder="请选择管理员">
-            <a-option>蔡仲晨</a-option>
             <a-option>张三</a-option>
             <a-option>李四</a-option>
           </a-select>

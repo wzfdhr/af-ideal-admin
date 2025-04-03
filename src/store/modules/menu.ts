@@ -33,6 +33,7 @@ const menuStore = defineStore('menu', {
       try {
         const { data } = await getMenu()
         this.asyncMenu = data
+        console.log('this.asyncMenu', this.asyncMenu)
       } catch (error) {
         console.error(error)
       }
