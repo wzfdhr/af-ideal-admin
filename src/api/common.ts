@@ -2,10 +2,10 @@ import axios from 'axios'
 import type { SelectOptionData } from '@arco-design/web-vue/es/select'
 
 export const getGenderOptions = async () =>
-  axios.get<SelectOptionData[]>('/mock/sys/dic/gender')
+  axios.get<SelectOptionData[]>('/api/sys/dic/gender')
 export const getDegreeOptions = async () =>
-  axios.get<SelectOptionData[]>('/mock/sys/dic/degree')
+  axios.get<SelectOptionData[]>('/api/sys/dic/degree')
 export const getDiplomaOptions = async () =>
-  axios.get<SelectOptionData[]>('/mock/sys/dic/diploma')
+  axios.get<SelectOptionData[]>('/api/sys/dic/diploma')
 export const getFieldOptions = async () =>
-  axios.get<SelectOptionData[]>('/mock/sys/dic/field')
+  axios.get<SelectOptionData[]>('/api/sys/dic/field')

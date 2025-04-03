@@ -1,5 +1,6 @@
 import axios from 'axios'
 import type { UserState } from '@/store/modules/user'
+import type { RouteRecordNormalized } from 'vue-router'
 
 export interface LoginData {
   username: string
@@ -13,6 +14,6 @@ export interface LoginRes {
 export const login = (data: LoginData) =>
   axios.post<LoginRes>('/api/user/login', data)
 export const getUserInfo = () => axios.post<UserState>('/api/user/info')
-export const getCode = () => axios.get('/api/user/code')
-export const getMenu = () => axios.get('api/user/code')
+export const getMenu = () =>
+  axios.post<RouteRecordNormalized[]>('/api/user/menu')
 export const logout = () => axios.post('/api/user/logout')
