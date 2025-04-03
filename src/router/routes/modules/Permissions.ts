@@ -20,8 +20,7 @@ const dashboardRoutes: AppRouteRecordRaw = {
       meta: {
         locale: 'menu.permissions.front',
         requireAuth: true,
-        roles: ['*'],
-        activeMenu: 'permissions',
+        roles: ['user'],
       },
       children: [
         {
@@ -29,10 +28,9 @@ const dashboardRoutes: AppRouteRecordRaw = {
           name: 'page',
           component: () => import('@/views/permissions/page/index.vue'),
           meta: {
-            locale: 'menu.permissions.page',
+            locale: 'menu.permissions.front.page',
             requireAuth: true,
-            roles: ['*'],
-            activeMenu: 'permissions',
+            roles: ['user'],
           },
         },
         {
@@ -40,10 +38,9 @@ const dashboardRoutes: AppRouteRecordRaw = {
           name: 'button',
           component: () => import('@/views/permissions/button/index.vue'),
           meta: {
-            locale: 'menu.permissions.button',
+            locale: 'menu.permissions.front.button',
             requireAuth: true,
             roles: ['*'],
-            activeMenu: 'permissions',
           },
         },
         {
@@ -51,10 +48,9 @@ const dashboardRoutes: AppRouteRecordRaw = {
           name: 'testing',
           component: () => import('@/views/permissions/testing/index.vue'),
           meta: {
-            locale: 'menu.permissions.testing',
+            locale: 'menu.permissions.front.testing',
             requireAuth: true,
             roles: ['*'],
-            activeMenu: 'permissions',
           },
         },
       ],
@@ -67,30 +63,27 @@ const dashboardRoutes: AppRouteRecordRaw = {
         locale: 'menu.permissions.backend',
         requireAuth: true,
         roles: ['*'],
-        activeMenu: 'permissions',
       },
       children: [
         {
           path: 'page',
-          name: 'page',
+          name: 'backendPage',
           component: () => import('@/views/backendPermissions/page/index.vue'),
           meta: {
-            locale: 'menu.permissions.page',
+            locale: 'menu.permissions.backend.page',
             requireAuth: true,
             roles: ['*'],
-            activeMenu: 'permissions',
           },
         },
         {
           path: 'button',
-          name: 'button',
+          name: 'backendButton',
           component: () =>
             import('@/views/backendPermissions/button/index.vue'),
           meta: {
-            locale: 'menu.permissions.button',
+            locale: 'menu.permissions.backend.button',
             requireAuth: true,
             roles: ['*'],
-            activeMenu: 'permissions',
           },
         },
       ],

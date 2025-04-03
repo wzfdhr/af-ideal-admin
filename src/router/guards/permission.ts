@@ -13,6 +13,7 @@ const setupPermissionGuard = (router: Router) => {
     const permission = usePermission()
     const permissionAllow = permission.hasAccessToRoute(to)
 
+    console.log('是否获取动态路由', menuFromServer)
     if (menuFromServer) {
       // TODO: implement permisison logic
       if (
@@ -21,9 +22,7 @@ const setupPermissionGuard = (router: Router) => {
       ) {
         await menuStore.fetchMenuConfig()
       }
-
       const serverMenuConfig = [...menuStore.asyncMenu, ...whiteList]
-
       let exist = false
       while (serverMenuConfig.length && !exist) {
         const el = serverMenuConfig.shift()
@@ -32,6 +31,7 @@ const setupPermissionGuard = (router: Router) => {
           serverMenuConfig.push(...(el.children as RouteRecordNormalized[]))
         }
       }
+      console.log(exist, serverMenuConfig)
 
       if (exist && permissionAllow) {
         next()

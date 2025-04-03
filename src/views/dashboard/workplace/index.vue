@@ -32,5 +32,5 @@ import actionPanel from './widgets/action-panel.vue'
 import noticePanel from './widgets/notice-panel.vue'
 import serviceChart from './widgets/service-chart.vue'
 
-const { userInfo } = useUserStore()
+// const { userInfo } = useUserStore()
 </script>

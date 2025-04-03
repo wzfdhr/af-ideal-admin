@@ -10,7 +10,7 @@ const dashboardRoutes: AppRouteRecordRaw = {
     locale: 'menu.dashboard',
     requireAuth: true,
     order: 0,
-    icon: 'icon-apps',
+    icon: 'icon-computer',
   },
   children: [
     {
@@ -21,7 +21,6 @@ const dashboardRoutes: AppRouteRecordRaw = {
         locale: 'menu.dashboard.workplace',
         requireAuth: true,
         roles: ['*'],
-        activeMenu: 'dashboard',
       },
     },
     {
@@ -32,7 +31,6 @@ const dashboardRoutes: AppRouteRecordRaw = {
         locale: 'menu.dashboard.analyse',
         requireAuth: true,
         roles: ['*'],
-        activeMenu: 'dashboard',
       },
     },
   ],
