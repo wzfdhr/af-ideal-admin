@@ -1,0 +1,29 @@
+import { fullPageLayout } from '@/router/constants'
+import { AppRouteRecordRaw } from '../../types'
+
+const exAbilityRoutes: AppRouteRecordRaw = {
+  path: '/Scalability',
+  name: 'Scalability',
+  component: fullPageLayout,
+  meta: {
+    locale: 'menu.Scalability',
+    order: 5,
+    requireAuth: true,
+    icon: 'icon-scissor',
+    openInNewWindow: true,
+  },
+  children: [
+    {
+      path: 'formDesign',
+      name: 'formDesign',
+      component: () => import('@/views/formDesign/index.vue'),
+      meta: {
+        locale: 'menu.Scalability.formDesign',
+        requireAuth: true,
+        openInNewWindow: true,
+      },
+    },
+  ],
+}
+
+export default exAbilityRoutes

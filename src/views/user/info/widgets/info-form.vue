@@ -35,7 +35,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import type { IOption } from '@/types'
 import { useUserStore } from '@/store'
 

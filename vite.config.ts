@@ -5,10 +5,7 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import eslint from 'vite-plugin-eslint'
 
 export default defineConfig(({ mode }) => {
-  console.log(mode)
-  const { VITE_BASE_URL, VITE_BOOT_URL } = loadEnv(mode, process.cwd())
   return {
-    base: VITE_BASE_URL,
     plugins: [
       vue(),
       vueJsx(),
@@ -43,9 +40,8 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          target: VITE_BOOT_URL,
+          target: 'http://localhost:8080',
           changeOrigin: true,
-          rewrite: (pathRewrite) => pathRewrite.replace(/^\/api/, '/af/'),
         },
       },
       cors: true,

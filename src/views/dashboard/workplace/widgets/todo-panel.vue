@@ -20,7 +20,6 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { ColData, TodoTableItem } from '../type'
 
 const cols = ref([
   { dataIndex: 'title', title: '业务名称' },

@@ -1,8 +1,6 @@
 <template>
   <div class="flex items-center">
-    <a-avatar
-      image-url="https://p1-arco.byteimg.com/tos-cn-i-uwbnlip3yd/3ee5f13fb09879ecb5185e440cef6eb9.png~tplv-uwbnlip3yd-webp.webp"
-    ></a-avatar>
+    <a-avatar :image-url="userInfo.avatar"></a-avatar>
     <div class="flex justify-between items-center flex-1">
       <div class="text-xl ml-4">
         欢迎回来，{{ userInfo.name }}开始您一天的工作吧！

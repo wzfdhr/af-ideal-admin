@@ -1,12 +1,20 @@
 <template>
   <div>
-    <h2 class="text-base">记录日志</h2>
-
+    <div class="text-base flex justify-between items-center">
+      <div>记录日志</div>
+      <div class="text-blue-500 text-xs cursor-pointer">更多>></div>
+    </div>
+    <a-divider />
     <div>
       <div v-for="(item, index) in data" :key="index" class="flex mt-4 gap-2">
         <div>
           <div
-            class="rounded-full p-5 bg-[#FF8247] w-6 h-6 flex justify-center items-center mt-3"
+            class="rounded-full p-5 w-6 h-6 flex justify-center items-center mt-3"
+            :class="{
+              active: item.type == 0,
+              active1: item.type == 1,
+              active2: item.type == 2,
+            }"
           >
             <SIcon :name="Article" :size="16" :color="'#fff'" />
           </div>
@@ -36,7 +44,7 @@ const data = ref([
     date: '2018-04-10 10:44',
     content:
       '高魂公路+上环段上道路线:大均多5kmm0经区现的上只的的经时时物，中的的现测试,高魂公路+上环段上道路线:大均多5kmm0经区现的上只的的经时时物，中的的现测试',
-    type: 1,
+    type: 0,
   },
   {
     title: '高速公路测试',
@@ -50,9 +58,26 @@ const data = ref([
     date: '2018-04-10 10:44',
     content:
       '高魂公路+上环段上道路线:大均多5kmm0经区现的上只的的经时时物，中的的现测试,高魂公路+上环段上道路线:大均多5kmm0经区现的上只的的经时时物，中的的现测试',
-    type: 1,
+    type: 2,
+  },
+  {
+    title: '高速公路测试',
+    date: '2018-04-10 10:44',
+    content:
+      '高魂公路+上环段上道路线:大均多5kmm0经区现的上只的的经时时物，中的的现测试,高魂公路+上环段上道路线:大均多5kmm0经区现的上只的的经时时物，中的的现测试',
+    type: 0,
   },
 ])
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.active {
+  @apply bg-[#FF8247];
+}
+.active2 {
+  @apply bg-blue-400;
+}
+.active1 {
+  @apply bg-green-300;
+}
+</style>

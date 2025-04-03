@@ -8,7 +8,7 @@ import store from '@/store'
 import directives from '@/directives'
 import i18n from '@/locale'
 
-// import './mock'
+import './mock'
 import './api/request'
 
 import '@/styles/tailwindcss.scss'
