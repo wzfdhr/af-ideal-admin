@@ -42,17 +42,7 @@
         修改登录密码
       </template>
       <div>
-        <a-form :model="password">
-          <a-form-item field="oldPwd" label="旧密码">
-            <a-input v-model="password.oldPwd" placeholder="请输入旧密码" />
-          </a-form-item>
-          <a-form-item field="newPwd" label="新密码">
-            <a-input v-model="password.newPwd" placeholder="请输入旧密码" />
-          </a-form-item>
-          <a-form-item field="newPwd1" label="确认新密码">
-            <a-input v-model="password.newPwd" placeholder="请再次输入旧密码" />
-          </a-form-item>
-        </a-form>
+        修改登录密码
       </div>
     </a-modal>
     <a-modal v-model:visible="visible1" @ok="handleOk" @cancel="visible1 = false">
@@ -60,17 +50,7 @@
         修改密保
       </template>
       <div>
-        <a-form :model="configProtection">
-          <a-form-item field="oldPwd" label="密保问题">
-            <a-input v-model="configProtection.oldPwd" placeholder="请输入旧密码" />
-          </a-form-item>
-          <a-form-item field="newPwd" label="新密码">
-            <a-input v-model="configProtection.newPwd" placeholder="请输入旧密码" />
-          </a-form-item>
-          <a-form-item field="newPwd1" label="确认新密码">
-            <a-input v-model="configProtection.newPwd" placeholder="请再次输入旧密码" />
-          </a-form-item>
-        </a-form>
+        修改密保
       </div>
     </a-modal>
     <a-modal v-model:visible="visible2" @ok="handleOk" @cancel="visible2 = false">
@@ -78,17 +58,7 @@
         修改安全手机
       </template>
       <div>
-        <a-form :model="phone">
-          <a-form-item field="oldPhone" label="旧手机号">
-            <a-input v-model="configProtection.oldPwd" placeholder="请输入旧手机号" />
-          </a-form-item>
-          <a-form-item field="newPhone" label="新手机号">
-            <a-input v-model="configProtection.newPwd" placeholder="请输入新手机号" />
-          </a-form-item>
-          <a-form-item field="newPhone1" label="确认新手机号">
-            <a-input v-model="configProtection.newPwd" placeholder="请再次输入新手机号" />
-          </a-form-item>
-        </a-form>
+        修改安全手机
       </div>
     </a-modal>
     <a-modal v-model:visible="visible3" @ok="handleOk" @cancel="visible3 = false">
@@ -96,17 +66,7 @@
         修改安全邮箱
       </template>
       <div>
-        <a-form :model="Elm">
-          <a-form-item field="oldElm" label="旧邮箱">
-            <a-input v-model="configProtection.oldPwd" placeholder="请输入旧邮箱" />
-          </a-form-item>
-          <a-form-item field="newElm" label="新邮箱">
-            <a-input v-model="configProtection.newElm" placeholder="请输入新邮箱" />
-          </a-form-item>
-          <a-form-item field="newElm1" label="确认新邮箱">
-            <a-input v-model="configProtection.newElm1" placeholder="请再次输入新邮箱" />
-          </a-form-item>
-        </a-form>
+        修改安全邮箱
       </div>
     </a-modal>
   </div>

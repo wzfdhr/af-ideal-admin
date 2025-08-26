@@ -6,7 +6,7 @@
     "dev": "vite serve --mode development",
     "test": "vite serve --mode production",
     "build:dev": "vue-tsc --noEmit && vite build --mode development",
-    "build:production": "vue-tsc --noEmit && vite build --mode production",
+    "build:prd": "vue-tsc --noEmit && vite build --mode production",
     "preview": "vite preview",
     "lint": "npx eslint . --ext .ts,.js,.tsx,.jsx,.vue --fix",
     "lint-staged": "npx lint-staged",

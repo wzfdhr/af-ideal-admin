@@ -3,16 +3,28 @@
     <s-navs :navs="['menu.system', 'menu.system.role']" />
 
     <div class="s-section">
-      <a-form>
+      <a-form :model="formData">
         <div class="flex">
           <a-form-item label="角色名称">
-            <a-input placeholder="请输入角色名称" :style="{ width: '240px' }" />
+            <a-input
+              v-model="formData.roleName"
+              placeholder="请输入角色名称"
+              :style="{ width: '240px' }"
+            />
           </a-form-item>
           <a-form-item label="权限字符">
-            <a-input placeholder="请输入权限字符" :style="{ width: '240px' }" />
+            <a-input
+              v-model="formData.roleKey"
+              placeholder="请输入权限字符"
+              :style="{ width: '240px' }"
+            />
           </a-form-item>
           <a-form-item label="角色状态">
-            <a-select placeholder="请选择角色状态" :style="{ width: '200px' }">
+            <a-select
+              v-model="formData.state"
+              placeholder="请选择角色状态"
+              :style="{ width: '200px' }"
+            >
               <a-option
                 v-for="dict in option"
                 :key="dict.label"
@@ -88,6 +100,22 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 
+const formData = ref({
+  roleName: '',
+  roleKey: '',
+  state: '',
+})
+
+const option = ref([
+  {
+    label: '停用',
+    value: '1',
+  },
+  {
+    label: '启用',
+    value: '2',
+  },
+])
 const data = reactive([
   {
     roleId: '1',
@@ -100,6 +128,12 @@ const data = reactive([
     beizhu: '亲几都别习需列向和民查属也及着相格共切',
   },
 ])
+const handleEdit = (obj: any, index: number) => {
+  console.log(index)
+}
+const handleRemove = (obj: any) => {
+  console.log(obj)
+}
 </script>
 
 <style scoped></style>

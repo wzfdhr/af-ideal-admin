@@ -3,13 +3,21 @@
     <s-navs :navs="['menu.system', 'menu.system.department']" />
 
     <div class="s-section">
-      <a-form>
+      <a-form :model="formData">
         <div class="flex">
           <a-form-item label="部门名称">
-            <a-input placeholder="请输入部门名称" :style="{ width: '240px' }" />
+            <a-input
+              v-model="formData.departmentName"
+              placeholder="请输入部门名称"
+              :style="{ width: '240px' }"
+            />
           </a-form-item>
           <a-form-item label="部门状态">
-            <a-select :style="{ width: '320px' }" placeholder="请选择部门状态">
+            <a-select
+              v-model="formData.departmentStatus"
+              :style="{ width: '320px' }"
+              placeholder="请选择部门状态"
+            >
               <a-option>所有</a-option>
               <a-option>显示</a-option>
               <a-option>隐藏</a-option>
@@ -55,7 +63,12 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
+
+const formData = ref({
+  departmentName: '',
+  departmentStatus: '',
+})
 
 const data = reactive([
   {
@@ -105,8 +118,8 @@ const data = reactive([
     ],
   },
 ])
-const handleEdit = (row: any) => {
-  console.log(row)
+const handleEdit = (row: any, index: number) => {
+  console.log(row, index)
 }
 const handleRemove = (row: any) => {
   console.log(row)

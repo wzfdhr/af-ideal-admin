@@ -37,8 +37,8 @@ module.exports = {
   rules: {
     'prettier/prettier': 2,
     // report debug messages on production
-    'no-console': process.env.NODE_ENV === 'production' ? 2 : 0,
-    'no-debugger': process.env.NODE_ENV === 'production' ? 2 : 0,
+    'no-console': process.env.NODE_ENV === 'production' ? 0 : 1,
+    'no-debugger': process.env.NODE_ENV === 'production' ? 0 : 1,
     // vue-eslint rules modification
     'vue/block-tag-newline': 1,
     'vue/script-indent': [

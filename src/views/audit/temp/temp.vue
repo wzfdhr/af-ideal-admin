@@ -14,8 +14,8 @@
     <div class="s-section">
       <a-descriptions :data="data" title="项目信息" bordered size="large">
         <a-descriptions-item
-          v-for="item in data"
-          :key="item"
+          v-for="(item, index) in data"
+          :key="index"
           :label="item.label"
         >
           <a-tag
