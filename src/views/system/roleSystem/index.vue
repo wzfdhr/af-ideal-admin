@@ -3,7 +3,7 @@
     <s-navs :navs="['menu.system', 'menu.system.role']" />
 
     <div class="s-section">
-      <a-form label-width="68px">
+      <a-form>
         <div class="flex">
           <a-form-item label="角色名称">
             <a-input placeholder="请输入角色名称" :style="{ width: '240px' }" />

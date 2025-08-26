@@ -3,7 +3,7 @@
     <s-navs :navs="['menu.system', 'menu.system.menu']" />
 
     <div class="s-section">
-      <a-form label-width="68px">
+      <a-form>
         <div class="flex">
           <a-form-item label="菜单名称">
             <a-input placeholder="请输入菜单名称" :style="{ width: '240px' }" />

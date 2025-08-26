@@ -36,7 +36,7 @@ setupMock({
       if (isAuthed()) {
         const role = window.localStorage.getItem('userRole') || 'admin'
         return responseWrap({
-          name: '王宗凡',
+          name: '系统管理员',
           avatar: avatarExample,
           email: 'wzfdhr2000@163.com',
           job: '前端工程师',

@@ -35,11 +35,11 @@ import {
 } from '@salmon-ui/icons'
 
 const actions = shallowRef([
-  { text: '申报审核', icon: FileEdit },
-  { text: '用户画像', icon: FingerPrint },
+  { text: '审核', icon: FileEdit },
+  { text: '用户', icon: FingerPrint },
   { text: '待办事项', icon: CalendarEvent },
   { text: '内容管理', icon: Article },
-  { text: '人才档案', icon: Archive },
+  { text: '档案', icon: Archive },
 ])
 </script>
 

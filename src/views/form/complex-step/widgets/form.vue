@@ -101,7 +101,7 @@ import { useUserStore } from '@/store'
 const userStore = useUserStore()
 
 const formData = reactive({
-  name: '浪潮集团',
+  name: 'xxx集团',
   creditNo: 'M02M12C1127',
   field: undefined,
   contact: userStore.name,

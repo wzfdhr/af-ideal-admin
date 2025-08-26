@@ -17,7 +17,7 @@ const option = ref<EChartsOption>({
   legend: {
     bottom: 0,
     left: 'center',
-    data: ['人事档案', '政策兑现', '职称评定', '人才黑卡'],
+    data: ['档案', '政策', '职称', '人才'],
     icon: 'circle',
     itemWidth: 8,
     textStyle: {

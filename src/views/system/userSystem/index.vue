@@ -3,7 +3,7 @@
     <s-navs :navs="['menu.system', 'menu.system.user']" />
 
     <div class="s-section">
-      <a-form label-width="40px">
+      <a-form>
         <div class="flex">
           <a-form-item>
             <a-input placeholder="请输入用户名称">
