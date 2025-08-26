@@ -10,7 +10,7 @@
         <template #action>
           <a-button size="small">查看</a-button>
         </template>
-        <template #progress="{ record }: { record: TodoTableItem }">
+        <template #progress="{ record }: { record: any }">
           {{ record.progress }}%
         </template>
       </a-table>

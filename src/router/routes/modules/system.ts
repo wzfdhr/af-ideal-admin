@@ -18,7 +18,7 @@ const aboutRoutes: AppRouteRecordRaw = {
       component: () => import('@/views/system/userSystem/index.vue'),
       meta: {
         locale: 'menu.system.user',
-        // icon: 'icon-question',
+        requireAuth: true,
         roles: ['*'],
       },
     },
@@ -28,7 +28,7 @@ const aboutRoutes: AppRouteRecordRaw = {
       component: () => import('@/views/system/roleSystem/index.vue'),
       meta: {
         locale: 'menu.system.role',
-        // icon: 'icon-question',
+        requireAuth: true,
         roles: ['*'],
       },
     },
@@ -38,7 +38,7 @@ const aboutRoutes: AppRouteRecordRaw = {
       component: () => import('@/views/system/menuSystem/index.vue'),
       meta: {
         locale: 'menu.system.menu',
-        // icon: 'icon-question',
+        requireAuth: true,
         roles: ['*'],
       },
     },
@@ -48,7 +48,7 @@ const aboutRoutes: AppRouteRecordRaw = {
       component: () => import('@/views/system/departmentSystem/index.vue'),
       meta: {
         locale: 'menu.system.department',
-        // icon: 'icon-question',
+        requireAuth: true,
         roles: ['*'],
       },
     },
@@ -58,7 +58,7 @@ const aboutRoutes: AppRouteRecordRaw = {
       component: () => import('@/views/system/dictSystem/index.vue'),
       meta: {
         locale: 'menu.system.dict',
-        // icon: 'icon-question',
+        requireAuth: true,
         roles: ['*'],
       },
     },

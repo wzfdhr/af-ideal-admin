@@ -32,7 +32,7 @@ axios.interceptors.response.use(
         duration: 5000,
       })
 
-      console.error('请求错误', res)
+      // console.error('请求错误', res)
       return Promise.reject(new Error(res.msg || '未命名的错误'))
     }
 
@@ -43,7 +43,7 @@ axios.interceptors.response.use(
       content: error.msg || 'Request Error',
       duration: 5000,
     })
-    console.error('请求错误', error)
+    // console.error('请求错误', error)
     return Promise.reject(error)
   }
 )

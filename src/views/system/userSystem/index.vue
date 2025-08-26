@@ -3,24 +3,28 @@
     <s-navs :navs="['menu.system', 'menu.system.user']" />
 
     <div class="s-section">
-      <a-form label-width="40px">
+      <a-form :model="formData">
         <div class="flex">
           <a-form-item>
-            <a-input placeholder="请输入用户名称">
+            <a-input v-model="formData.username" placeholder="请输入用户名称">
               <template #prefix>
                 <s-icon :name="Group" :size="20" />
               </template>
             </a-input>
           </a-form-item>
           <a-form-item>
-            <a-input placeholder="请输入手机号码">
+            <a-input v-model="formData.phone" placeholder="请输入手机号码">
               <template #prefix>
                 <s-icon :name="Phone" :size="20" />
               </template>
             </a-input>
           </a-form-item>
           <a-form-item>
-            <a-select placeholder="用户状态" :style="{ width: '200px' }">
+            <a-select
+              v-model="formData.state"
+              placeholder="用户状态"
+              :style="{ width: '200px' }"
+            >
               <a-option
                 v-for="dict in option"
                 :key="dict.label"
@@ -94,6 +98,15 @@
 import { ref, reactive } from 'vue'
 import { Phone, Group } from '@salmon-ui/icons'
 
+const formData = ref<{
+  username: string
+  phone: string
+  state: string
+}>({
+  username: '',
+  phone: '',
+  state: '',
+})
 const option = ref([
   {
     label: '停用',
@@ -116,8 +129,8 @@ const data = reactive([
     isState: '1',
   },
 ])
-const handleEdit = (row: any) => {
-  console.log(row)
+const handleEdit = (row: any, index: number) => {
+  console.log(row, index)
 }
 const handleRemove = (row: any) => {
   console.log(row)

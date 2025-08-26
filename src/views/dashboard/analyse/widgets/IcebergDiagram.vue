@@ -10,72 +10,53 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { EChartsOption } from 'echarts'
+import { BarSeriesOption, PictorialBarSeriesOption } from 'echarts/charts'
+import { EChartsOption, SeriesOption } from 'echarts'
 import SChart from '@/components/s-chart.vue'
 
-const seriesData = ref([
+const seriesData = ref<Array<BarSeriesOption | PictorialBarSeriesOption>>([
   {
     name: '本年财力总额累计值',
-    type: 'pictorialBar',
-    barCategoryGap: 20,
-    symbol: 'path://d="M150 50 L130 130 L170 130  Z"',
+    type: 'bar', // 或 'pictorialBar'
     barWidth: 65,
-    symbolOffset: [15, 0],
     data: [20, 18, 17, 24],
     itemStyle: {
-      normal: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            {
-              offset: 0,
-              color: 'rgba(30, 236, 186, 1)',
-            },
-            {
-              offset: 1,
-              color: 'rgba(30, 236, 186, 0)',
-            },
-          ],
-          global: false,
-        },
+      color: {
+        type: 'linear',
+        x: 0,
+        y: 0,
+        x2: 0,
+        y2: 1,
+        colorStops: [
+          { offset: 0, color: 'rgba(30, 236, 186, 1)' },
+          { offset: 1, color: 'rgba(30, 236, 186, 0)' },
+        ],
       },
-      emphasis: {},
     },
   },
   {
     name: '上年同期',
-    type: 'pictorialBar',
-    barCategoryGap: 20,
-    symbol: 'path://d="M150 50 L130 130 L170 130  Z"',
+    type: 'bar', // 或 'pictorialBar'
     barWidth: 65,
-    symbolOffset: [-15, 0],
-    data: [15, 12, 11, 19],
+    data: [20, 18, 17, 24],
     itemStyle: {
-      normal: {
-        color: {
-          type: 'linear',
-          x: 0,
-          y: 0,
-          x2: 0,
-          y2: 1,
-          colorStops: [
-            {
-              offset: 0,
-              color: 'rgba(0, 157, 255, 1)',
-            },
-            {
-              offset: 1,
-              color: 'rgba(0, 157, 255, 0)',
-            },
-          ],
-          global: false,
-        },
+      color: {
+        type: 'linear',
+        x: 0,
+        y: 0,
+        x2: 0,
+        y2: 1,
+        colorStops: [
+          {
+            offset: 0,
+            color: 'rgba(0, 157, 255, 1)',
+          },
+          {
+            offset: 1,
+            color: 'rgba(0, 157, 255, 0)',
+          },
+        ],
       },
-      emphasis: {},
     },
   },
 ])
@@ -92,10 +73,8 @@ const option = ref<EChartsOption>({
       },
     },
     axisLabel: {
-      textStyle: {
-        color: '#999',
-        fontSize: 12,
-      },
+      color: '#999',
+      fontSize: 12,
     },
   },
   legend: {
@@ -104,6 +83,7 @@ const option = ref<EChartsOption>({
     icon: 'circle',
     data: ['本年财力总额累计值', '上年同期'],
     textStyle: {
+      // ✅ 正确位置
       color: 'rgba(152, 174, 186, 1)',
       fontSize: 14,
     },
@@ -120,14 +100,12 @@ const option = ref<EChartsOption>({
       },
 
       axisLabel: {
-        textStyle: {
-          fontSize: 10,
-          color: 'rgba(255, 255, 255, 0.8)',
-        },
+        fontSize: 10,
+        color: 'rgba(255, 255, 255, 0.8)',
       },
       splitArea: {
         areaStyle: {
-          color: 'rgba(255,255,255,.5)',
+          color: ['rgba(255,255,255,.5)'],
         },
       },
       splitLine: {
@@ -140,7 +118,7 @@ const option = ref<EChartsOption>({
       },
     },
   ],
-  series: seriesData.value,
+  series: seriesData.value as SeriesOption[],
 })
 </script>
 
