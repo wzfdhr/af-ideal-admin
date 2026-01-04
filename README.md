@@ -1,6 +1,8 @@
 # AF-workflows
 
-AF-workflows 是vue3解决可视化工作流的项目，使用了如下的技术构建：
+AF-workflows 是一个基于 Vue 3 的可视化工作流前端项目模板，旨在提供可拖拽的表单与流程设计能力，便于快速搭建业务工作流和可视化页面。
+
+主要技术栈：
 
 - [Vue 3](https://cn.vuejs.org/)
 - [TypeScript](https://www.typescriptlang.org/)
@@ -12,49 +14,55 @@ AF-workflows 是vue3解决可视化工作流的项目，使用了如下的技术
 
 ## 推荐开发环境
 
-推荐使用 [VS Code](https://code.visualstudio.com/) 作为编辑器/IED。在 VSCode 中安装以下扩展：
+推荐使用 [VS Code](https://code.visualstudio.com/)。建议安装的扩展：
 
-- **必需**：[Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar)
-- **推荐**：[eslint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
-- **推荐**：[Tailwind CSS IntelliSense](https://marketplace.visualstudio.com/items?itemName=bradlc.vscode-tailwindcss)
+- **必需**：Volar（用于 Vue 3 + TypeScript）
+- **推荐**：ESLint（代码质量检查）
+- **推荐**：Tailwind CSS IntelliSense（Tailwind 辅助提示）
 
-> **注意：** 不要使用 vuter 插件，该扩展专为 Vue 2 开发，现已不再维护。官方推荐使用 Volar 代替。
+注意：不要使用仅支持 Vue 2 的旧插件（如 vetur），官方推荐在 Vue 3 项目中使用 Volar。
 
-## 命令说明
+## 快速开始
 
-安装项目依赖（仅当首次下载项目和当`package.json`文件更新时,注意需要node版本在16以上）：
+先决条件：Node.js >= 16，推荐使用 npm、yarn 或 pnpm 管理依赖。
 
-```sh
+安装依赖：
+
+```bash
 npm install
 ```
 
-运行服务：
+启动开发服务：
 
-```sh
-npm run dev --开发环境
-npm run test --生产环境
+```bash
+npm run dev
+```
 
-# 如需运行服务并暴露到局域网，则使用`--host`参数：
+如需在局域网中访问开发服务：
+
+```bash
 npm run dev -- --host
 ```
 
-检查和自动修正代码：
+构建生产包：
 
-> 说明：项目集成了[ESLint](https://eslint.org/)、[Prettier](https://prettier.io/)和[Husky](https://typicode.github.io/husky/#/)。使用 Git 上传代码时，将会自动检查和修正需要上传的代码；如果出现无法自动修正的问题则会报告错误或警告。因此此命令一般无需手动执行。
-
-```sh
-npm run lint
-```
-
-编译打包：
-
-```sh
+```bash
 npm run build
 ```
 
-## ✨ 后期规划
+代码检查与格式化：
 
-- **Themes** - 基于「[风格配置平台](https://arco.design/themes)」丰富的主题市场，让你的项目千变万化。
-- **Dark Theme**  -  一键丝滑切换暗黑风格。
-- **Config** - 灵活配置页面配色、布局等。
-- **Templates** - 16+ 页面模版，覆盖表格、列表、表单、工作台、可视化等场景。
+项目集成了 ESLint、Prettier 与 Husky，Git 提交时会触发检查与自动修复。也可以手动运行：
+
+```bash
+npm run lint
+```
+
+## 项目规划（待办）
+
+- Themes：集成更多主题与主题市场能力。
+- Dark Theme：支持暗黑模式一键切换。
+- Config：增强页面配色、布局等运行时配置能力。
+- Templates：提供更多页面模版（表格、表单、列表、可视化等）。
+
+欢迎根据项目需求进行扩展与定制化开发。
