@@ -1,6 +1,6 @@
-// import store from '@/store'
-// import useSettingsStore from '@/store/modules/settings'
-// import defaultSettings from '@/settings'
+import store from '@/store'
+import useSettingsStore from '@/store/modules/settings'
+import defaultSettings from '@/settings'
 
 // const useDynamicTitle = () => {
 //   // const settingsStore = useSettingsStore()
