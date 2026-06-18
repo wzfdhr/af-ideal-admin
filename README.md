@@ -1,30 +1,26 @@
-# AF-workflows
+# AF-Ideal-Admin
 
-AF-workflows 是一个基于 Vue 3 的可视化工作流前端项目模板，旨在提供可拖拽的表单与流程设计能力，便于快速搭建业务工作流和可视化页面。
+AF-Ideal-Admin 是一个基于 Vue 3、TypeScript 和 Vite 的后台管理系统模板。项目内置登录鉴权、动态菜单、页面权限、按钮权限、可视化看板、表单页面、列表页面、系统管理页面和可拖拽表单设计器，适合作为中后台项目的二次开发基础。
 
-主要技术栈：
+## 项目概览
 
-- [Vue 3](https://cn.vuejs.org/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Vite 4](https://cn.vitejs.dev/)
-- [TailwindCSS 3](https://tailwindcss.com/)
-- [Sass](https://sass-lang.com/)
-- [Pinia](https://pinia.web3doc.top/)
-- [Arco Design](https://github.com/arco-design/arco-design-vue)
-
-## 推荐开发环境
-
-推荐使用 [VS Code](https://code.visualstudio.com/)。建议安装的扩展：
-
-- **必需**：Volar（用于 Vue 3 + TypeScript）
-- **推荐**：ESLint（代码质量检查）
-- **推荐**：Tailwind CSS IntelliSense（Tailwind 辅助提示）
-
-注意：不要使用仅支持 Vue 2 的旧插件（如 vetur），官方推荐在 Vue 3 项目中使用 Volar。
+- 框架：Vue 3 + TypeScript + Vite 4
+- UI：Arco Design Vue + Tailwind CSS + Sass
+- 状态管理：Pinia
+- 路由：Vue Router 4，路由模块按业务拆分
+- 图表：ECharts、vue-echarts
+- 流程/拖拽能力：AntV X6、vuedraggable
+- 请求：Axios，全局请求/响应拦截器
+- Mock：Mock.js，仅在开发环境启用
+- 工程化：ESLint、Prettier、Husky、lint-staged
 
 ## 快速开始
 
-先决条件：Node.js >= 16，推荐使用 npm、yarn 或 pnpm 管理依赖。
+环境建议：
+
+- Node.js >= 16
+- 推荐使用 npm，因为仓库已包含 `package-lock.json`
+- 推荐编辑器：VS Code + Volar + ESLint + Tailwind CSS IntelliSense
 
 安装依赖：
 
@@ -38,31 +34,135 @@ npm install
 npm run dev
 ```
 
-如需在局域网中访问开发服务：
+局域网访问：
 
 ```bash
 npm run dev -- --host
 ```
 
-构建生产包：
+构建开发环境包：
 
 ```bash
-npm run build
+npm run build:dev
 ```
 
-代码检查与格式化：
+构建生产环境包：
 
-项目集成了 ESLint、Prettier 与 Husky，Git 提交时会触发检查与自动修复。也可以手动运行：
+```bash
+npm run build:prd
+```
+
+预览构建产物：
+
+```bash
+npm run preview
+```
+
+代码检查并自动修复：
 
 ```bash
 npm run lint
 ```
 
-## 项目规划（待办）
+## 本地登录账号
 
-- Themes：集成更多主题与主题市场能力。
-- Dark Theme：支持暗黑模式一键切换。
-- Config：增强页面配色、布局等运行时配置能力。
-- Templates：提供更多页面模版（表格、表单、列表、可视化等）。
+开发环境会自动加载 `src/mock` 下的 Mock 接口，可直接使用以下账号登录：
 
-欢迎根据项目需求进行扩展与定制化开发。
+| 角色 | 用户名 | 密码 |
+| --- | --- | --- |
+| 管理员 | `admin` | `admin` |
+| 普通用户 | `user` | `user` |
+
+登录成功后，Mock 会把用户角色写入 `localStorage.userRole`，权限判断依赖该角色。
+
+## 目录结构
+
+```text
+.
+├── config/                 # 全局公共配置，如菜单来源、权限策略、缓存路由
+├── public/                 # 静态资源
+├── src/
+│   ├── api/                # Axios 请求封装与业务 API
+│   ├── assets/             # 图片、SVG、样式资源
+│   ├── components/         # 通用组件与表单设计器组件
+│   ├── directives/         # 自定义指令，如按钮权限 v-allow
+│   ├── hooks/              # 组合式函数
+│   ├── layout/             # 页面布局
+│   ├── locale/             # 国际化入口
+│   ├── mock/               # 开发环境 Mock 数据
+│   ├── router/             # 路由、菜单、守卫、路由国际化
+│   ├── store/              # Pinia 状态模块
+│   ├── styles/             # 全局样式与业务样式模块
+│   ├── utils/              # 通用工具函数
+│   └── views/              # 页面级业务模块
+├── vite.config.ts          # Vite 配置
+├── tailwind.config.js      # Tailwind 配置
+└── package.json            # 项目脚本与依赖
+```
+
+## 核心模块
+
+- 仪表盘：工作台、分析页，位于 `src/views/dashboard`
+- 可视化：分析页、多维分析页，位于 `src/views/visualization`
+- 表单：复杂步骤表单、高级表单、分步表单，位于 `src/views/form`
+- 列表：卡片列表、普通列表，位于 `src/views/list`
+- 权限：前端页面权限、按钮权限、后端菜单权限演示，位于 `src/views/permissions` 和 `src/views/backendPermissions`
+- 系统管理：用户、角色、菜单、部门、字典页面，位于 `src/views/system`
+- 用户中心：个人信息页，位于 `src/views/user`
+- 扩展能力：表单设计器，位于 `src/views/formDesign` 和 `src/components/form-designer`
+
+## 路由与权限
+
+路由入口在 `src/router/index.ts`，业务路由集中在 `src/router/routes/modules`。新增页面时，通常新增或修改该目录下的模块即可。
+
+权限判断主要由以下文件协作完成：
+
+- `config/index.ts`：配置 `menuFromServer`、`toNoPermissionPage`、缓存路由等全局行为。
+- `src/router/guards/permission.ts`：路由访问守卫。
+- `src/hooks/use-permission.ts`：判断当前用户角色是否可访问路由。
+- `src/directives/permission.ts`：按钮权限指令 `v-allow`。
+- `src/store/modules/user.ts`：保存当前用户信息和角色。
+- `src/store/modules/menu.ts`：保存服务端菜单、菜单折叠状态和缓存路由。
+
+当前 `menuFromServer` 默认为 `false`，系统使用前端静态路由生成菜单。若切换为 `true`，会通过 `/api/user/menu` 获取服务端菜单。
+
+路由权限字段建议统一使用 `meta.roles`。当前项目里有少量页面使用了 `role` 或 `rules` 字段，权限钩子默认不会识别这些字段，后续扩展权限时需要留意。
+
+## 请求与环境变量
+
+Axios 拦截器位于 `src/api/request.ts`：
+
+- 请求时从本地存储读取 token，并写入 `X-Access-Token` 请求头。
+- 响应约定 `code === 20000` 为成功，否则弹出错误提示并 reject。
+
+环境变量文件：
+
+- `.env.development`：开发环境配置
+- `.env.production`：生产环境配置
+
+当前可用变量：
+
+| 变量 | 说明 |
+| --- | --- |
+| `VITE_APP_ENV` | 当前环境标识 |
+| `VITE_BASE_URL` | 应用基础路径 |
+| `VITE_BOOT_URL` | 后端服务地址 |
+| `VITE_APP_TITLE` | 页面标题 |
+
+注意：当前请求公共前缀来自 `config/index.ts` 的 `import.meta.env.BASE_URL`，不是 `VITE_BASE_URL`。如果要统一使用自定义环境变量，需要同步调整该配置。
+
+## 开发注意事项
+
+- `src/mock` 只在 `import.meta.env.DEV` 为 `true` 时启用，生产构建不会自动启用 Mock。
+- Vite 开发服务器已配置 `/api` 代理到 `http://localhost:8080`，见 `vite.config.ts`。
+- `src/router/index.ts` 使用 `createWebHistory()`，部署到非根路径时需要同步确认前端路由与服务器回退配置。
+- `package.json` 没有 `build` 脚本，请使用 `build:dev` 或 `build:prd`。
+- 仓库中存在 `dist.zip` 和 `node_modules.zip`，日常开发更推荐通过源码构建和 `npm install` 安装依赖，避免依赖压缩包与锁文件长期漂移。
+
+## 后续优化建议
+
+- 统一路由权限字段，全部收敛为 `meta.roles`。
+- 清理调试日志，例如权限守卫和菜单 store 中的 `console.log`。
+- 明确 `VITE_BASE_URL`、`VITE_BOOT_URL` 与 Axios `baseURL` 的关系。
+- 根据真实后端接口替换 Mock 数据，并补充接口契约文档。
+- 为核心权限逻辑、登录流程和表单设计器补充最小化测试。
