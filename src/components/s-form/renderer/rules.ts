@@ -26,6 +26,8 @@ const isPlainRule = (value: unknown): value is FieldRule => {
   return Object.keys(rule).every((key) => allowedKeys.has(key))
 }
 
+// Kept as a named export so tests and renderer use the same parser contract.
+// eslint-disable-next-line import/prefer-default-export
 export const parseWidgetRules = (rules?: string): FieldRule[] | undefined => {
   if (!rules || rules.trim() === '') return undefined
 

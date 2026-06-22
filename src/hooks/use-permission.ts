@@ -33,16 +33,19 @@ export const getFirstAccessibleRoute = (
   rs: RouteRecordRaw[],
   role: UserRole | string = ''
 ): AccessibleRoute => {
-  for (const route of rs) {
-    if (!canAccessRoute(route, role)) continue
+  const routes = [...rs]
 
-    if (route.children?.length) {
-      const child = getFirstAccessibleRoute(route.children, role)
+  while (routes.length) {
+    const route = routes.shift()
+
+    if (route && canAccessRoute(route, role)) {
+      const child = getFirstAccessibleRoute(route.children || [], role)
       if (child) return child
-      if (route.redirect) continue
-    }
 
-    return { name: route.name }
+      if (!route.redirect) {
+        return { name: route.name }
+      }
+    }
   }
 
   return null
@@ -55,7 +58,10 @@ const usePermission = () => {
     hasAccessToRoute(route: PermissionRoute) {
       return canAccessRoute(route, userStore.role)
     },
-    getFirstAccessibleRoute(rs: RouteRecordRaw[], role: UserRole | string = '') {
+    getFirstAccessibleRoute(
+      rs: RouteRecordRaw[],
+      role: UserRole | string = ''
+    ) {
       return getFirstAccessibleRoute(rs, role)
     },
   }

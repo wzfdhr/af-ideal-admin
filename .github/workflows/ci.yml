@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - framework
+      - main
+      - master
+  pull_request:
+    branches:
+      - framework
+      - main
+      - master
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm run test
+
+      - name: Install Playwright browsers
+        run: npm run playwright:install
+
+      - name: Build
+        run: npm run build:prd
+
+      - name: E2E smoke tests
+        run: npm run test:e2e

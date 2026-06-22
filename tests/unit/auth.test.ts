@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { clearAuth, clearToken, getToken, isAuthed, setToken } from '@/utils/auth'
+import {
+  clearAuth,
+  clearToken,
+  getToken,
+  isAuthed,
+  setToken,
+} from '@/utils/auth'
 
 describe('auth storage', () => {
   it('stores and clears token', () => {

@@ -80,7 +80,10 @@ const loginConfig = useStorage('login-config', {
   username: '',
 })
 
-if ('password' in loginConfig.value || 'shouldStorePassword' in loginConfig.value) {
+if (
+  'password' in loginConfig.value ||
+  'shouldStorePassword' in loginConfig.value
+) {
   loginConfig.value = {
     shouldStoreUsername: false,
     username: '',
