@@ -1,4 +1,6 @@
 import avatarExample from '@/assets/avatar-user.png'
+import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
+import type { SystemDictionaryRecord } from '@/api/system/dictionary'
 
 export type MockRole = 'admin' | 'user' | 'operator' | 'restricted'
 
@@ -155,7 +157,12 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
           path: 'dictSystem',
           name: 'dictSystem',
           componentKey: 'SystemDictPage',
-          meta: { locale: 'menu.system.dict', requireAuth: true, roles: ['*'] },
+          meta: {
+            locale: 'menu.system.dict',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [SYSTEM_DICT_PERMISSIONS.list] },
+          },
         },
       ],
     },
@@ -255,6 +262,10 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
 }
 
 export const mockDictionaries = {
+  dictStatus: [
+    { label: '启用', value: 'enabled' },
+    { label: '停用', value: 'disabled' },
+  ],
   gender: [
     { label: '女', value: 0 },
     { label: '男', value: 1 },
@@ -279,6 +290,45 @@ export const mockDictionaries = {
     { value: 4, label: '通信工程' },
   ],
 }
+
+export const mockSystemDictionaries: SystemDictionaryRecord[] = [
+  {
+    id: 'dict-1',
+    dictName: '状态',
+    dictType: 'sys_status',
+    dictStatus: 'enabled',
+    description: '系统通用启停状态',
+    createdAt: '2026-06-01 10:00:00',
+    updatedAt: '2026-06-01 10:00:00',
+  },
+  {
+    id: 'dict-2',
+    dictName: '性别',
+    dictType: 'gender',
+    dictStatus: 'enabled',
+    description: '人员性别选项',
+    createdAt: '2026-06-02 10:00:00',
+    updatedAt: '2026-06-02 10:00:00',
+  },
+  {
+    id: 'dict-3',
+    dictName: '学历',
+    dictType: 'degree',
+    dictStatus: 'enabled',
+    description: '教育经历学历选项',
+    createdAt: '2026-06-03 10:00:00',
+    updatedAt: '2026-06-03 10:00:00',
+  },
+  {
+    id: 'dict-4',
+    dictName: '废弃字段',
+    dictType: 'legacy_field',
+    dictStatus: 'disabled',
+    description: '用于验证停用状态的虚拟字典',
+    createdAt: '2026-06-04 10:00:00',
+    updatedAt: '2026-06-04 10:00:00',
+  },
+]
 
 export const mockBusinessGroups = [
   {

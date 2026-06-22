@@ -5,21 +5,11 @@ import { mockDictionaries } from '../seed'
 const setupDictionaryMock = () => {
   setupMock({
     setup() {
-      Mock.mock(new RegExp('/api/sys/dic/gender'), () =>
-        responseWrap(mockDictionaries.gender)
-      )
-
-      Mock.mock(new RegExp('/api/sys/dic/degree'), () =>
-        responseWrap(mockDictionaries.degree)
-      )
-
-      Mock.mock(new RegExp('/api/sys/dic/diploma'), () =>
-        responseWrap(mockDictionaries.diploma)
-      )
-
-      Mock.mock(new RegExp('/api/sys/dic/field'), () =>
-        responseWrap(mockDictionaries.field)
-      )
+      Object.entries(mockDictionaries).forEach(([key, options]) => {
+        Mock.mock(new RegExp(`/api/sys/dic/${key}$`), () =>
+          responseWrap(options)
+        )
+      })
     },
   })
 }

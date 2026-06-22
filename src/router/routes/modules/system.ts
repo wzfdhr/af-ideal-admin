@@ -1,4 +1,5 @@
 import { defaultLayout } from '@/router/constants'
+import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
 import { AppRouteRecordRaw } from '../../types'
 
 const aboutRoutes: AppRouteRecordRaw = {
@@ -60,6 +61,9 @@ const aboutRoutes: AppRouteRecordRaw = {
         locale: 'menu.system.dict',
         requireAuth: true,
         roles: ['*'],
+        access: {
+          permissions: [SYSTEM_DICT_PERMISSIONS.list],
+        },
       },
     },
   ],
