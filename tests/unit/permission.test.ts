@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { canAccessRoute, getFirstAccessibleRoute } from '@/hooks/use-permission'
-import type { RouteRecordRaw } from 'vue-router'
+import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router'
 
 describe('route permissions', () => {
   it('allows public routes without requireAuth', () => {
@@ -33,7 +33,33 @@ describe('route permissions', () => {
     ).toBe(false)
   })
 
-  it('returns the first accessible nested route by role', () => {
+  it('allows protected routes without roles', () => {
+    expect(
+      canAccessRoute(
+        {
+          path: '/profile',
+          name: 'profile',
+          meta: { requireAuth: true },
+        },
+        'user'
+      )
+    ).toBe(true)
+  })
+
+  it('allows protected routes with empty roles', () => {
+    expect(
+      canAccessRoute(
+        {
+          path: '/profile',
+          name: 'profile',
+          meta: { requireAuth: true, roles: [] },
+        },
+        'user'
+      )
+    ).toBe(true)
+  })
+
+  it('returns the first accessible leaf route by role', () => {
     const routes: RouteRecordRaw[] = [
       {
         path: '/admin',
@@ -55,7 +81,56 @@ describe('route permissions', () => {
     ]
 
     expect(getFirstAccessibleRoute(routes, 'user')).toEqual({
-      name: 'dashboard',
+      name: 'workplace',
     })
+  })
+
+  it('skips an accessible parent when its first child is denied and returns an accessible leaf', () => {
+    const routes: RouteRecordRaw[] = [
+      {
+        path: '/settings',
+        name: 'settings',
+        redirect: '/settings/admin',
+        meta: { requireAuth: true, roles: ['*'] },
+        children: [
+          {
+            path: 'admin',
+            name: 'settingsAdmin',
+            meta: { requireAuth: true, roles: ['admin'] },
+          },
+          {
+            path: 'profile',
+            name: 'settingsProfile',
+            meta: { requireAuth: true, roles: ['*'] },
+          },
+        ],
+      },
+    ]
+
+    expect(getFirstAccessibleRoute(routes, 'user')).toEqual({
+      name: 'settingsProfile',
+    })
+  })
+
+  it('denies a route when a matched parent record denies the role', () => {
+    const route = {
+      path: '/permissions/front/button',
+      name: 'button',
+      meta: { requireAuth: true, roles: ['*'] },
+      matched: [
+        {
+          path: '/permissions/front',
+          name: 'front',
+          meta: { requireAuth: true, roles: ['user'] },
+        },
+        {
+          path: '/permissions/front/button',
+          name: 'button',
+          meta: { requireAuth: true, roles: ['*'] },
+        },
+      ],
+    } as unknown as RouteLocationNormalized
+
+    expect(canAccessRoute(route, 'admin')).toBe(false)
   })
 })
