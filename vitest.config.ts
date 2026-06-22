@@ -1,5 +1,5 @@
 import path from 'path'
-import { defineConfig } from 'vitest/config'
+import { configDefaults, defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 
 export default defineConfig({
@@ -12,6 +12,7 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    exclude: [...configDefaults.exclude, 'tests/e2e/**'],
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
   },
