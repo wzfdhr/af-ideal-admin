@@ -357,6 +357,10 @@ Goal: make production issues diagnosable and security posture explicit.
   `docs/architecture/observability.md`, including error sources, report fields,
   sensitive-data redaction, and the reporter replacement point.
 - Add operation audit log examples.
+- Keep the operation audit and security event contract documented in
+  `docs/architecture/audit-events.md`, including payload fields, current
+  event examples, failure behavior, redaction rules, and frontend/backend
+  responsibilities.
 - Document token storage tradeoffs and CSP recommendations.
 - Add deployment templates for Nginx and containerized hosting.
 

@@ -1,6 +1,11 @@
 import type { ApiErrorContext } from '@/api/request-client'
 
-export type ErrorReportSource = 'vue' | 'router' | 'request' | 'white-screen'
+export type ErrorReportSource =
+  | 'vue'
+  | 'router'
+  | 'request'
+  | 'white-screen'
+  | 'audit'
 export type ErrorSeverity = 'warning' | 'error' | 'fatal'
 
 export interface ErrorRouteSnapshot {
@@ -81,6 +86,10 @@ export interface ObservabilityMonitor {
     metadata?: ErrorMetadata
   ) => Promise<ErrorReport>
   reportRequestError: (context: ApiErrorContext) => Promise<ErrorReport>
+  reportAuditError: (
+    error: unknown,
+    metadata?: ErrorMetadata
+  ) => Promise<ErrorReport>
   reportWhiteScreen: (
     message: string,
     metadata?: ErrorMetadata
@@ -271,6 +280,20 @@ export const createObservability = (
       context.traceId
     )
 
+  const reportAuditError: ObservabilityMonitor['reportAuditError'] = (
+    error,
+    metadata
+  ) =>
+    emit(
+      'audit',
+      'warning',
+      normalizeMessage(error),
+      metadata,
+      undefined,
+      undefined,
+      normalizeStack(error)
+    )
+
   const reportWhiteScreen: ObservabilityMonitor['reportWhiteScreen'] = (
     message,
     metadata
@@ -320,6 +343,7 @@ export const createObservability = (
     reportVueError,
     reportRouterError,
     reportRequestError,
+    reportAuditError,
     reportWhiteScreen,
     startWhiteScreenDetection,
   }

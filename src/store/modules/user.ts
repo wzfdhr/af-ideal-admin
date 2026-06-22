@@ -6,6 +6,7 @@ import {
   getUserInfo,
 } from '@/api/user'
 import { clearAuth, clearToken, setToken } from '@/services/auth'
+import { recordAuditEvent } from '@/services/audit'
 import { removeListener } from '@/utils/route-listener'
 import useMenuStore from '@/store/modules/menu'
 import type { UserRole } from '@config'
@@ -52,14 +53,76 @@ const useUserStore = defineStore('user', {
       try {
         const res = await doLogin(data)
         setToken(res.data.token)
+        recordAuditEvent({
+          module: 'auth',
+          action: 'login',
+          eventType: 'security',
+          result: 'success',
+          target: {
+            type: 'session',
+            id: data.username,
+            name: data.username,
+          },
+          detail: {
+            username: data.username,
+          },
+        })
       } catch (err) {
         clearToken()
+        recordAuditEvent({
+          module: 'auth',
+          action: 'login',
+          eventType: 'security',
+          result: 'failure',
+          target: {
+            type: 'session',
+            id: data.username,
+            name: data.username,
+          },
+          detail: {
+            username: data.username,
+            reason: err instanceof Error ? err.message : 'login failed',
+          },
+        })
         throw err
       }
     },
     async logout() {
+      const operator = {
+        name: this.name,
+        role: this.role,
+      }
       try {
         await doLogout()
+        recordAuditEvent({
+          module: 'auth',
+          action: 'logout',
+          eventType: 'security',
+          result: 'success',
+          operator,
+          target: {
+            type: 'session',
+            id: this.name,
+            name: this.name,
+          },
+        })
+      } catch (err) {
+        recordAuditEvent({
+          module: 'auth',
+          action: 'logout',
+          eventType: 'security',
+          result: 'failure',
+          operator,
+          target: {
+            type: 'session',
+            id: this.name,
+            name: this.name,
+          },
+          detail: {
+            reason: err instanceof Error ? err.message : 'logout failed',
+          },
+        })
+        throw err
       } finally {
         const menuStore = useMenuStore()
         menuStore.clearAsyncMenu()

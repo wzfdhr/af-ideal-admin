@@ -6,6 +6,7 @@ import {
   getSystemRoleDetail,
   updateSystemRole,
 } from '@/api/system/role'
+import { recordAuditEvent } from '@/services/audit'
 
 const requestMock = vi.hoisted(() => ({
   get: vi.fn(),
@@ -16,6 +17,10 @@ const requestMock = vi.hoisted(() => ({
 
 vi.mock('@/api/request', () => ({
   default: requestMock,
+}))
+
+vi.mock('@/services/audit', () => ({
+  recordAuditEvent: vi.fn(),
 }))
 
 describe('system role api', () => {
@@ -70,5 +75,43 @@ describe('system role api', () => {
     expect(requestMock.post).toHaveBeenCalledWith('/system/roles', payload)
     expect(requestMock.put).toHaveBeenCalledWith('/system/roles/1', payload)
     expect(requestMock.delete).toHaveBeenCalledWith('/system/roles/1')
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'system',
+        action: 'role.create',
+        eventType: 'permission',
+        result: 'success',
+        target: {
+          type: 'role',
+          id: '2',
+          name: '运营人员',
+        },
+      })
+    )
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'system',
+        action: 'role.update',
+        eventType: 'permission',
+        result: 'success',
+        target: {
+          type: 'role',
+          id: '1',
+          name: '运营人员',
+        },
+      })
+    )
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'system',
+        action: 'role.delete',
+        eventType: 'permission',
+        result: 'success',
+        target: {
+          type: 'role',
+          id: '1',
+        },
+      })
+    )
   })
 })

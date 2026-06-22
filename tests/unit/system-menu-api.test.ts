@@ -6,6 +6,7 @@ import {
   getSystemMenuDetail,
   updateSystemMenu,
 } from '@/api/system/menu'
+import { recordAuditEvent } from '@/services/audit'
 
 const requestMock = vi.hoisted(() => ({
   get: vi.fn(),
@@ -16,6 +17,10 @@ const requestMock = vi.hoisted(() => ({
 
 vi.mock('@/api/request', () => ({
   default: requestMock,
+}))
+
+vi.mock('@/services/audit', () => ({
+  recordAuditEvent: vi.fn(),
 }))
 
 describe('system menu api', () => {
@@ -68,5 +73,43 @@ describe('system menu api', () => {
     expect(requestMock.post).toHaveBeenCalledWith('/system/menus', payload)
     expect(requestMock.put).toHaveBeenCalledWith('/system/menus/1', payload)
     expect(requestMock.delete).toHaveBeenCalledWith('/system/menus/1')
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'system',
+        action: 'menu.create',
+        eventType: 'operation',
+        result: 'success',
+        target: {
+          type: 'menu',
+          id: '2',
+          name: '系统管理',
+        },
+      })
+    )
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'system',
+        action: 'menu.update',
+        eventType: 'permission',
+        result: 'success',
+        target: {
+          type: 'menu',
+          id: '1',
+          name: '系统管理',
+        },
+      })
+    )
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'system',
+        action: 'menu.delete',
+        eventType: 'permission',
+        result: 'success',
+        target: {
+          type: 'menu',
+          id: '1',
+        },
+      })
+    )
   })
 })

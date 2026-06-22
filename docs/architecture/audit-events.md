@@ -1,0 +1,80 @@
+# 操作审计与安全事件契约
+
+本文档对应 `T-402 操作审计与安全事件`。目标是在前端先建立审计事件契约和关键操作样例，让登录、退出、权限资源变更等行为在无后端环境下也能通过 Mock 形成审计闭环。
+
+## 代码边界
+
+- `src/api/audit.ts`：审计事件 API 类型和 `/audit/events` 写入接口。
+- `src/services/audit.ts`：审计服务，负责补充操作者和发生时间，并保证审计失败不阻断主业务。
+- `src/mock/modules/audit.ts`：Mock 审计事件写入接口，负责脱敏并保存事件。
+- `src/store/modules/user.ts`：登录成功、登录失败、退出成功、退出失败的安全事件样例。
+- `src/api/system/menu.ts`：菜单新增、修改、删除的操作/权限事件样例。
+- `src/api/system/role.ts`：角色新增、修改、删除的权限事件样例。
+
+## 事件结构
+
+```ts
+interface AuditEventPayload {
+  module: string
+  action: string
+  eventType: 'operation' | 'security' | 'permission'
+  result: 'success' | 'failure'
+  operator?: {
+    id?: string
+    name?: string
+    role?: string
+  }
+  target: {
+    type: string
+    id?: string
+    name?: string
+  }
+  occurredAt: string
+  traceId?: string
+  detail?: Record<string, unknown>
+}
+```
+
+每条关键操作必须能定位：
+
+- 操作者：`operator`。
+- 操作时间：`occurredAt`。
+- 操作对象：`target`。
+- 操作结果：`result`。
+- 业务动作：`module` + `action`。
+
+## 当前事件样例
+
+- `auth.login`：登录成功和失败，类型为 `security`。
+- `auth.logout`：退出成功和失败，类型为 `security`。
+- `system.menu.create`：菜单新增，类型为 `operation`。
+- `system.menu.update`：菜单变更，类型为 `permission`。
+- `system.menu.delete`：菜单删除，类型为 `permission`。
+- `system.role.create`：角色新增，类型为 `permission`。
+- `system.role.update`：角色变更，类型为 `permission`。
+- `system.role.delete`：角色删除，类型为 `permission`。
+
+## 失败处理
+
+审计写入是旁路能力。`recordAuditEvent` 捕获审计接口异常，并通过 `observability` 的 `audit` 来源上报。审计失败不能影响登录、退出、菜单保存、角色保存等主业务结果。
+
+## 脱敏规则
+
+审计 detail 不允许保存 token、密码、Authorization、访问 token 或身份证号。Mock 层会对 detail 递归脱敏；真实后端也必须再次脱敏和校验。
+
+## 前后端责任边界
+
+前端负责：
+
+- 在关键操作成功或失败后提交审计事件。
+- 提供当前可见的操作者、对象、动作、结果和页面上下文。
+- 不提交密码、token、Authorization 等敏感字段。
+- 审计失败时不阻断主流程，并把失败交给可观测性服务。
+
+后端负责：
+
+- 以服务端身份、租户、IP、User-Agent、traceId 和真实权限上下文补强审计记录。
+- 校验前端提交字段，拒绝非法 module/action/eventType/result。
+- 对敏感字段做二次脱敏。
+- 保证审计写入可追踪、可重试或进入可靠队列。
+- 为 `T-404 审计日志 Mock 闭环` 和真实审计查询提供分页、筛选和权限控制接口。

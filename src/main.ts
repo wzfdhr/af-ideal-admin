@@ -8,6 +8,7 @@ import store from '@/store'
 import directives from '@/directives'
 import i18n from '@/locale'
 import { installObservability } from '@/plugins/observability'
+import { setAuditContextProvider } from '@/services/audit'
 import useUserStore from '@/store/modules/user'
 
 import './mock'
@@ -43,6 +44,16 @@ installObservability(app, {
     }
   },
   getVersion: () => pkg.version,
+})
+
+setAuditContextProvider({
+  getOperator: () => {
+    const userStore = useUserStore()
+    return {
+      name: userStore.name,
+      role: userStore.role,
+    }
+  },
 })
 
 app.component('SIcon', SIcon)

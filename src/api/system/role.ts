@@ -1,4 +1,5 @@
 import request from '@/api/request'
+import { recordAuditEvent } from '@/services/audit'
 import { SYSTEM_ROLE_PERMISSIONS } from '@/constants/system-role'
 
 export type SystemRoleStatus = 'enabled' | 'disabled'
@@ -57,6 +58,21 @@ export const createSystemRole = async (payload: SystemRolePayload) => {
     '/system/roles',
     payload
   )
+  recordAuditEvent({
+    module: 'system',
+    action: 'role.create',
+    eventType: 'permission',
+    result: 'success',
+    target: {
+      type: 'role',
+      id: response.data.id,
+      name: response.data.roleName,
+    },
+    detail: {
+      roleKey: response.data.roleKey,
+      dataScope: response.data.dataScope,
+    },
+  })
   return response.data
 }
 
@@ -68,10 +84,35 @@ export const updateSystemRole = async (
     `/system/roles/${id}`,
     payload
   )
+  recordAuditEvent({
+    module: 'system',
+    action: 'role.update',
+    eventType: 'permission',
+    result: 'success',
+    target: {
+      type: 'role',
+      id,
+      name: response.data.roleName,
+    },
+    detail: {
+      roleKey: response.data.roleKey,
+      dataScope: response.data.dataScope,
+    },
+  })
   return response.data
 }
 
 export const deleteSystemRole = async (id: string) => {
   const response = await request.delete<null>(`/system/roles/${id}`)
+  recordAuditEvent({
+    module: 'system',
+    action: 'role.delete',
+    eventType: 'permission',
+    result: 'success',
+    target: {
+      type: 'role',
+      id,
+    },
+  })
   return response.data
 }

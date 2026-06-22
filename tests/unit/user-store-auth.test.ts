@@ -11,6 +11,7 @@ import {
   setToken,
 } from '@/services/auth'
 import { removeListener } from '@/utils/route-listener'
+import { recordAuditEvent } from '@/services/audit'
 
 vi.mock('@/api/user', () => ({
   login: vi.fn(),
@@ -21,6 +22,10 @@ vi.mock('@/api/user', () => ({
 
 vi.mock('@/utils/route-listener', () => ({
   removeListener: vi.fn(),
+}))
+
+vi.mock('@/services/audit', () => ({
+  recordAuditEvent: vi.fn(),
 }))
 
 describe('user store auth lifecycle', () => {
@@ -45,6 +50,19 @@ describe('user store auth lifecycle', () => {
     })
 
     expect(getToken()).toBe('token-123')
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'auth',
+        action: 'login',
+        eventType: 'security',
+        result: 'success',
+        target: {
+          type: 'session',
+          id: 'admin',
+          name: 'admin',
+        },
+      })
+    )
   })
 
   it('clears token when login fails', async () => {
@@ -61,6 +79,19 @@ describe('user store auth lifecycle', () => {
     ).rejects.toThrow('login failed')
 
     expect(getToken()).toBeNull()
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'auth',
+        action: 'login',
+        eventType: 'security',
+        result: 'failure',
+        target: {
+          type: 'session',
+          id: 'admin',
+          name: 'admin',
+        },
+      })
+    )
   })
 
   it('clears auth, user info, async menu, and route listener on logout', async () => {
@@ -88,5 +119,22 @@ describe('user store auth lifecycle', () => {
     expect(userStore.name).toBeUndefined()
     expect(menuStore.asyncMenu).toEqual([])
     expect(removeListener).toHaveBeenCalled()
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        module: 'auth',
+        action: 'logout',
+        eventType: 'security',
+        result: 'success',
+        operator: {
+          name: 'Admin',
+          role: 'admin',
+        },
+        target: {
+          type: 'session',
+          id: 'Admin',
+          name: 'Admin',
+        },
+      })
+    )
   })
 })

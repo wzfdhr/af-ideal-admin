@@ -1,4 +1,5 @@
 import Mock from 'mockjs'
+import setupAuditMock from './modules/audit'
 import setupAuthMock from './modules/auth'
 import setupBusinessMock from './modules/business'
 import setupDataScreenMock from './modules/data-screen'
@@ -28,6 +29,7 @@ setupDataScreenMock()
 setupLowCodeMock()
 setupWorkflowMock()
 setupReportMock()
+setupAuditMock()
 setupSystemDepartmentMock()
 setupSystemDictionaryMock()
 setupSystemMenuMock()
