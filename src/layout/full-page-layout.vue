@@ -1,7 +1,7 @@
 <template>
   <a-layout class="h-full">
     <tool-bar
-      v-show="$route.path !== '/extended/ding-designer'"
+      v-show="route.path !== '/extended/ding-designer'"
       :title="title"
     />
     <a-layout-content>
@@ -17,8 +17,10 @@ import { useRoute } from 'vue-router'
 import ToolBar from '@/components/tool-bar.vue'
 import PageView from './inner-layout.vue'
 
-const { meta } = useRoute()
+const route = useRoute()
 const { t } = useI18n()
 
-const title = computed(() => (meta.locale ? t(meta.locale) : meta.text))
+const title = computed(() =>
+  route.meta.locale ? t(route.meta.locale) : route.meta.text
+)
 </script>

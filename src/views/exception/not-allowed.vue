@@ -5,7 +5,7 @@
     <a-result status="403" class="!p-0">
       <template #subtitle>没有访问权限</template>
       <template #extra>
-        <a-button type="primary" @click="$router.go(-1)">返回上一页</a-button>
+        <a-button type="primary" @click="router.go(-1)">返回上一页</a-button>
       </template>
       <div class="bg-gray-100 max-w-xl mx-auto px-6 py-4">
         <p>您没有访问该页面的权限，请尝试：</p>
@@ -16,3 +16,9 @@
     </a-result>
   </main>
 </template>
+
+<script lang="ts" setup>
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+</script>

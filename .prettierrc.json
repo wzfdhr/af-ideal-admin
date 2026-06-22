@@ -6,5 +6,5 @@
   "quoteProps": "consistent",
   "bracketSameLine": false,
   "htmlWhitespaceSensitivity": "ignore",
-  "endOfLine": "crlf"
+  "endOfLine": "lf"
 }
