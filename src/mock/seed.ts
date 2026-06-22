@@ -237,6 +237,16 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             roles: ['*'],
           },
         },
+        {
+          path: 'workflowCenter',
+          name: 'workflowCenter',
+          componentKey: 'WorkflowCenterPage',
+          meta: {
+            locale: 'menu.Scalability.workflowCenter',
+            requireAuth: true,
+            roles: ['*'],
+          },
+        },
       ],
     },
   ],

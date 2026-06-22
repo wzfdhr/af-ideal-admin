@@ -33,6 +33,16 @@ const exAbilityRoutes: AppRouteRecordRaw = {
         openInNewWindow: true,
       },
     },
+    {
+      path: 'workflowCenter',
+      name: 'workflowCenter',
+      component: () => import('@/views/workflowCenter/index.vue'),
+      meta: {
+        locale: 'menu.Scalability.workflowCenter',
+        requireAuth: true,
+        openInNewWindow: true,
+      },
+    },
   ],
 }
 

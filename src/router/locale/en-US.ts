@@ -23,6 +23,7 @@ export default {
   'menu.formDesign': 'Scalability',
   'menu.Scalability.formDesign': 'Form design',
   'menu.Scalability.workflowDesign': 'Workflow design',
+  'menu.Scalability.workflowCenter': 'Workflow center',
   'menu.visualization': 'dataVisualization',
   'menu.visualization.analysis': 'analysis',
   'menu.visualization.multidimensionalAnalysis': 'multidimensionalAnalysis',

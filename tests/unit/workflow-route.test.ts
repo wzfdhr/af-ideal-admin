@@ -21,6 +21,22 @@ describe('workflow designer route', () => {
     expect(enUS['menu.Scalability.workflowDesign']).toBe('Workflow design')
   })
 
+  it('registers workflow center under scalability routes', () => {
+    expect(
+      scalabilityRoutes.children?.some(
+        (route) =>
+          route.name === 'workflowCenter' &&
+          route.path === 'workflowCenter' &&
+          route.meta?.locale === 'menu.Scalability.workflowCenter'
+      )
+    ).toBe(true)
+  })
+
+  it('adds locale labels for workflow center menu', () => {
+    expect(zhCN['menu.Scalability.workflowCenter']).toBe('流程工作台')
+    expect(enUS['menu.Scalability.workflowCenter']).toBe('Workflow center')
+  })
+
   it('keeps server menu mock aligned with the workflow designer route', () => {
     const scalabilityMenu = mockMenus.admin.find(
       (menu) => menu.name === 'Scalability'
@@ -32,6 +48,21 @@ describe('workflow designer route', () => {
           route.name === 'workflowDesign' &&
           route.path === 'workflowDesign' &&
           route.meta?.locale === 'menu.Scalability.workflowDesign'
+      )
+    ).toBe(true)
+  })
+
+  it('keeps server menu mock aligned with the workflow center route', () => {
+    const scalabilityMenu = mockMenus.admin.find(
+      (menu) => menu.name === 'Scalability'
+    )
+
+    expect(
+      scalabilityMenu?.children?.some(
+        (route) =>
+          route.name === 'workflowCenter' &&
+          route.path === 'workflowCenter' &&
+          route.meta?.locale === 'menu.Scalability.workflowCenter'
       )
     ).toBe(true)
   })

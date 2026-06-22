@@ -107,7 +107,7 @@ const createLeaveApprovalSchema = () =>
         type: 'approval',
         name: '部门审批',
         config: {
-          approvers: ['3'],
+          approvers: ['1'],
           formId: 'form-leave',
         },
       },
