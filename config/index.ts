@@ -2,12 +2,16 @@
  * 本文件包含项目中所使用的各项公共配置
  */
 import { FileEditFill, MailFill, ClipboardFill } from '@salmon-ui/icons'
+import { runtimeConfig } from './runtime'
 
 // 用户角色权限组，其中 * 表示通配符
 export type UserRole = '' | '*' | 'admin' | 'user'
 
 // HTTP 请求的公共路径前缀
-export const requestBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
+export const requestBaseUrl = runtimeConfig.API_BASE_URL
+
+// 应用标题。生产环境可通过 public/runtime-config.js 覆盖，无需重新构建。
+export const appTitle = runtimeConfig.APP_TITLE
 
 // 应用是否应当从服务端获取侧边菜单栏
 export const menuFromServer = false

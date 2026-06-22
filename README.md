@@ -151,11 +151,11 @@ Axios 拦截器位于 `src/api/request.ts`：
 | --- | --- |
 | `VITE_APP_ENV` | 当前环境标识 |
 | `VITE_BASE_URL` | 应用基础路径 |
-| `VITE_API_BASE_URL` | API 请求前缀，Axios 会使用该值作为公共前缀 |
+| `VITE_API_BASE_URL` | 构建时 API 请求前缀，Axios 会使用该值作为公共前缀 |
 | `VITE_API_PROXY_TARGET` | 开发环境 API 代理目标 |
-| `VITE_APP_TITLE` | 页面标题 |
+| `VITE_APP_TITLE` | 构建时页面标题 |
 
-请求公共前缀来自 `config/index.ts` 的 `import.meta.env.VITE_API_BASE_URL`。开发服务器会把该前缀代理到 `VITE_API_PROXY_TARGET`。
+请求公共前缀优先来自 `public/runtime-config.js` 的 `window.AF_IDEAL_ADMIN_CONFIG.API_BASE_URL`，缺省时回退到 `VITE_API_BASE_URL`。开发服务器会把该前缀代理到 `VITE_API_PROXY_TARGET`。
 
 ## 开发注意事项
 
@@ -163,6 +163,7 @@ Axios 拦截器位于 `src/api/request.ts`：
 - Vite 开发服务器使用 `VITE_API_BASE_URL` 和 `VITE_API_PROXY_TARGET` 配置 API 代理，见 `vite.config.ts`。
 - `src/router/index.ts` 使用 `createWebHistory()`，部署到非根路径时需要同步确认前端路由与服务器回退配置。
 - `package.json` 没有 `build` 脚本，请使用 `build:dev` 或 `build:prd`。
+- 静态部署模板位于 `deploy/nginx/default.conf` 和根目录 `Dockerfile`，详见 `docs/deployment.md`。
 
 ## 后续优化建议
 

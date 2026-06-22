@@ -363,6 +363,8 @@ Goal: make production issues diagnosable and security posture explicit.
   responsibilities.
 - Document token storage tradeoffs and CSP recommendations.
 - Add deployment templates for Nginx and containerized hosting.
+- Keep deploy-time values configurable through `public/runtime-config.js` so
+  production API prefixes and app title can change without rebuilding assets.
 
 ### P5: Documentation And Framework Experience
 

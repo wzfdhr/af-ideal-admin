@@ -1,8 +1,10 @@
+import { appTitle } from '@config'
+
 export default {
   /**
    * 网页标题
    */
-  title: import.meta.env.VITE_APP_TITLE,
+  title: appTitle,
   /**
    * 是否显示动态标题
    */
