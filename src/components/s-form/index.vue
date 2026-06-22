@@ -15,13 +15,17 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, provide, PropType, watch } from 'vue'
+import { computed, ref, provide, PropType, watch } from 'vue'
 import type {
   VersionedFormSchema,
   WidgetsConfig,
 } from '@/components/form-designer/schema'
 import WidgetRenderer from './renderer/index.vue'
-import { formData } from './renderer/use-form-preview'
+import {
+  formData,
+  formDataSources,
+  type FormRuntimeData,
+} from './renderer/use-form-preview'
 
 type FormInstanceLike = {
   validate?: () => Promise<unknown> | unknown
@@ -40,7 +44,7 @@ const readDefaultValue = (widget: WidgetsConfig) => {
 }
 
 const createInitialFormData = (widgets: WidgetsConfig[]) => {
-  const values: Record<string, unknown> = {}
+  const values: FormRuntimeData = {}
 
   widgets.forEach((widget) => {
     if (widget.type === 'grid') {
@@ -74,11 +78,11 @@ const props = defineProps({
 })
 
 const emit = defineEmits<{
-  (event: 'submit', values: Record<string, unknown>): void
+  (event: 'submit', values: FormRuntimeData): void
 }>()
 
 const formRef = ref<FormInstanceLike>()
-const data = ref<Record<string, unknown>>(
+const data = ref<FormRuntimeData>(
   createInitialFormData(props.ast.widgetsConfig)
 )
 
@@ -91,6 +95,10 @@ watch(
 )
 
 provide(formData, data)
+provide(
+  formDataSources,
+  computed(() => props.ast.dataSources)
+)
 
 const getValues = () => ({ ...data.value })
 

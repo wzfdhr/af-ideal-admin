@@ -1,9 +1,10 @@
 /* eslint-disable vue/one-component-per-file */
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import FormRuntimeRenderer, { FormRenderer } from '@/components/form-runtime'
 import { migrateFormSchema } from '@/components/form-designer/schema'
+import type { VersionedFormSchema } from '@/components/form-designer/schema'
 
 const formSchema = migrateFormSchema({
   widgetsConfig: [
@@ -21,10 +22,15 @@ const formSchema = migrateFormSchema({
   ],
 })
 
-const mountRenderer = () =>
+const settle = async () => {
+  await Promise.resolve()
+  await nextTick()
+}
+
+const mountRenderer = (schema: VersionedFormSchema = formSchema) =>
   mount(FormRenderer, {
     props: {
-      ast: formSchema,
+      ast: schema,
     },
     global: {
       stubs: {
@@ -142,5 +148,37 @@ describe('FormRuntimeRenderer', () => {
         customerName: 'Alice',
       },
     ])
+  })
+
+  it('recovers from blocked remote option urls without breaking the form', async () => {
+    const wrapper = mountRenderer(
+      migrateFormSchema({
+        dataSources: [
+          {
+            key: 'external',
+            name: '外部接口',
+            url: 'https://example.com/options',
+          },
+        ],
+        widgetsConfig: [
+          {
+            type: 'select',
+            uid: 'owner',
+            name: '负责人',
+            config: {
+              label: '负责人',
+              optionsType: 'remote',
+              optionsUrl: 'https://example.com/options',
+              options: [],
+            },
+          },
+        ],
+      })
+    )
+
+    await settle()
+
+    expect(wrapper.find('[data-testid="runtime-form"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('未授权的远程数据源')
   })
 })

@@ -274,7 +274,9 @@
       <a-cascader
         v-model="ctx[widget.uid]"
         :options="
-          typeof widget.config.options === 'string'
+          widget.config.optionsType === 'remote'
+            ? remoteData
+            : typeof widget.config.options === 'string'
             ? JSON.parse(widget.config.options)
             : widget.config.options
         "
@@ -310,19 +312,37 @@
         :limit="widget.config.limit"
       />
     </template>
+    <div v-if="remoteError" class="mt-1 text-xs text-red-500">
+      {{ remoteError }}
+    </div>
   </a-form-item>
 </template>
 
 <script lang="ts" setup>
-import { ref, PropType, inject, nextTick } from 'vue'
-import axios from 'axios'
+import { ref, PropType, inject, watch, computed } from 'vue'
 import type {
+  DataSourceConfig,
   IConfigTab,
   IConfigGrid,
   WidgetsConfig,
 } from '@/components/form-designer/schema'
-import { formData } from './use-form-preview'
+import {
+  loadRemoteOptions,
+  type RemoteOption,
+} from '@/components/form-runtime/remote-options'
+import {
+  formData,
+  formDataSources,
+  type FormRuntimeData,
+} from './use-form-preview'
 import { parseWidgetRules } from './rules'
+import type { Ref } from 'vue'
+
+type FormWidget = Exclude<WidgetsConfig, IConfigTab | IConfigGrid>
+type RemoteOptionWidget = Extract<
+  FormWidget,
+  { type: 'select' | 'checkbox' | 'radio' | 'cascader' }
+>
 
 const props = defineProps({
   widget: {
@@ -331,32 +351,66 @@ const props = defineProps({
   },
 })
 
-const ctx = inject(formData) as any
+const ctx = inject(formData) as Ref<FormRuntimeData>
+const dataSources = inject(
+  formDataSources,
+  computed<DataSourceConfig[]>(() => [])
+)
 
-const remoteData = ref<any>()
+const remoteData = ref<RemoteOption[]>([])
+const remoteError = ref('')
 
-nextTick(() => {
+const isRemoteOptionWidget = (
+  widget: FormWidget
+): widget is RemoteOptionWidget => {
   if (
-    props.widget.type === 'select' ||
-    props.widget.type === 'checkbox' ||
-    props.widget.type === 'radio' ||
-    props.widget.type === 'cascader'
+    widget.type === 'select' ||
+    widget.type === 'checkbox' ||
+    widget.type === 'radio' ||
+    widget.type === 'cascader'
   ) {
-    if (
-      props.widget.config.optionsType === 'remote' &&
-      props.widget.config.optionsUrl
-    ) {
-      axios
-        .get(props.widget.config.optionsUrl)
-        .then((res) => {
-          remoteData.value = res.data
-        })
-        .catch(() => {
-          remoteData.value = []
-        })
-    }
+    return widget.config.optionsType === 'remote'
   }
+
+  return false
+}
+
+const sourceUrl = computed(() => {
+  if (!isRemoteOptionWidget(props.widget)) {
+    return undefined
+  }
+
+  return props.widget.config.optionsUrl
 })
+
+const loadWidgetRemoteOptions = async () => {
+  if (!sourceUrl.value) {
+    remoteData.value = []
+    remoteError.value = ''
+    return
+  }
+
+  try {
+    remoteData.value = await loadRemoteOptions({
+      dataSources: dataSources.value,
+      sourceUrl: sourceUrl.value,
+      formValues: ctx.value,
+    })
+    remoteError.value = ''
+  } catch (error) {
+    remoteData.value = []
+    remoteError.value =
+      error instanceof Error ? error.message : '远程选项加载失败'
+  }
+}
+
+watch(
+  () => [sourceUrl.value, dataSources.value, ctx.value],
+  () => {
+    loadWidgetRemoteOptions()
+  },
+  { deep: true, immediate: true }
+)
 
 const computedRules = (rules?: string) => parseWidgetRules(rules)
 </script>

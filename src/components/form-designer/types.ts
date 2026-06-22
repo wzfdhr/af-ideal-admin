@@ -18,6 +18,13 @@ export interface DataSourceConfig {
   key: string
   name: string
   url: string
+  timeout?: number
+  params?: Record<string, string>
+  responseAdapter?: {
+    listPath?: string
+    labelField?: string
+    valueField?: string
+  }
 }
 
 export type DataSourceType = 'fixed' | 'remote'

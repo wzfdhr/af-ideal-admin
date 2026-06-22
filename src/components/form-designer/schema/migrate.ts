@@ -89,8 +89,42 @@ const normalizeDataSources = (dataSources: unknown): NormalizedDataSources => {
     const key = typeof source.key === 'string' ? source.key : `source-${index}`
     const name = typeof source.name === 'string' ? source.name : key
     const url = typeof source.url === 'string' ? source.url : ''
+    const normalizedSource: DataSourceConfig = { key, name, url }
 
-    sources.push({ key, name, url })
+    if (typeof source.timeout === 'number' && source.timeout > 0) {
+      normalizedSource.timeout = source.timeout
+    }
+
+    if (isRecord(source.params)) {
+      normalizedSource.params = Object.entries(source.params).reduce<
+        Record<string, string>
+      >((params, [paramKey, fieldName]) => {
+        if (typeof fieldName === 'string') {
+          params[paramKey] = fieldName
+        }
+
+        return params
+      }, {})
+    }
+
+    if (isRecord(source.responseAdapter)) {
+      normalizedSource.responseAdapter = {
+        listPath:
+          typeof source.responseAdapter.listPath === 'string'
+            ? source.responseAdapter.listPath
+            : undefined,
+        labelField:
+          typeof source.responseAdapter.labelField === 'string'
+            ? source.responseAdapter.labelField
+            : undefined,
+        valueField:
+          typeof source.responseAdapter.valueField === 'string'
+            ? source.responseAdapter.valueField
+            : undefined,
+      }
+    }
+
+    sources.push(normalizedSource)
     return sources
   }, [])
 }
