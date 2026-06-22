@@ -5,7 +5,7 @@ import {
   LoginData,
   getUserInfo,
 } from '@/api/user'
-import { clearToken, setToken } from '@/utils/auth'
+import { clearAuth, clearToken, setToken } from '@/utils/auth'
 import { removeListener } from '@/utils/route-listener'
 import useMenuStore from '@/store/modules/menu'
 import type { UserRole } from '@config'
@@ -61,7 +61,7 @@ const useUserStore = defineStore('user', {
       } finally {
         const menuStore = useMenuStore()
         menuStore.clearAsyncMenu()
-        clearToken()
+        clearAuth()
         removeListener()
         this.resetInfo()
       }

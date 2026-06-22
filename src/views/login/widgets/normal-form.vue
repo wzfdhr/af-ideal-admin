@@ -34,10 +34,10 @@
     </a-form-item>
     <div class="flex items-center justify-between">
       <a-checkbox
-        v-model="loginConfig.shouldStorePassword"
-        @change="setRememberPassword as any"
+        v-model="loginConfig.shouldStoreUsername"
+        @change="setRememberUsername as any"
       >
-        记住密码
+        记住用户名
       </a-checkbox>
       <a-link>忘记密码</a-link>
     </div>
@@ -63,7 +63,6 @@ import { useStorage } from '@vueuse/core'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store'
 import useLoading from '@/hooks/use-loading'
-import { encrypt } from '@/utils/encryption'
 import { LoginData } from '@/api/user'
 
 const { isLoading, setLoading } = useLoading()
@@ -77,10 +76,18 @@ const loginInfo = reactive({
   password: '',
 })
 const loginConfig = useStorage('login-config', {
-  shouldStorePassword: false,
+  shouldStoreUsername: false,
   username: '',
-  password: '',
 })
+
+if ('password' in loginConfig.value || 'shouldStorePassword' in loginConfig.value) {
+  loginConfig.value = {
+    shouldStoreUsername: false,
+    username: '',
+  }
+}
+
+loginInfo.username = loginConfig.value.username
 
 const rules: Record<string, FieldRule> = {
   username: {
@@ -117,11 +124,10 @@ const onSubmit = async ({
       // display successful hint
       Message.success('登录成功')
       // process login for post-login
-      const { shouldStorePassword } = loginConfig.value
-      const { password, username } = values
+      const { shouldStoreUsername } = loginConfig.value
+      const { username } = values
 
-      loginConfig.value.username = shouldStorePassword ? encrypt(username) : ''
-      loginConfig.value.password = shouldStorePassword ? encrypt(password) : ''
+      loginConfig.value.username = shouldStoreUsername ? username : ''
     } catch (err) {
       console.error(err)
       errorMessage.value = (err as Error).message
@@ -130,7 +136,7 @@ const onSubmit = async ({
   }
 }
 
-const setRememberPassword = (val: boolean) => {
-  loginConfig.value.shouldStorePassword = val
+const setRememberUsername = (val: boolean) => {
+  loginConfig.value.shouldStoreUsername = val
 }
 </script>
