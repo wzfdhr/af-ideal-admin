@@ -42,6 +42,7 @@ setupMock({
           job: '前端工程师',
           dept: '软件部',
           role,
+          permissions: role === 'admin' ? ['*'] : ['permission:page:view'],
         })
       }
 

@@ -46,6 +46,50 @@ Rules:
 - Nested routes inherit practical restrictions through matched route records,
   so parent and child metadata both matter.
 
+Route metadata can also use the unified access model when permission codes are
+available:
+
+```ts
+meta: {
+  requireAuth: true,
+  access: {
+    permissions: ['user:create'],
+    mode: 'any'
+  }
+}
+```
+
+## Button Permission Contract
+
+Buttons should use action permission codes instead of role names for new
+features. Use the `domain:action` format:
+
+- `user:create`
+- `user:update`
+- `user:delete`
+- `role:assign`
+- `report:export`
+
+Recommended usage:
+
+```vue
+<PermissionButton permission="user:create">
+  新增用户
+</PermissionButton>
+```
+
+The legacy directive remains compatible with role arrays:
+
+```vue
+<a-button v-allow="['admin']">管理员操作</a-button>
+```
+
+For new code, `v-allow` may receive a permission code directly:
+
+```vue
+<a-button v-allow="'user:create'">新增用户</a-button>
+```
+
 ## Menu Source
 
 `config/index.ts` controls menu source through `menuFromServer`.

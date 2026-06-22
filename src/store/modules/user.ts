@@ -17,6 +17,7 @@ export interface UserState {
   avatar?: string
   job?: string
   email?: string
+  permissions: string[]
 }
 
 const useUserStore = defineStore('user', {
@@ -27,6 +28,7 @@ const useUserStore = defineStore('user', {
     avatar: undefined,
     email: undefined,
     job: undefined,
+    permissions: [],
   }),
 
   getters: {

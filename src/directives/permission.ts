@@ -1,31 +1,22 @@
 import { useUserStore } from '@/store'
-import { canAccessByRequirement } from '@/services/access'
+import { canAccessByRequirement, toAccessRequirement } from '@/services/access'
 import type { DirectiveBinding } from 'vue'
 
 const checkPermission = (el: HTMLElement, binding: DirectiveBinding) => {
   const { value } = binding
   const userStore = useUserStore()
-  const { role } = userStore
+  const requirement = toAccessRequirement(value)
 
-  if (Array.isArray(value)) {
-    if (value.length > 0) {
-      const values = value
+  if (!requirement) {
+    return
+  }
 
-      const hasAccess = canAccessByRequirement(
-        {
-          roles: values,
-        },
-        {
-          roles: role ? [role] : [],
-          permissions: [],
-        }
-      )
-      if (!hasAccess && el.parentNode) {
-        el.parentNode.removeChild(el)
-      }
-    }
-  } else {
-    throw new Error('[AF-Admin] requires `v-allow=[]` to be set')
+  const hasAccess = canAccessByRequirement(requirement, {
+    roles: userStore.role ? [userStore.role] : [],
+    permissions: userStore.permissions,
+  })
+  if (!hasAccess && el.parentNode) {
+    el.parentNode.removeChild(el)
   }
 }
 

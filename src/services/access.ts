@@ -9,11 +9,44 @@ export interface AccessRequirement {
   mode?: 'all' | 'any'
 }
 
+export type AccessInput = AccessRequirement | string | string[] | undefined
+
+export const isPermissionCode = (value: string) =>
+  value === '*' || value.includes(':')
+
+export const toAccessRequirement = (
+  input: AccessInput
+): AccessRequirement | undefined => {
+  if (!input) {
+    return undefined
+  }
+  if (typeof input === 'string') {
+    return isPermissionCode(input)
+      ? { permissions: [input] }
+      : { roles: [input] }
+  }
+  if (Array.isArray(input)) {
+    if (!input.length) {
+      return undefined
+    }
+
+    return input.some(isPermissionCode)
+      ? { permissions: input }
+      : { roles: input }
+  }
+
+  return input
+}
+
 const hasAny = (required: string[], owned: string[]) =>
-  required.includes('*') || required.some((item) => owned.includes(item))
+  required.includes('*') ||
+  owned.includes('*') ||
+  required.some((item) => owned.includes(item))
 
 const hasAll = (required: string[], owned: string[]) =>
-  required.includes('*') || required.every((item) => owned.includes(item))
+  required.includes('*') ||
+  owned.includes('*') ||
+  required.every((item) => owned.includes(item))
 
 const matchRequirement = (
   required: string[] | undefined,

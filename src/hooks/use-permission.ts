@@ -71,7 +71,7 @@ const usePermission = () => {
 
   return {
     hasAccessToRoute(route: PermissionRoute) {
-      return canAccessRoute(route, userStore.role)
+      return canAccessRoute(route, userStore.role, userStore.permissions)
     },
     getFirstAccessibleRoute(
       rs: RouteRecordRaw[],
