@@ -10,7 +10,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 
 const emit = defineEmits(['update:showTour'])
 
@@ -51,12 +51,6 @@ const tourSteps: TourStep[] = [
   },
 ]
 
-// console.log(currentIndex)
-// const currentIndex = ref(0)
-watch(props, () => {
-  console.log(currentIndex.value)
-  // console.log(currentStep)
-})
 const currentStep = computed(() => tourSteps[currentIndex.value])
 
 const stepStyle = computed(() => {
@@ -83,7 +77,6 @@ const stepStyle = computed(() => {
       break
     // 其他位置...
     default:
-      console.error('Unexpected position:', currentStep.value.position)
       break
   }
 
@@ -91,7 +84,6 @@ const stepStyle = computed(() => {
 })
 
 function nextStep() {
-  console.log(currentIndex.value, tourSteps.length)
   if (currentIndex.value < tourSteps.length - 1) {
     currentIndex.value++
   }

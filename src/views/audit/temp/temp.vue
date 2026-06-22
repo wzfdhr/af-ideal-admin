@@ -53,7 +53,6 @@
 import { ref } from 'vue'
 import pak from '@/../package.json'
 
-console.log(pak)
 const formattedDependencies = Object.entries(pak.dependencies).map(
   ([key, value]) => ({
     label: key,
@@ -66,7 +65,6 @@ const formattedDevDependencies = Object.entries(pak.devDependencies).map(
     value,
   })
 )
-console.log(formattedDevDependencies)
 const data = ref([
   {
     label: '版本',

@@ -114,7 +114,6 @@ const {
 
 const { selectedWidget, cloneWidgetConfigFromRaw } = useWidgetActions(ast)
 // watch(ast.value, () => {
-//   console.log(ast)
 //   window.localStorage.setItem('ast', ast.value as any)
 // })
 </script>

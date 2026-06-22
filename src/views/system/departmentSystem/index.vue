@@ -119,10 +119,17 @@ const data = reactive([
   },
 ])
 const handleEdit = (row: any, index: number) => {
-  console.log(row, index)
+  if (index < 0) return
+
+  formData.value.departmentName = row.menuName
+  formData.value.departmentStatus = row.menuStatus
 }
 const handleRemove = (row: any) => {
-  console.log(row)
+  const index = data.findIndex((item) => item.menuName === row.menuName)
+
+  if (index > -1) {
+    data.splice(index, 1)
+  }
 }
 </script>
 

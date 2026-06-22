@@ -132,7 +132,6 @@ const onSubmit = async ({
 
       loginConfig.value.username = shouldStoreUsername ? username : ''
     } catch (err) {
-      console.error(err)
       errorMessage.value = (err as Error).message
       setLoading(false)
     }

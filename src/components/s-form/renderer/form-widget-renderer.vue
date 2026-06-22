@@ -342,7 +342,6 @@ nextTick(() => {
     props.widget.type === 'radio' ||
     props.widget.type === 'cascader'
   ) {
-    console.log(props.widget.config)
     if (
       props.widget.config.optionsType === 'remote' &&
       props.widget.config.optionsUrl
@@ -352,8 +351,8 @@ nextTick(() => {
         .then((res) => {
           remoteData.value = res.data
         })
-        .catch((err) => {
-          console.log(err)
+        .catch(() => {
+          remoteData.value = []
         })
     }
   }

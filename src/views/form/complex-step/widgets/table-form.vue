@@ -178,9 +178,6 @@ const handleEdit = (row: PersonnelData, idx: number) => {
   edittingIndex.value = idx
   showDialog()
 }
-const handleRemove = (row: PersonnelData) => {
-  console.log(row)
-}
 const saveEdittedRecord = () => {
   if (
     edittingIndex.value > -1 &&
@@ -202,6 +199,15 @@ const filteredList = ref<PersonnelData[]>([
     avatar,
   },
 ])
+
+const handleRemove = (row: PersonnelData) => {
+  const index = tableData.value.indexOf(row)
+
+  if (index > -1) {
+    tableData.value.splice(index, 1)
+    filteredList.value.push(row)
+  }
+}
 
 const updateTableData = (idx: number) => {
   tableData.value.push(filteredList.value[idx])
