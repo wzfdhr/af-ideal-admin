@@ -1,4 +1,5 @@
 import { useUserStore } from '@/store'
+import { canAccessByRequirement } from '@/services/access'
 import type { UserRole } from '@config'
 import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router'
 
@@ -7,11 +8,17 @@ type AccessibleRoute = { name: RouteRecordRaw['name'] } | null
 
 const canAccessMeta = (
   meta: PermissionRoute['meta'],
-  role: UserRole | string
+  role: UserRole | string,
+  permissions: string[] = []
 ) => {
   const roles = meta?.roles
+  const accessUser = {
+    roles: role ? [role] : [],
+    permissions,
+  }
 
-  if (!meta?.requireAuth) return true
+  if (!meta?.requireAuth && !meta?.access) return true
+  if (meta?.access) return canAccessByRequirement(meta.access, accessUser)
   if (!roles || roles.length === 0) return true
   if (roles.includes('*')) return true
 
@@ -20,26 +27,34 @@ const canAccessMeta = (
 
 export const canAccessRoute = (
   route: PermissionRoute,
-  role: UserRole | string
+  role: UserRole | string,
+  permissions: string[] = []
 ) => {
   if ('matched' in route && route.matched.length) {
-    return route.matched.every((record) => canAccessMeta(record.meta, role))
+    return route.matched.every((record) =>
+      canAccessMeta(record.meta, role, permissions)
+    )
   }
 
-  return canAccessMeta(route.meta, role)
+  return canAccessMeta(route.meta, role, permissions)
 }
 
 export const getFirstAccessibleRoute = (
   rs: RouteRecordRaw[],
-  role: UserRole | string = ''
+  role: UserRole | string = '',
+  permissions: string[] = []
 ): AccessibleRoute => {
   const routes = [...rs]
 
   while (routes.length) {
     const route = routes.shift()
 
-    if (route && canAccessRoute(route, role)) {
-      const child = getFirstAccessibleRoute(route.children || [], role)
+    if (route && canAccessRoute(route, role, permissions)) {
+      const child = getFirstAccessibleRoute(
+        route.children || [],
+        role,
+        permissions
+      )
       if (child) return child
 
       if (!route.redirect) {
@@ -60,9 +75,10 @@ const usePermission = () => {
     },
     getFirstAccessibleRoute(
       rs: RouteRecordRaw[],
-      role: UserRole | string = ''
+      role: UserRole | string = '',
+      permissions: string[] = []
     ) {
-      return getFirstAccessibleRoute(rs, role)
+      return getFirstAccessibleRoute(rs, role, permissions)
     },
   }
 }

@@ -1,4 +1,5 @@
 import { useUserStore } from '@/store'
+import { canAccessByRequirement } from '@/services/access'
 import type { DirectiveBinding } from 'vue'
 
 const checkPermission = (el: HTMLElement, binding: DirectiveBinding) => {
@@ -10,7 +11,15 @@ const checkPermission = (el: HTMLElement, binding: DirectiveBinding) => {
     if (value.length > 0) {
       const values = value
 
-      const hasAccess = values.includes(role)
+      const hasAccess = canAccessByRequirement(
+        {
+          roles: values,
+        },
+        {
+          roles: role ? [role] : [],
+          permissions: [],
+        }
+      )
       if (!hasAccess && el.parentNode) {
         el.parentNode.removeChild(el)
       }

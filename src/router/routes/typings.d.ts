@@ -1,8 +1,10 @@
 import 'vue-router'
+import type { AccessRequirement } from '@/services/access'
 
 declare module 'vue-router' {
   interface RouteMeta {
     roles?: string[]
+    access?: AccessRequirement
     requireAuth?: boolean
     icon?: string
     locale?: string
