@@ -5,6 +5,8 @@ import {
   Input,
   Message,
   Modal,
+  Radio,
+  RadioGroup,
   Select,
   Table,
 } from '@arco-design/web-vue'
@@ -18,6 +20,8 @@ const arcoAdapter: AdminUiAdapter = {
   FormItem: Form.Item,
   Input,
   Select,
+  RadioGroup,
+  Radio,
   Modal,
   Drawer,
   Message: {

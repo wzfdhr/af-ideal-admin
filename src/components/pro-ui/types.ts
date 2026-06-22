@@ -10,6 +10,8 @@ export interface AdminUiAdapter {
   FormItem: Component
   Input: Component
   Select: Component
+  RadioGroup: Component
+  Radio: Component
   Modal: Component
   Drawer: Component
   Message: {
