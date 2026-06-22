@@ -23,14 +23,14 @@ AF-Ideal-Admin 是一个基于 Vue 3、TypeScript 和 Vite 的后台管理系统
 
 环境建议：
 
-- Node.js >= 16
-- 推荐使用 npm，因为仓库已包含 `package-lock.json`
+- Node.js 20，建议通过 `.nvmrc` 固定本地版本
+- 使用 npm，因为仓库已包含 `package-lock.json`
 - 推荐编辑器：VS Code + Volar + ESLint + Tailwind CSS IntelliSense
 
 安装依赖：
 
 ```bash
-npm install
+npm ci
 ```
 
 启动开发服务：
@@ -163,7 +163,6 @@ Axios 拦截器位于 `src/api/request.ts`：
 - Vite 开发服务器使用 `VITE_API_BASE_URL` 和 `VITE_API_PROXY_TARGET` 配置 API 代理，见 `vite.config.ts`。
 - `src/router/index.ts` 使用 `createWebHistory()`，部署到非根路径时需要同步确认前端路由与服务器回退配置。
 - `package.json` 没有 `build` 脚本，请使用 `build:dev` 或 `build:prd`。
-- 仓库中存在 `dist.zip` 和 `node_modules.zip`，日常开发更推荐通过源码构建和 `npm install` 安装依赖，避免依赖压缩包与锁文件长期漂移。
 
 ## 后续优化建议
 
