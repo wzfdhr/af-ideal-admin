@@ -26,6 +26,7 @@ export default {
   'menu.Scalability.formDesign': '表单设计器',
   'menu.Scalability.workflowDesign': '流程设计器',
   'menu.Scalability.workflowCenter': '流程工作台',
+  'menu.Scalability.lowCodeBuilder': '低代码搭建',
   'menu.visualization': '数据可视化',
   'menu.visualization.analysis': '分析页',
   'menu.visualization.multidimensionalAnalysis': '多维数据分析',

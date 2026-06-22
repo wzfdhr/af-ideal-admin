@@ -43,6 +43,16 @@ const exAbilityRoutes: AppRouteRecordRaw = {
         openInNewWindow: true,
       },
     },
+    {
+      path: 'lowCodeBuilder',
+      name: 'lowCodeBuilder',
+      component: () => import('@/views/lowCodeBuilder/index.vue'),
+      meta: {
+        locale: 'menu.Scalability.lowCodeBuilder',
+        requireAuth: true,
+        openInNewWindow: true,
+      },
+    },
   ],
 }
 

@@ -4,6 +4,7 @@ import {
   createQueryTablePageSchema,
   migrateLowCodePageSchema,
   validateLowCodePageSchema,
+  type LowCodeAction,
   type LowCodePageSchema,
 } from '@/components/low-code/schema'
 import { getLowCodeMaterialTypes } from '@/components/low-code/materials'
@@ -73,6 +74,47 @@ describe('low-code page schema', () => {
     )
   })
 
+  it('builds a permission-aware query table page with button actions', () => {
+    const schema = createQueryTablePageSchema()
+    const queryForm = schema.materials.find(
+      (material) => material.id === 'query-form'
+    )
+    const customerTable = schema.materials.find(
+      (material) => material.id === 'customer-table'
+    )
+
+    expect(schema.permissionCode).toBe('low-code:customer-query:view')
+    expect(queryForm?.permissionCode).toBe('low-code:customer-query:query')
+    expect(customerTable?.permissionCode).toBe('low-code:customer-query:list')
+    expect(queryForm?.props.actions).toEqual(
+      expect.arrayContaining<LowCodeAction>([
+        expect.objectContaining({
+          type: 'query',
+          target: 'customer-table',
+          permissionCode: 'low-code:customer-query:query',
+        }),
+        expect.objectContaining({
+          type: 'submit',
+          permissionCode: 'low-code:customer-query:submit',
+        }),
+      ])
+    )
+    expect(customerTable?.props.actions).toEqual(
+      expect.arrayContaining<LowCodeAction>([
+        expect.objectContaining({
+          type: 'refreshBlock',
+          target: 'customer-table',
+        }),
+        expect.objectContaining({
+          type: 'openModal',
+        }),
+        expect.objectContaining({
+          type: 'navigate',
+        }),
+      ])
+    )
+  })
+
   it('rejects unknown materials and table data sources that do not exist', () => {
     expect(() =>
       validateLowCodePageSchema({
@@ -100,6 +142,33 @@ describe('low-code page schema', () => {
                 props: {
                   ...material.props,
                   dataSourceKey: 'missing',
+                },
+              }
+            : material
+        ),
+      })
+    ).toThrow('非法低代码页面 schema')
+  })
+
+  it('rejects unsupported button action types', () => {
+    const schema: LowCodePageSchema = createQueryTablePageSchema()
+
+    expect(() =>
+      validateLowCodePageSchema({
+        ...schema,
+        materials: schema.materials.map((material) =>
+          material.id === 'query-form'
+            ? {
+                ...material,
+                props: {
+                  ...material.props,
+                  actions: [
+                    {
+                      id: 'custom-action',
+                      label: '自定义',
+                      type: 'custom',
+                    },
+                  ],
                 },
               }
             : material

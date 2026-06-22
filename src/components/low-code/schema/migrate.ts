@@ -1,6 +1,8 @@
 import { isLowCodeMaterialType } from '../materials'
 import {
   CURRENT_LOW_CODE_PAGE_SCHEMA_VERSION,
+  type LowCodeAction,
+  type LowCodeActionType,
   type LegacyLowCodeDataSource,
   type LegacyLowCodeMaterial,
   type LegacyLowCodePageSchema,
@@ -10,9 +12,19 @@ import {
 } from './types'
 
 const LOW_CODE_SCHEMA_ERROR = '非法低代码页面 schema'
+const LOW_CODE_ACTION_TYPES: LowCodeActionType[] = [
+  'query',
+  'submit',
+  'navigate',
+  'openModal',
+  'refreshBlock',
+]
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const normalizeOptionalText = (value: unknown) =>
+  typeof value === 'string' && value.trim() ? value.trim() : undefined
 
 const normalizeVersion = (version: unknown) =>
   typeof version === 'number' && Number.isInteger(version) && version > 0
@@ -68,6 +80,51 @@ const normalizeDataSources = (dataSources: unknown): LowCodeDataSource[] => {
   })
 }
 
+const normalizeAction = (action: unknown): LowCodeAction => {
+  if (!isRecord(action)) {
+    throw new Error(LOW_CODE_SCHEMA_ERROR)
+  }
+
+  const id = normalizeOptionalText(action.id)
+  const label = normalizeOptionalText(action.label)
+  const type = normalizeOptionalText(action.type)
+
+  if (
+    !id ||
+    !label ||
+    !type ||
+    !LOW_CODE_ACTION_TYPES.includes(type as LowCodeActionType)
+  ) {
+    throw new Error(LOW_CODE_SCHEMA_ERROR)
+  }
+
+  if (action.params !== undefined && !isRecord(action.params)) {
+    throw new Error(LOW_CODE_SCHEMA_ERROR)
+  }
+
+  return {
+    id,
+    label,
+    type: type as LowCodeActionType,
+    target: normalizeOptionalText(action.target),
+    permissionCode: normalizeOptionalText(action.permissionCode),
+    params: isRecord(action.params) ? { ...action.params } : undefined,
+  }
+}
+
+const normalizeProps = (props: unknown): Record<string, unknown> => {
+  const normalized = isRecord(props) ? { ...props } : {}
+
+  if (normalized.actions !== undefined) {
+    if (!Array.isArray(normalized.actions)) {
+      throw new Error(LOW_CODE_SCHEMA_ERROR)
+    }
+    normalized.actions = normalized.actions.map(normalizeAction)
+  }
+
+  return normalized
+}
+
 const normalizeMaterials = (materials: unknown): LowCodeMaterial[] => {
   if (!Array.isArray(materials)) {
     throw new Error(LOW_CODE_SCHEMA_ERROR)
@@ -90,7 +147,8 @@ const normalizeMaterials = (materials: unknown): LowCodeMaterial[] => {
       type,
       name:
         typeof legacyMaterial.name === 'string' ? legacyMaterial.name : type,
-      props: isRecord(legacyMaterial.props) ? legacyMaterial.props : {},
+      permissionCode: normalizeOptionalText(legacyMaterial.permissionCode),
+      props: normalizeProps(legacyMaterial.props),
     }
   })
 }
@@ -107,6 +165,7 @@ export const migrateLowCodePageSchema = (
   return {
     version: normalizeVersion(legacySchema.version),
     title: normalizeTitle(legacySchema.title),
+    permissionCode: normalizeOptionalText(legacySchema.permissionCode),
     dataSources: normalizeDataSources(legacySchema.dataSources),
     materials: normalizeMaterials(legacySchema.materials),
   }
@@ -126,13 +185,30 @@ export const validateLowCodePageSchema = (
       throw new Error(LOW_CODE_SCHEMA_ERROR)
     }
     materialIds.add(material.id)
+  })
 
+  migrated.materials.forEach((material) => {
     if (
       material.type === 'ProTable' &&
       typeof material.props.dataSourceKey === 'string' &&
       !dataSourceKeys.has(material.props.dataSourceKey)
     ) {
       throw new Error(LOW_CODE_SCHEMA_ERROR)
+    }
+
+    const { actions } = material.props
+    if (Array.isArray(actions)) {
+      actions.forEach((action) => {
+        const lowCodeAction = action as LowCodeAction
+        if (
+          (lowCodeAction.type === 'query' ||
+            lowCodeAction.type === 'refreshBlock') &&
+          lowCodeAction.target &&
+          !materialIds.has(lowCodeAction.target)
+        ) {
+          throw new Error(LOW_CODE_SCHEMA_ERROR)
+        }
+      })
     }
   })
 
@@ -142,6 +218,7 @@ export const validateLowCodePageSchema = (
 export const createQueryTablePageSchema = (): LowCodePageSchema =>
   validateLowCodePageSchema({
     title: '客户查询',
+    permissionCode: 'low-code:customer-query:view',
     dataSources: [
       {
         key: 'customers',
@@ -171,24 +248,65 @@ export const createQueryTablePageSchema = (): LowCodePageSchema =>
         id: 'query-form',
         type: 'ProForm',
         name: '查询条件',
+        permissionCode: 'low-code:customer-query:query',
         props: {
           fields: ['keyword', 'status'],
+          actions: [
+            {
+              id: 'query',
+              label: '查询',
+              type: 'query',
+              target: 'customer-table',
+              permissionCode: 'low-code:customer-query:query',
+            },
+            {
+              id: 'submit',
+              label: '提交',
+              type: 'submit',
+              permissionCode: 'low-code:customer-query:submit',
+            },
+          ],
         },
       },
       {
         id: 'customer-table',
         type: 'ProTable',
         name: '客户列表',
+        permissionCode: 'low-code:customer-query:list',
         props: {
           dataSourceKey: 'customers',
           columns: ['name', 'status', 'owner'],
           rowKey: 'id',
+          actions: [
+            {
+              id: 'refresh-table',
+              label: '刷新区块',
+              type: 'refreshBlock',
+              target: 'customer-table',
+              permissionCode: 'low-code:customer-query:refresh',
+            },
+            {
+              id: 'open-detail',
+              label: '打开弹窗',
+              type: 'openModal',
+              target: 'customer-detail',
+              permissionCode: 'low-code:customer-query:detail',
+            },
+            {
+              id: 'jump-detail',
+              label: '跳转详情',
+              type: 'navigate',
+              target: '/customer/detail',
+              permissionCode: 'low-code:customer-query:navigate',
+            },
+          ],
         },
       },
       {
         id: 'customer-stat',
         type: 'StatCard',
         name: '客户总数',
+        permissionCode: 'low-code:customer-query:stat',
         props: {
           label: '客户总数',
           value: 128,
@@ -198,6 +316,7 @@ export const createQueryTablePageSchema = (): LowCodePageSchema =>
         id: 'customer-chart',
         type: 'ChartCard',
         name: '客户状态分布',
+        permissionCode: 'low-code:customer-query:chart',
         props: {
           chartType: 'pie',
           dataSourceKey: 'customers',

@@ -247,6 +247,16 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             roles: ['*'],
           },
         },
+        {
+          path: 'lowCodeBuilder',
+          name: 'lowCodeBuilder',
+          componentKey: 'LowCodeBuilderPage',
+          meta: {
+            locale: 'menu.Scalability.lowCodeBuilder',
+            requireAuth: true,
+            roles: ['*'],
+          },
+        },
       ],
     },
   ],

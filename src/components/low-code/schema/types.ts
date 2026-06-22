@@ -6,6 +6,22 @@ export type LowCodeMaterialType =
   | 'ChartCard'
   | 'StatCard'
 
+export type LowCodeActionType =
+  | 'query'
+  | 'submit'
+  | 'navigate'
+  | 'openModal'
+  | 'refreshBlock'
+
+export interface LowCodeAction {
+  id: string
+  label: string
+  type: LowCodeActionType
+  target?: string
+  permissionCode?: string
+  params?: Record<string, unknown>
+}
+
 export interface LowCodeDataSource {
   key: string
   name: string
@@ -21,12 +37,14 @@ export interface LowCodeMaterial {
   id: string
   type: LowCodeMaterialType
   name: string
+  permissionCode?: string
   props: Record<string, unknown>
 }
 
 export interface LowCodePageSchema {
   version: number
   title: string
+  permissionCode?: string
   dataSources: LowCodeDataSource[]
   materials: LowCodeMaterial[]
 }
@@ -34,6 +52,7 @@ export interface LowCodePageSchema {
 export type LegacyLowCodePageSchema = {
   version?: unknown
   title?: unknown
+  permissionCode?: unknown
   dataSources?: unknown
   materials?: unknown
 }
@@ -42,6 +61,7 @@ export type LegacyLowCodeMaterial = Record<string, unknown> & {
   id?: unknown
   type?: unknown
   name?: unknown
+  permissionCode?: unknown
   props?: unknown
 }
 
