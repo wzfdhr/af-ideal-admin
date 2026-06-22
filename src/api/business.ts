@@ -1,5 +1,5 @@
-import axios from 'axios'
 import qs from 'query-string'
+import request from './request'
 
 export interface Step {
   atpresent?: number
@@ -47,9 +47,9 @@ export interface PaginationParams {
 }
 
 export const getGroups = async () =>
-  axios.get<GroupedBusinessEntry[]>('/business/groups')
+  request.get<GroupedBusinessEntry[]>('/business/groups')
 export const getRecords = async (params: PaginationParams) =>
-  axios.get<{
+  request.get<{
     list: BusinessRecord[]
     total: number
   }>('/business/records', {

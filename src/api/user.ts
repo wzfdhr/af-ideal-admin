@@ -1,5 +1,5 @@
-import axios from 'axios'
 import type { UserState } from '@/store/modules/user'
+import request from './request'
 import type { RouteRecordNormalized } from 'vue-router'
 
 export interface LoginData {
@@ -12,7 +12,7 @@ export interface LoginRes {
 }
 
 export const login = (data: LoginData) =>
-  axios.post<LoginRes>('/user/login', data)
-export const getUserInfo = () => axios.post<UserState>('/user/info')
-export const getMenu = () => axios.post<RouteRecordNormalized[]>('/user/menu')
-export const logout = () => axios.post('/user/logout')
+  request.post<LoginRes>('/user/login', data)
+export const getUserInfo = () => request.post<UserState>('/user/info')
+export const getMenu = () => request.post<RouteRecordNormalized[]>('/user/menu')
+export const logout = () => request.post('/user/logout')
