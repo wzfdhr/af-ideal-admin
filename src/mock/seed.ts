@@ -179,6 +179,16 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             roles: ['*'],
           },
         },
+        {
+          path: 'reportCenter',
+          name: 'reportCenter',
+          componentKey: 'VisualizationReportCenter',
+          meta: {
+            locale: 'menu.visualization.reportCenter',
+            requireAuth: true,
+            roles: ['*'],
+          },
+        },
       ],
     },
     {

@@ -7,6 +7,7 @@ import setupFormDesignerMock from './modules/form-designer'
 import setupLowCodeMock from './modules/low-code'
 import setupMenuMock from './modules/menu'
 import setupPermissionMock from './modules/permission'
+import setupReportMock from './modules/report'
 import setupSystemDepartmentMock from './modules/system-department'
 import setupSystemDictionaryMock from './modules/system-dictionary'
 import setupSystemMenuMock from './modules/system-menu'
@@ -26,6 +27,7 @@ setupFormDesignerMock()
 setupDataScreenMock()
 setupLowCodeMock()
 setupWorkflowMock()
+setupReportMock()
 setupSystemDepartmentMock()
 setupSystemDictionaryMock()
 setupSystemMenuMock()

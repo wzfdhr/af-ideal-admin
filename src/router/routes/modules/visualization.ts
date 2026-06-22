@@ -43,6 +43,16 @@ const userRoutes: AppRouteRecordRaw = {
         roles: ['*'],
       },
     },
+    {
+      path: 'reportCenter',
+      name: 'reportCenter',
+      component: () => import('@/views/visualization/reportCenter/index.vue'),
+      meta: {
+        locale: 'menu.visualization.reportCenter',
+        requireAuth: true,
+        roles: ['*'],
+      },
+    },
   ],
 }
 

@@ -31,6 +31,7 @@ export default {
   'menu.visualization.analysis': '分析页',
   'menu.visualization.multidimensionalAnalysis': '多维数据分析',
   'menu.visualization.dataScreen': '数据大屏',
+  'menu.visualization.reportCenter': '报表中心',
   'menu.form': '表单页',
   'menu.form.complex-step': '复杂分步表单',
   'menu.form.advanced-form': '高级表单',
