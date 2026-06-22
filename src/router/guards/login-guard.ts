@@ -1,6 +1,6 @@
 import NProgress from 'nprogress'
 import { useUserStore } from '@/store'
-import { isAuthed } from '@/utils/auth'
+import { isAuthed } from '@/services/auth'
 import type { Router, LocationQueryRaw } from 'vue-router'
 
 const setupLoginGuard = (router: Router) => {

@@ -1,4 +1,4 @@
-import { clearAuth, getToken } from '@/utils/auth'
+import { clearAuth, getToken } from '@/services/auth'
 import { requestBaseUrl } from '@config'
 import { createRequestClient } from './request-client'
 

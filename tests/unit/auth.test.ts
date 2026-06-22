@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   clearAuth,
+  clearCurrentUser,
   clearToken,
+  getRole,
   getToken,
   isAuthed,
+  setRole,
   setToken,
-} from '@/utils/auth'
+} from '@/services/auth'
 
 describe('auth storage', () => {
   it('stores and clears token', () => {
@@ -24,11 +27,21 @@ describe('auth storage', () => {
 
   it('clears token and role together', () => {
     setToken('token-123')
-    localStorage.setItem('userRole', 'admin')
+    setRole('admin')
 
     clearAuth()
 
     expect(getToken()).toBeNull()
-    expect(localStorage.getItem('userRole')).toBeNull()
+    expect(getRole()).toBeNull()
+  })
+
+  it('stores and clears current user role', () => {
+    setRole('operator')
+
+    expect(getRole()).toBe('operator')
+
+    clearCurrentUser()
+
+    expect(getRole()).toBeNull()
   })
 })

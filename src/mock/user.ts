@@ -1,6 +1,6 @@
 import Mock from 'mockjs'
 import setupMock, { responseWrap, failedResponseWrap } from '@/utils/mock'
-import { isAuthed } from '@/utils/auth'
+import { getRole, isAuthed, setRole } from '@/services/auth'
 import avatarExample from '@/assets/avatar-user.png'
 
 import type { MockParams } from './types'
@@ -17,13 +17,13 @@ setupMock({
       }
 
       if (username === 'admin' && password === 'admin') {
-        window.localStorage.setItem('userRole', 'admin')
+        setRole('admin')
         return responseWrap({
           token: 'admin12345',
         })
       }
       if (username === 'user' && password === 'user') {
-        window.localStorage.setItem('userRole', 'user')
+        setRole('user')
         return responseWrap({
           token: 'user12345',
         })
@@ -34,7 +34,7 @@ setupMock({
 
     Mock.mock(new RegExp('/api/user/info'), () => {
       if (isAuthed()) {
-        const role = window.localStorage.getItem('userRole') || 'admin'
+        const role = getRole() || 'admin'
         return responseWrap({
           name: '系统管理员',
           avatar: avatarExample,

@@ -5,7 +5,7 @@ import {
   LoginData,
   getUserInfo,
 } from '@/api/user'
-import { clearAuth, clearToken, setToken } from '@/utils/auth'
+import { clearAuth, clearToken, setToken } from '@/services/auth'
 import { removeListener } from '@/utils/route-listener'
 import useMenuStore from '@/store/modules/menu'
 import type { UserRole } from '@config'

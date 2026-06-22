@@ -1,7 +1,7 @@
 import Mock from 'mockjs'
 import qs from 'query-string'
 import setupMock, { responseWrap, failedResponseWrap } from '@/utils/mock'
-import { isAuthed } from '@/utils/auth'
+import { isAuthed } from '@/services/auth'
 import type { GroupedBusinessEntry } from '@/api/business'
 import { MockParams } from './types'
 
