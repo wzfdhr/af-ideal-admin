@@ -925,7 +925,7 @@ export default defineConfig(({ mode }) => {
 Run:
 
 ```bash
-rg -n "VITE_BOOT_URL|import\\.meta\\.env\\.BASE_URL|localhost:8080" . -g "!package-lock.json"
+rg -n "<legacy env/proxy references>" . -g "!package-lock.json"
 ```
 
 Expected:

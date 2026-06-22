@@ -5,6 +5,10 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import eslint from 'vite-plugin-eslint'
 
 export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const apiBaseUrl = env.VITE_API_BASE_URL || '/api'
+  const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:10888'
+
   return {
     plugins: [
       vue(),
@@ -24,7 +28,7 @@ export default defineConfig(({ mode }) => {
       alias: [
         {
           find: 'vue',
-          replacement: 'vue/dist/vue.esm-bundler.js', // compile template
+          replacement: 'vue/dist/vue.esm-bundler.js',
         },
         {
           find: '@',
@@ -39,8 +43,8 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        '/api': {
-          target: 'http://localhost:8080',
+        [apiBaseUrl]: {
+          target: apiProxyTarget,
           changeOrigin: true,
         },
       },
