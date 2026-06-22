@@ -1,33 +1,39 @@
 import { computed } from 'vue'
-import { RouteRecordRaw, RouteRecordNormalized } from 'vue-router'
-import usePermission from '@/hooks/use-permission'
 import appClientMenus from '@/router/menu'
-import { useMenuStore } from '@/store'
+import { filterAccessibleMenus, type MenuLikeNode } from '@/services/access'
+import { useMenuStore, useUserStore } from '@/store'
 import { menuFromServer } from '@config'
+import type { RouteRecordRaw } from 'vue-router'
 
 const useMenuTree = () => {
-  const permission = usePermission()
   const menuStore = useMenuStore()
+  const userStore = useUserStore()
 
   const appRoute = computed(() =>
     menuFromServer ? menuStore.asyncMenu : appClientMenus
   )
 
   const menuTree = computed(() => {
-    // get a copy of the router
-    const routerClone: RouteRecordNormalized[] = JSON.parse(
-      JSON.stringify(appRoute.value)
-    )
+    const routerClone = filterAccessibleMenus(
+      appRoute.value as MenuLikeNode[],
+      {
+        roles: userStore.role ? [userStore.role] : [],
+        permissions: userStore.permissions,
+      }
+    ) as RouteRecordRaw[]
+
     routerClone.sort(
       (a, b) =>
         ((a.meta?.order as number) || 0) - ((b.meta?.order as number) || 0)
     )
 
-    const travel = (_routes: RouteRecordRaw[], layer: number) => {
-      if (!_routes) return null
+    const travel = (
+      _routes: RouteRecordRaw[],
+      layer: number
+    ): RouteRecordRaw[] => {
+      if (!_routes) return []
 
-      const collector: any = _routes.map((el) => {
-        if (!permission.hasAccessToRoute(el)) return null
+      const collector = _routes.map((el): RouteRecordRaw | null => {
         if (el.meta?.hideChildrenInMenu || !el.children) {
           el.children = []
           return el
@@ -50,7 +56,7 @@ const useMenuTree = () => {
         return null
       })
 
-      return collector.filter(Boolean)
+      return collector.filter((item): item is RouteRecordRaw => Boolean(item))
     }
     return travel(routerClone, 0)
   })

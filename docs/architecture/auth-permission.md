@@ -97,8 +97,34 @@ For new code, `v-allow` may receive a permission code directly:
 - `false`: use local routes and `src/router/menu`.
 - `true`: call `/api/user/menu` and render server-provided menu entries.
 
-Server-provided menu entries should use the same route names and `meta.roles`
-contract as local routes.
+Server-provided menu entries must follow the same route names and access
+contract as local routes. The frontend uses `name` as the trusted route key:
+
+```ts
+{
+  name: 'system:user',
+  path: 'user',
+  componentKey: 'SystemUserPage',
+  meta: {
+    requireAuth: true,
+    access: {
+      permissions: ['system:user:view']
+    }
+  }
+}
+```
+
+Rules:
+
+- The backend must not send executable component paths.
+- `componentKey` must map to a frontend-maintained whitelist before a route can
+  be registered.
+- Unknown or missing menu `name` values are ignored by direct route access
+  checks and must not crash menu processing.
+- Server menus are filtered again on the frontend by role and permission code,
+  so unauthorized menus are not rendered even when the backend returns them.
+- Direct access is allowed only when the target route exists in the flattened
+  server menu name set and the current user passes route access checks.
 
 ## Unauthorized Behavior
 

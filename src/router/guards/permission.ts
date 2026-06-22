@@ -1,10 +1,11 @@
 import NProgress from 'nprogress'
 import usePermission from '@/hooks/use-permission'
+import { filterAccessibleMenus, flattenMenuNames } from '@/services/access'
 import { useUserStore, useMenuStore } from '@/store'
 import { menuFromServer, toNoPermissionPage } from '@config'
 import { appRoutes } from '../routes'
 import { whiteList } from '../constants'
-import type { Router, RouteRecordNormalized } from 'vue-router'
+import type { Router } from 'vue-router'
 
 const setupPermissionGuard = (router: Router) => {
   router.beforeEach(async (to, from, next) => {
@@ -14,23 +15,26 @@ const setupPermissionGuard = (router: Router) => {
     const permissionAllow = permission.hasAccessToRoute(to)
 
     if (menuFromServer) {
-      // TODO: implement permisison logic
       if (
         !menuStore.asyncMenu.length &&
         !whiteList.find((el) => el.name === to.name)
       ) {
         await menuStore.fetchMenuConfig()
       }
-      const serverMenuConfig = [...menuStore.asyncMenu, ...whiteList]
-      let exist = false
-      while (serverMenuConfig.length && !exist) {
-        const el = serverMenuConfig.shift()
-        if (el?.name === to.name) exist = true
-        if (el?.children) {
-          serverMenuConfig.push(...(el.children as RouteRecordNormalized[]))
+
+      const accessibleServerMenus = filterAccessibleMenus(
+        [...menuStore.asyncMenu, ...whiteList],
+        {
+          roles: userStore.role ? [userStore.role] : [],
+          permissions: userStore.permissions,
         }
-      }
-      if (exist && permissionAllow) {
+      )
+      const serverMenuNames = flattenMenuNames(accessibleServerMenus)
+      const existsInServerMenu = Boolean(
+        to.name && serverMenuNames.has(to.name)
+      )
+
+      if (existsInServerMenu && permissionAllow) {
         next()
       } else {
         next({ name: 'not-found' })
@@ -42,7 +46,11 @@ const setupPermissionGuard = (router: Router) => {
         next()
       } else {
         const dest = !toNoPermissionPage
-          ? permission.getFirstAccessibleRoute(appRoutes, userStore.role)
+          ? permission.getFirstAccessibleRoute(
+              appRoutes,
+              userStore.role,
+              userStore.permissions
+            )
           : { name: 'not-allowed' }
         next(dest || { name: 'not-found' })
       }
