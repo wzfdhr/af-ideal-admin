@@ -319,6 +319,8 @@ npm run build:prd
 - 新增 Arco adapter，作为当前稳定交付实现。
 - 新增 `docs/architecture/ui-library-strategy.md`。
 - 明确 `aheart-ui` 与主项目同步推进，但不得在企业级能力成熟前直接替换 Arco。
+- 明确主项目业务能力开发不等待 `aheart-ui` 完成，新页面必须先通过 Pro 组件和 UI adapter 交付。
+- 建立 `aheart-ui` 并行验证任务：每新增或替换一个底层组件，都必须在 Mock-backed 示例页面完成兼容验证。
 - 形成 `aheart-ui` 企业级可替换验收清单。
 
 **验收标准**
@@ -327,6 +329,7 @@ npm run build:prd
 - `src/components/pro-ui` 暴露稳定 adapter contract，至少包含 Button、Table、Form、FormItem、Input、Select、Modal、Drawer、Message。
 - 当前实现由 Arco adapter 提供，未来 `aheart-ui` adapter 可在不重写业务页面的前提下逐步替换。
 - `aheart-ui` 只有在核心组件、主题、无障碍、文档、单测、视觉回归、e2e smoke 和 Mock 交互示例全部达标后，才允许进入核心模块替换。
+- 后期切换前至少完成一个真实业务页面的双 adapter 迁移演练，验证列表、表单、权限按钮、弹窗、错误态和空状态行为一致。
 - 至少一个 Mock-backed 示例页面通过 Pro 组件验证列表、表单、权限按钮、错误态和空状态，不允许只做静态展示。
 - 单元测试覆盖 adapter contract 的存在性和消息能力。
 

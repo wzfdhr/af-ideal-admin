@@ -708,6 +708,8 @@ Create `docs/architecture/ui-library-strategy.md` with these decisions:
   `PermissionButton`, `DictSelect`, and other internal business components
   instead of directly depending on Arco component APIs.
 - `aheart-ui` is developed in parallel as the future design system candidate.
+- Business capability development must not wait for `aheart-ui`; new enterprise
+  pages must be delivered through Pro components and the UI adapter boundary.
 - Replacing Arco with `aheart-ui` is allowed only after the enterprise component
   checklist passes for table, form, select, date/time, upload, tree, cascader,
   modal, drawer, message, notification, theme, accessibility, documentation,
@@ -715,6 +717,12 @@ Create `docs/architecture/ui-library-strategy.md` with these decisions:
 - Business modules must use Mock-backed examples when validating Pro components,
   so the adapter boundary is tested through real list, form, permission, and
   error-state interactions.
+- Each `aheart-ui` component added to the candidate adapter must pass a
+  Mock-backed compatibility example before it can replace the matching Arco
+  component in core business modules.
+- Before switching the active adapter, complete one dual-adapter migration spike
+  on a real business page covering list, form, permission button, modal,
+  error-state, and empty-state behavior.
 
 - [ ] **Step 2: Add UI adapter contract**
 
