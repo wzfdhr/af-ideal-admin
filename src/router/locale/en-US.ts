@@ -28,6 +28,7 @@ export default {
   'menu.visualization': 'dataVisualization',
   'menu.visualization.analysis': 'analysis',
   'menu.visualization.multidimensionalAnalysis': 'multidimensionalAnalysis',
+  'menu.visualization.dataScreen': 'Data screen',
   'menu.form': 'Form Page',
   'menu.form.complex-step': 'Complex Stepped Form',
   'menu.form.advanced-form': 'Advanced Form',

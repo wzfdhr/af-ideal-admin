@@ -139,6 +139,49 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
       ],
     },
     {
+      path: '/visualization',
+      name: 'visualization',
+      componentKey: 'DefaultLayout',
+      meta: {
+        locale: 'menu.visualization',
+        requireAuth: true,
+        order: 1,
+        icon: 'icon-computer',
+      },
+      children: [
+        {
+          path: 'analysis',
+          name: 'analysis',
+          componentKey: 'VisualizationAnalysis',
+          meta: {
+            locale: 'menu.visualization.analysis',
+            requireAuth: true,
+            roles: ['*'],
+          },
+        },
+        {
+          path: 'multidimensionalAnalysis',
+          name: 'multidimensionalAnalysis',
+          componentKey: 'VisualizationMultidimensionalAnalysis',
+          meta: {
+            locale: 'menu.visualization.multidimensionalAnalysis',
+            requireAuth: true,
+            roles: ['*'],
+          },
+        },
+        {
+          path: 'dataScreen',
+          name: 'dataScreen',
+          componentKey: 'VisualizationDataScreen',
+          meta: {
+            locale: 'menu.visualization.dataScreen',
+            requireAuth: true,
+            roles: ['*'],
+          },
+        },
+      ],
+    },
+    {
       path: '/system',
       name: 'system',
       componentKey: 'DefaultLayout',

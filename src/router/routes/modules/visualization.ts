@@ -33,6 +33,16 @@ const userRoutes: AppRouteRecordRaw = {
         roles: ['*'],
       },
     },
+    {
+      path: 'dataScreen',
+      name: 'dataScreen',
+      component: () => import('@/views/visualization/dataScreen/index.vue'),
+      meta: {
+        locale: 'menu.visualization.dataScreen',
+        requireAuth: true,
+        roles: ['*'],
+      },
+    },
   ],
 }
 
