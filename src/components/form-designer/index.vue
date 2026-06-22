@@ -23,6 +23,20 @@
         <div class="m-4">
           <div class="font-bold">操作</div>
           <a-space direction="vertical" class="mt-4 w-full">
+            <a-button long :loading="creating" @click="createDraft()">
+              创建草稿
+            </a-button>
+            <a-button long :loading="saving" @click="saveDraft">
+              保存草稿
+            </a-button>
+            <a-button
+              type="primary"
+              long
+              :loading="publishing"
+              @click="publishCurrent"
+            >
+              发布表单
+            </a-button>
             <a-button type="outline" long :disabled="copied" @click="copy()">
               {{ copied ? '已复制' : '导出 schema JSON' }}
             </a-button>
@@ -35,6 +49,9 @@
             <a-button type="primary" long @click="showPreview">
               预览表单
             </a-button>
+            <div v-if="actionMessage" class="text-xs text-green-600">
+              {{ actionMessage }}
+            </div>
           </a-space>
         </div>
       </a-layout-sider>
@@ -120,20 +137,27 @@ import { useFormDesigner, useFormDesignerActions } from './use-form-designer'
 import type { WidgetsConfig } from './types'
 
 const activeTab = ref(1)
-const { ast } = useFormDesigner()
+const { ast, formId } = useFormDesigner()
 const {
+  actionMessage,
   applyImportSchema,
   copied,
   copy,
+  createDraft,
+  creating,
   dataSourceEditorVisible,
   importError,
   importSource,
   importVisible,
+  publishCurrent,
+  publishing,
   previewVisible,
+  saveDraft,
+  saving,
   showDataSourceEditor,
   showImportSchema,
   showPreview,
-} = useFormDesignerActions(ast)
+} = useFormDesignerActions(ast, formId)
 
 const { selectedWidget, cloneWidgetConfigFromRaw } = useWidgetActions(ast)
 // watch(ast.value, () => {

@@ -60,3 +60,5 @@
 适配后的响应必须产生 `{ label, value }` 结构。格式不匹配会抛出 `远程选项响应格式错误`。
 
 超时错误会统一转换为 `远程选项加载超时`。
+
+Mock 场景见 [form-designer-mock.md](/Users/start/Desktop/af-ideal-admin/docs/components/form-designer-mock.md)。

@@ -2,6 +2,7 @@ import Mock from 'mockjs'
 import setupAuthMock from './modules/auth'
 import setupBusinessMock from './modules/business'
 import setupDictionaryMock from './modules/dictionary'
+import setupFormDesignerMock from './modules/form-designer'
 import setupMenuMock from './modules/menu'
 import setupPermissionMock from './modules/permission'
 import setupSystemDepartmentMock from './modules/system-department'
@@ -18,6 +19,7 @@ setupAuthMock()
 setupMenuMock()
 setupPermissionMock()
 setupDictionaryMock()
+setupFormDesignerMock()
 setupSystemDepartmentMock()
 setupSystemDictionaryMock()
 setupSystemMenuMock()

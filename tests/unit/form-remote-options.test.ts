@@ -135,4 +135,46 @@ describe('loadRemoteOptions', () => {
       })
     ).rejects.toThrow('远程选项响应格式错误')
   })
+
+  it('reports mock business error responses for failure and timeout scenarios', async () => {
+    await expect(
+      loadRemoteOptions({
+        dataSources: [
+          {
+            key: 'failure',
+            name: '失败选项',
+            url: '/api/form-options/failure',
+          },
+        ],
+        sourceUrl: '/api/form-options/failure',
+        request: vi.fn().mockResolvedValue({
+          data: {
+            code: 50000,
+            msg: '远程选项加载失败',
+            data: null,
+          },
+        }),
+      })
+    ).rejects.toThrow('远程选项加载失败')
+
+    await expect(
+      loadRemoteOptions({
+        dataSources: [
+          {
+            key: 'timeout',
+            name: '超时选项',
+            url: '/api/form-options/timeout',
+          },
+        ],
+        sourceUrl: '/api/form-options/timeout',
+        request: vi.fn().mockResolvedValue({
+          data: {
+            code: 50000,
+            msg: '远程选项加载超时',
+            data: null,
+          },
+        }),
+      })
+    ).rejects.toThrow('远程选项加载超时')
+  })
 })

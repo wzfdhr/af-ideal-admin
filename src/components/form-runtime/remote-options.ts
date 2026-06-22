@@ -44,6 +44,31 @@ const getValueByPath = (source: unknown, path: string) =>
     return value[key]
   }, source)
 
+const getMockBusinessPayload = (response: unknown) => {
+  if (!isRecord(response)) {
+    return undefined
+  }
+
+  const payload = isRecord(response.data) ? response.data : response
+
+  if (!isRecord(payload)) {
+    return undefined
+  }
+
+  return payload
+}
+
+const assertMockBusinessResponse = (response: unknown) => {
+  const payload = getMockBusinessPayload(response)
+  if (!payload || payload.code === undefined || payload.code === 20000) {
+    return
+  }
+
+  throw new Error(
+    typeof payload.msg === 'string' ? payload.msg : '远程选项加载失败'
+  )
+}
+
 const findDataSource = ({
   dataSources,
   sourceKey,
@@ -146,6 +171,7 @@ export const loadRemoteOptions = async ({
       timeout: dataSource.timeout || DEFAULT_TIMEOUT,
     })
 
+    assertMockBusinessResponse(response)
     return normalizeOptions(response, dataSource.responseAdapter)
   } catch (error) {
     if (isTimeoutError(error)) {
