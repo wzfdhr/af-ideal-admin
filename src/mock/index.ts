@@ -10,6 +10,7 @@ import setupSystemDictionaryMock from './modules/system-dictionary'
 import setupSystemMenuMock from './modules/system-menu'
 import setupSystemRoleMock from './modules/system-role'
 import setupSystemUserMock from './modules/system-user'
+import setupWorkflowMock from './modules/workflow'
 
 Mock.setup({
   timeout: '600-1200',
@@ -20,6 +21,7 @@ setupMenuMock()
 setupPermissionMock()
 setupDictionaryMock()
 setupFormDesignerMock()
+setupWorkflowMock()
 setupSystemDepartmentMock()
 setupSystemDictionaryMock()
 setupSystemMenuMock()
