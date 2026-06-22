@@ -3,6 +3,7 @@ import setupAuthMock from './modules/auth'
 import setupBusinessMock from './modules/business'
 import setupDictionaryMock from './modules/dictionary'
 import setupFormDesignerMock from './modules/form-designer'
+import setupLowCodeMock from './modules/low-code'
 import setupMenuMock from './modules/menu'
 import setupPermissionMock from './modules/permission'
 import setupSystemDepartmentMock from './modules/system-department'
@@ -21,6 +22,7 @@ setupMenuMock()
 setupPermissionMock()
 setupDictionaryMock()
 setupFormDesignerMock()
+setupLowCodeMock()
 setupWorkflowMock()
 setupSystemDepartmentMock()
 setupSystemDictionaryMock()
