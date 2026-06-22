@@ -1,7 +1,9 @@
 import avatarExample from '@/assets/avatar-user.png'
 import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
+import { SYSTEM_ROLE_PERMISSIONS } from '@/constants/system-role'
 import { SYSTEM_USER_PERMISSIONS } from '@/constants/system-user'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
+import type { SystemRoleRecord } from '@/api/system/role'
 import type { SystemUserRecord } from '@/api/system/user'
 
 export type MockRole = 'admin' | 'user' | 'operator' | 'restricted'
@@ -158,7 +160,12 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
           path: 'roleSystem',
           name: 'roleSystem',
           componentKey: 'SystemRolePage',
-          meta: { locale: 'menu.system.role', requireAuth: true, roles: ['*'] },
+          meta: {
+            locale: 'menu.system.role',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [SYSTEM_ROLE_PERMISSIONS.list] },
+          },
         },
         {
           path: 'dictSystem',
@@ -277,6 +284,10 @@ export const mockDictionaries = {
     { label: '启用', value: 'enabled' },
     { label: '停用', value: 'disabled' },
   ],
+  roleStatus: [
+    { label: '启用', value: 'enabled' },
+    { label: '停用', value: 'disabled' },
+  ],
   gender: [
     { label: '女', value: 0 },
     { label: '男', value: 1 },
@@ -375,6 +386,42 @@ export const mockSystemUsers: SystemUserRecord[] = [
     dept: '外部协作',
     status: 'disabled',
     role: 'restricted',
+    createdAt: '2026-06-03 10:00:00',
+    updatedAt: '2026-06-03 10:00:00',
+  },
+]
+
+export const mockSystemRoles: SystemRoleRecord[] = [
+  {
+    id: 'role-1',
+    roleName: '超级管理员',
+    roleKey: 'admin',
+    roleSort: 1,
+    dataScope: 'all',
+    status: 'enabled',
+    remark: '拥有平台全部权限',
+    createdAt: '2026-06-01 10:00:00',
+    updatedAt: '2026-06-01 10:00:00',
+  },
+  {
+    id: 'role-2',
+    roleName: '运营人员',
+    roleKey: 'operator',
+    roleSort: 2,
+    dataScope: 'dept',
+    status: 'enabled',
+    remark: '负责运营数据和待办处理',
+    createdAt: '2026-06-02 10:00:00',
+    updatedAt: '2026-06-02 10:00:00',
+  },
+  {
+    id: 'role-3',
+    roleName: '外部访客',
+    roleKey: 'restricted',
+    roleSort: 3,
+    dataScope: 'self',
+    status: 'disabled',
+    remark: '受限访问角色',
     createdAt: '2026-06-03 10:00:00',
     updatedAt: '2026-06-03 10:00:00',
   },
