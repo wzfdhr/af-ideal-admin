@@ -21,6 +21,7 @@ export interface RequestClientOptions {
   timeout: number
   authHeaderName: string
   getToken: () => string | null
+  onError?: (context: ApiErrorContext) => void | Promise<void>
   onUnauthorized?: (context: ApiErrorContext) => void | Promise<void>
   onForbidden?: (context: ApiErrorContext) => void | Promise<void>
 }
@@ -163,6 +164,8 @@ const handleErrorSideEffects = async (
   context: ApiErrorContext,
   options: RequestClientOptions
 ) => {
+  await options.onError?.(context)
+
   if (context.kind === 'unauthorized') {
     await options.onUnauthorized?.(context)
   }

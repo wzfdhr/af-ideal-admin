@@ -305,4 +305,37 @@ describe('createRequestClient', () => {
       duration: 5000,
     })
   })
+
+  it('reports request errors through the observability hook', async () => {
+    const onError = vi.fn()
+    createRequestClient({
+      baseURL: '/api',
+      timeout: 15000,
+      authHeaderName: 'X-Access-Token',
+      getToken: () => null,
+      onError,
+    })
+
+    await expect(
+      axiosMock.responseErrorHandler?.({
+        response: {
+          status: 500,
+          data: {
+            code: 500,
+            msg: '服务异常',
+            traceId: 'trace-500',
+          },
+        },
+      } as AxiosError)
+    ).rejects.toThrow('服务异常')
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'server',
+        code: 500,
+        httpStatus: 500,
+        traceId: 'trace-500',
+      })
+    )
+  })
 })

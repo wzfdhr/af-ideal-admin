@@ -1,4 +1,5 @@
 import { clearAuth, getToken } from '@/services/auth'
+import { reportRequestError } from '@/services/observability'
 import { requestBaseUrl } from '@config'
 import { createRequestClient } from './request-client'
 
@@ -29,6 +30,9 @@ const request = createRequestClient({
   timeout: 15000,
   authHeaderName: 'X-Access-Token',
   getToken,
+  onError: (context) => {
+    reportRequestError(context)
+  },
   onUnauthorized: redirectToLogin,
   onForbidden: redirectToNoPermission,
 })

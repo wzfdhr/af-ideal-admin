@@ -353,6 +353,9 @@ Goal: make production issues diagnosable and security posture explicit.
 
 - Add front-end error boundary and route error reporting hook.
 - Add request trace ID display and logging.
+- Keep the front-end observability contract documented in
+  `docs/architecture/observability.md`, including error sources, report fields,
+  sensitive-data redaction, and the reporter replacement point.
 - Add operation audit log examples.
 - Document token storage tradeoffs and CSP recommendations.
 - Add deployment templates for Nginx and containerized hosting.
