@@ -5,6 +5,7 @@ import setupDictionaryMock from './modules/dictionary'
 import setupMenuMock from './modules/menu'
 import setupPermissionMock from './modules/permission'
 import setupSystemDictionaryMock from './modules/system-dictionary'
+import setupSystemMenuMock from './modules/system-menu'
 import setupSystemRoleMock from './modules/system-role'
 import setupSystemUserMock from './modules/system-user'
 
@@ -17,6 +18,7 @@ setupMenuMock()
 setupPermissionMock()
 setupDictionaryMock()
 setupSystemDictionaryMock()
+setupSystemMenuMock()
 setupSystemRoleMock()
 setupSystemUserMock()
 setupBusinessMock()

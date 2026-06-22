@@ -1,8 +1,10 @@
 import avatarExample from '@/assets/avatar-user.png'
 import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
+import { SYSTEM_MENU_PERMISSIONS } from '@/constants/system-menu'
 import { SYSTEM_ROLE_PERMISSIONS } from '@/constants/system-role'
 import { SYSTEM_USER_PERMISSIONS } from '@/constants/system-user'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
+import type { SystemMenuRecord } from '@/api/system/menu'
 import type { SystemRoleRecord } from '@/api/system/role'
 import type { SystemUserRecord } from '@/api/system/user'
 
@@ -168,6 +170,17 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
           },
         },
         {
+          path: 'menuSystem',
+          name: 'menuSystem',
+          componentKey: 'SystemMenuPage',
+          meta: {
+            locale: 'menu.system.menu',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [SYSTEM_MENU_PERMISSIONS.list] },
+          },
+        },
+        {
           path: 'dictSystem',
           name: 'dictSystem',
           componentKey: 'SystemDictPage',
@@ -287,6 +300,15 @@ export const mockDictionaries = {
   roleStatus: [
     { label: '启用', value: 'enabled' },
     { label: '停用', value: 'disabled' },
+  ],
+  menuStatus: [
+    { label: '启用', value: 'enabled' },
+    { label: '停用', value: 'disabled' },
+  ],
+  menuType: [
+    { label: '目录', value: 'catalog' },
+    { label: '菜单', value: 'menu' },
+    { label: '按钮', value: 'button' },
   ],
   gender: [
     { label: '女', value: 0 },
@@ -424,6 +446,53 @@ export const mockSystemRoles: SystemRoleRecord[] = [
     remark: '受限访问角色',
     createdAt: '2026-06-03 10:00:00',
     updatedAt: '2026-06-03 10:00:00',
+  },
+]
+
+export const mockSystemMenus: SystemMenuRecord[] = [
+  {
+    id: 'menu-1',
+    menuName: '系统管理',
+    menuType: 'catalog',
+    path: '/system',
+    permission: 'system:view',
+    sort: 1,
+    status: 'enabled',
+    createdAt: '2026-06-01 10:00:00',
+    updatedAt: '2026-06-01 10:00:00',
+  },
+  {
+    id: 'menu-2',
+    menuName: '用户管理',
+    menuType: 'menu',
+    path: '/system/userSystem',
+    permission: 'system:user:list',
+    sort: 2,
+    status: 'enabled',
+    createdAt: '2026-06-02 10:00:00',
+    updatedAt: '2026-06-02 10:00:00',
+  },
+  {
+    id: 'menu-3',
+    menuName: '角色管理',
+    menuType: 'menu',
+    path: '/system/roleSystem',
+    permission: 'system:role:list',
+    sort: 3,
+    status: 'enabled',
+    createdAt: '2026-06-03 10:00:00',
+    updatedAt: '2026-06-03 10:00:00',
+  },
+  {
+    id: 'menu-4',
+    menuName: '废弃菜单',
+    menuType: 'menu',
+    path: '/system/legacy',
+    permission: 'system:legacy:list',
+    sort: 99,
+    status: 'disabled',
+    createdAt: '2026-06-04 10:00:00',
+    updatedAt: '2026-06-04 10:00:00',
   },
 ]
 
