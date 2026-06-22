@@ -260,6 +260,29 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
       ],
     },
     {
+      path: '/audit',
+      name: 'audit',
+      componentKey: 'DefaultLayout',
+      meta: {
+        locale: 'menu.audit',
+        requireAuth: true,
+        order: 7,
+        icon: 'icon-safe',
+      },
+      children: [
+        {
+          path: 'logs',
+          name: 'auditLogs',
+          componentKey: 'AuditLogPage',
+          meta: {
+            locale: 'menu.audit.logs',
+            requireAuth: true,
+            roles: ['*'],
+          },
+        },
+      ],
+    },
+    {
       path: '/Scalability',
       name: 'Scalability',
       componentKey: 'DefaultLayout',

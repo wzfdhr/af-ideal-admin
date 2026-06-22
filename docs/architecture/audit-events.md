@@ -1,12 +1,14 @@
 # 操作审计与安全事件契约
 
-本文档对应 `T-402 操作审计与安全事件`。目标是在前端先建立审计事件契约和关键操作样例，让登录、退出、权限资源变更等行为在无后端环境下也能通过 Mock 形成审计闭环。
+本文档对应 `T-402 操作审计与安全事件` 和 `T-404 审计日志 Mock 闭环`。目标是在前端先建立审计事件契约、关键操作样例和查询页面，让登录、退出、权限资源变更、设计器发布、数据大屏发布、报表导出等行为在无后端环境下也能通过 Mock 形成审计闭环。
 
 ## 代码边界
 
-- `src/api/audit.ts`：审计事件 API 类型和 `/audit/events` 写入接口。
+- `src/api/audit.ts`：审计事件 API 类型、`/audit/events` 写入接口和查询接口。
 - `src/services/audit.ts`：审计服务，负责补充操作者和发生时间，并保证审计失败不阻断主业务。
-- `src/mock/modules/audit.ts`：Mock 审计事件写入接口，负责脱敏并保存事件。
+- `src/mock/modules/audit.ts`：Mock 审计事件写入和查询接口，负责脱敏、保存、筛选和分页。
+- `src/views/audit/log-list/index.vue`：审计日志查询页面。
+- `src/router/routes/modules/audit.ts`：审计中心路由入口。
 - `src/store/modules/user.ts`：登录成功、登录失败、退出成功、退出失败的安全事件样例。
 - `src/api/system/menu.ts`：菜单新增、修改、删除的操作/权限事件样例。
 - `src/api/system/role.ts`：角色新增、修改、删除的权限事件样例。
@@ -17,7 +19,7 @@
 interface AuditEventPayload {
   module: string
   action: string
-  eventType: 'operation' | 'security' | 'permission'
+  eventType: 'operation' | 'security' | 'permission' | 'export'
   result: 'success' | 'failure'
   operator?: {
     id?: string
@@ -47,12 +49,48 @@ interface AuditEventPayload {
 
 - `auth.login`：登录成功和失败，类型为 `security`。
 - `auth.logout`：退出成功和失败，类型为 `security`。
+- `system.user.update`：用户信息变更，类型为 `operation`。
 - `system.menu.create`：菜单新增，类型为 `operation`。
 - `system.menu.update`：菜单变更，类型为 `permission`。
 - `system.menu.delete`：菜单删除，类型为 `permission`。
 - `system.role.create`：角色新增，类型为 `permission`。
 - `system.role.update`：角色变更，类型为 `permission`。
 - `system.role.delete`：角色删除，类型为 `permission`。
+- `workflow.publish`：流程发布，类型为 `operation`。
+- `form.publish`：表单发布，类型为 `operation`。
+- `data-screen.publish`：数据大屏发布，类型为 `operation`。
+- `report.export`：报表导出，类型为 `export`。
+
+## 查询接口
+
+审计日志查询使用 `GET /audit/events`，返回分页结果：
+
+```ts
+interface AuditEventQuery {
+  current: number
+  pageSize: number
+  operatorName?: string
+  module?: string
+  result?: 'success' | 'failure' | ''
+  eventType?: 'operation' | 'security' | 'permission' | 'export' | ''
+  dateRange?: string[]
+}
+
+interface AuditEventPageResult {
+  list: AuditEventRecord[]
+  total: number
+}
+```
+
+Mock 查询支持：
+
+- 按操作人模糊查询：`operatorName`。
+- 按模块精确查询：`module`。
+- 按结果精确查询：`result`。
+- 按事件类型精确查询：`eventType`。
+- 按时间范围查询：`dateRange`，日期字符串按整天闭区间处理。
+
+当前 Mock 种子覆盖登录日志、普通操作日志、权限变更日志和导出日志，并包含流程发布、表单发布、大屏发布和报表导出样例。
 
 ## 失败处理
 

@@ -22,6 +22,8 @@ export default {
   'menu.system.department': '部门配置',
   'menu.system.dict': '字典配置',
   'menu.system.menu': '菜单配置',
+  'menu.audit': '审计中心',
+  'menu.audit.logs': '审计日志',
   'menu.Scalability': '扩展能力',
   'menu.Scalability.formDesign': '表单设计器',
   'menu.Scalability.workflowDesign': '流程设计器',

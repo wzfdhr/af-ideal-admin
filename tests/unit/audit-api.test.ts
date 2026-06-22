@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   createAuditEvent,
+  fetchAuditEvents,
   type AuditEventPayload,
   type AuditEventRecord,
 } from '@/api/audit'
 
 const requestMock = vi.hoisted(() => ({
+  get: vi.fn(),
   post: vi.fn(),
 }))
 
@@ -49,5 +51,41 @@ describe('audit api', () => {
     await expect(createAuditEvent(payload)).resolves.toEqual(record)
 
     expect(requestMock.post).toHaveBeenCalledWith('/audit/events', payload)
+  })
+
+  it('fetches audit logs with user, module, result and time filters', async () => {
+    requestMock.get.mockResolvedValueOnce({
+      data: {
+        list: [],
+        total: 0,
+      },
+    })
+
+    await expect(
+      fetchAuditEvents({
+        current: 1,
+        pageSize: 20,
+        operatorName: '系统管理员',
+        module: 'system',
+        result: 'success',
+        eventType: 'permission',
+        dateRange: ['2026-06-01', '2026-06-23'],
+      })
+    ).resolves.toEqual({
+      list: [],
+      total: 0,
+    })
+
+    expect(requestMock.get).toHaveBeenCalledWith('/audit/events', {
+      params: {
+        current: 1,
+        pageSize: 20,
+        operatorName: '系统管理员',
+        module: 'system',
+        result: 'success',
+        eventType: 'permission',
+        dateRange: ['2026-06-01', '2026-06-23'],
+      },
+    })
   })
 })
