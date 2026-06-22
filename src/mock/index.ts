@@ -5,6 +5,7 @@ import setupDictionaryMock from './modules/dictionary'
 import setupMenuMock from './modules/menu'
 import setupPermissionMock from './modules/permission'
 import setupSystemDictionaryMock from './modules/system-dictionary'
+import setupSystemUserMock from './modules/system-user'
 
 Mock.setup({
   timeout: '600-1200',
@@ -15,4 +16,5 @@ setupMenuMock()
 setupPermissionMock()
 setupDictionaryMock()
 setupSystemDictionaryMock()
+setupSystemUserMock()
 setupBusinessMock()

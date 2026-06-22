@@ -1,6 +1,8 @@
 import avatarExample from '@/assets/avatar-user.png'
 import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
+import { SYSTEM_USER_PERMISSIONS } from '@/constants/system-user'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
+import type { SystemUserRecord } from '@/api/system/user'
 
 export type MockRole = 'admin' | 'user' | 'operator' | 'restricted'
 
@@ -145,7 +147,12 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
           path: 'userSystem',
           name: 'userSystem',
           componentKey: 'SystemUserPage',
-          meta: { locale: 'menu.system.user', requireAuth: true, roles: ['*'] },
+          meta: {
+            locale: 'menu.system.user',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [SYSTEM_USER_PERMISSIONS.list] },
+          },
         },
         {
           path: 'roleSystem',
@@ -266,6 +273,10 @@ export const mockDictionaries = {
     { label: '启用', value: 'enabled' },
     { label: '停用', value: 'disabled' },
   ],
+  userStatus: [
+    { label: '启用', value: 'enabled' },
+    { label: '停用', value: 'disabled' },
+  ],
   gender: [
     { label: '女', value: 0 },
     { label: '男', value: 1 },
@@ -327,6 +338,45 @@ export const mockSystemDictionaries: SystemDictionaryRecord[] = [
     description: '用于验证停用状态的虚拟字典',
     createdAt: '2026-06-04 10:00:00',
     updatedAt: '2026-06-04 10:00:00',
+  },
+]
+
+export const mockSystemUsers: SystemUserRecord[] = [
+  {
+    id: 'user-1',
+    username: 'admin',
+    name: '系统管理员',
+    phone: '17666666666',
+    email: 'admin@example.com',
+    dept: '平台运营部',
+    status: 'enabled',
+    role: 'admin',
+    createdAt: '2026-06-01 10:00:00',
+    updatedAt: '2026-06-01 10:00:00',
+  },
+  {
+    id: 'user-2',
+    username: 'operator',
+    name: '运营人员',
+    phone: '17655555555',
+    email: 'operator@example.com',
+    dept: '运营部',
+    status: 'enabled',
+    role: 'operator',
+    createdAt: '2026-06-02 10:00:00',
+    updatedAt: '2026-06-02 10:00:00',
+  },
+  {
+    id: 'user-3',
+    username: 'restricted',
+    name: '受限用户',
+    phone: '17644444444',
+    email: 'restricted@example.com',
+    dept: '外部协作',
+    status: 'disabled',
+    role: 'restricted',
+    createdAt: '2026-06-03 10:00:00',
+    updatedAt: '2026-06-03 10:00:00',
   },
 ]
 
