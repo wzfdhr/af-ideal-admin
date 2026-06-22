@@ -2,58 +2,58 @@
   <a-form :model="config" layout="vertical" class="config-panel">
     <radio-config
       v-if="config.type === 'radio'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <inputnumber-config
       v-if="config.type === 'inputNumber'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <slider-config
       v-if="config.type === 'slider'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <switch-config
       v-if="config.type === 'switch'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <cascader-config
       v-if="config.type === 'cascader'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <textarea-config
       v-if="config.type === 'textarea'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <date-picker-config
       v-if="config.type === 'date-picker'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <checkbox-config
       v-if="config.type === 'checkbox'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
-    <rate-config v-if="config.type === 'rate'" v-model:widgetConfig="config" />
+    <rate-config v-if="config.type === 'rate'" v-model:widget-config="config" />
     <time-picker-config
       v-if="config.type === 'time-picker'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <upload-config
       v-if="config.type === 'upload'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
-    <grid-config v-if="config.type === 'grid'" v-model:widgetConfig="config" />
-    <tab-config v-if="config.type === 'tab'" v-model:widgetConfig="config" />
+    <grid-config v-if="config.type === 'grid'" v-model:widget-config="config" />
+    <tab-config v-if="config.type === 'tab'" v-model:widget-config="config" />
     <input-config
       v-if="config.type === 'input'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <InputTagConfig
       v-if="config.type === 'inputTag'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <select-config
       v-if="config.type === 'select'"
-      v-model:widgetConfig="config"
+      v-model:widget-config="config"
     />
     <a-collapse class="ast-pre">
       <a-collapse-item key="json" header="控件配置 JSON">
