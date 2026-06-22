@@ -322,6 +322,7 @@ import type {
   IConfigGrid,
 } from '@/components/form-designer/types'
 import { formData } from './use-form-preview'
+import { parseWidgetRules } from './rules'
 
 const props = defineProps({
   widget: {
@@ -358,17 +359,5 @@ nextTick(() => {
   }
 })
 
-const computedRules = (rules?: string) => {
-  let result
-  try {
-    if (rules && rules.trim() !== '') {
-      // disable no-eval temporarily
-      // eslint-disable-next-line no-eval
-      result = eval(rules)
-    }
-  } catch (e) {
-    // do nothing
-  }
-  return result
-}
+const computedRules = (rules?: string) => parseWidgetRules(rules)
 </script>
