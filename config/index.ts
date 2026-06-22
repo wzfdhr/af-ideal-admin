@@ -6,14 +6,6 @@ import { FileEditFill, MailFill, ClipboardFill } from '@salmon-ui/icons'
 // 用户角色权限组，其中 * 表示通配符
 export type UserRole = '' | '*' | 'admin' | 'user'
 
-// HTTP 响应的类型断言
-export interface HTTPResponse<T = unknown> {
-  data: T
-  status: number
-  msg: string
-  code: number
-}
-
 // HTTP 请求的公共路径前缀
 export const requestBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
 
