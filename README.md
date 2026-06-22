@@ -2,6 +2,7 @@
 
 ## More Docs
 
+- [Development documentation center](docs/development/index.md)
 - [Auth and permission architecture](docs/architecture/auth-permission.md)
 - [Deployment](docs/deployment.md)
 
@@ -131,7 +132,9 @@ npm run lint
 
 当前 `menuFromServer` 默认为 `false`，系统使用前端静态路由生成菜单。若切换为 `true`，会通过 `/api/user/menu` 获取服务端菜单。
 
-路由权限字段统一使用 `meta.roles`。后续新增路由时应继续沿用该字段，避免出现权限钩子无法识别的自定义字段。
+新增路由优先使用 `meta.access.permissions` 接入权限码，`meta.roles`
+保留为角色级兼容字段。详细规则见
+[权限接入指南](docs/development/permission-integration.md)。
 
 ## 请求与环境变量
 
