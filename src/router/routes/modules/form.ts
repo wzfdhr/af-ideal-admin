@@ -19,7 +19,7 @@ const formRoutes: AppRouteRecordRaw = {
       meta: {
         locale: 'menu.form.complex-step',
         requireAuth: true,
-        role: ['*'],
+        roles: ['*'],
       },
     },
     {
@@ -29,7 +29,7 @@ const formRoutes: AppRouteRecordRaw = {
       meta: {
         locale: 'menu.form.advanced-form',
         requireAuth: true,
-        role: ['*'],
+        roles: ['*'],
       },
     },
     {
@@ -39,7 +39,7 @@ const formRoutes: AppRouteRecordRaw = {
       meta: {
         locale: 'menu.form.step',
         requireAuth: true,
-        role: ['*'],
+        roles: ['*'],
       },
     },
   ],
