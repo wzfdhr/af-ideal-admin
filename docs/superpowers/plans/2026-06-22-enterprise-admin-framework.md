@@ -835,6 +835,131 @@ git add src/components/pro-ui tests/unit/pro-ui-adapter.test.ts docs/architectur
 git commit -m "feat: add replaceable ui foundation boundary"
 ```
 
+### Task 6B: Add aheart-ui Parallel Incubation And Switch Governance
+
+**Files:**
+- Modify: `docs/quality/enterprise-admin-task-checklist.md`
+- Modify: `docs/architecture/ui-library-strategy.md`
+- Future create: `src/components/pro-ui/adapters/aheart.ts`
+- Future create: `tests/unit/pro-ui-adapter-parity.test.ts`
+- Future create: `src/views/examples/ui-adapter-lab/index.vue`
+
+- [ ] **Step 1: Add the task to the enterprise checklist**
+
+Add `T-200A 建立 aheart-ui 同步孵化与切换治理计划` after `T-200` in
+`docs/quality/enterprise-admin-task-checklist.md` with these decisions:
+
+- The admin framework and `aheart-ui` move in parallel.
+- The admin framework keeps Arco as the stable active adapter.
+- Business pages continue to ship through Pro components and Mock-backed APIs.
+- `aheart-ui` becomes a candidate adapter only component by component.
+- Switching is allowed only after maturity matrix and adapter parity checks pass.
+
+- [ ] **Step 2: Extend the UI library strategy**
+
+Add `Parallel Development Cadence` and `Candidate Adapter Gates` sections to
+`docs/architecture/ui-library-strategy.md`:
+
+```md
+## Parallel Development Cadence
+
+The admin framework and `aheart-ui` should move in parallel. The admin product
+continues shipping enterprise features through Arco, Pro components, and Mock
+contracts. `aheart-ui` matures beside it as a candidate adapter, not as a blocker
+for workflow, low-code, dashboard, report, audit, tenant, or system modules.
+
+The synchronization rule is:
+
+1. Build business capabilities in AF-Ideal-Admin through Pro components.
+2. Extract repeated UI needs into adapter contracts and Pro component APIs.
+3. Implement matching `aheart-ui` components against those contracts.
+4. Validate each candidate component through Mock-backed business examples.
+5. Replace by component or by page only after parity checks pass.
+```
+
+- [ ] **Step 3: Add candidate adapter parity test when aheart-ui is installable**
+
+Create `tests/unit/pro-ui-adapter-parity.test.ts` after `aheart-ui` can be
+installed by workspace alias or package dependency:
+
+```ts
+import { describe, expect, it } from 'vitest'
+import type { AdminUiAdapter } from '@/components/pro-ui'
+import { arcoAdapter } from '@/components/pro-ui/adapters/arco'
+import { aheartAdapter } from '@/components/pro-ui/adapters/aheart'
+
+const requiredKeys: Array<keyof AdminUiAdapter> = [
+  'Button',
+  'Table',
+  'Form',
+  'FormItem',
+  'Input',
+  'Select',
+  'Modal',
+  'Drawer',
+  'Message',
+]
+
+describe('admin ui adapter parity', () => {
+  it('keeps aheart adapter compatible with the active Arco adapter contract', () => {
+    requiredKeys.forEach((key) => {
+      expect(aheartAdapter[key]).toBeTruthy()
+      expect(arcoAdapter[key]).toBeTruthy()
+    })
+
+    expect(aheartAdapter.Message.success).toEqual(expect.any(Function))
+    expect(aheartAdapter.Message.error).toEqual(expect.any(Function))
+    expect(aheartAdapter.Message.warning).toEqual(expect.any(Function))
+  })
+})
+```
+
+- [ ] **Step 4: Add a Mock-backed UI adapter lab**
+
+Create `src/views/examples/ui-adapter-lab/index.vue` after the first candidate
+adapter exists. The page must use existing Mock APIs and Pro components to cover
+list query, pagination, create/edit form submit, permission button, modal,
+drawer, empty state, and request error state. The page must not be a static
+component gallery.
+
+- [ ] **Step 5: Run one real page migration rehearsal**
+
+Pick one of these pages for the first rehearsal:
+
+- `src/views/system/dictSystem/index.vue`
+- `src/views/system/userSystem/index.vue`
+- `src/views/system/roleSystem/index.vue`
+
+Run the page through Arco adapter and `aheart-ui` candidate adapter, then record
+in `docs/architecture/ui-library-strategy.md`:
+
+- component parity gaps
+- visual or interaction differences
+- Mock API scenarios used
+- rollback steps
+- decision on whether the component can graduate from candidate to active use
+
+- [ ] **Step 6: Run verification**
+
+Run:
+
+```bash
+npm run test -- tests/unit/pro-ui-adapter.test.ts
+npm run typecheck
+```
+
+Expected: the current Arco adapter remains stable while the `aheart-ui`
+incubation task is tracked as a future gated migration path.
+
+- [ ] **Step 7: Commit**
+
+Run:
+
+```bash
+git add docs/quality/enterprise-admin-task-checklist.md docs/architecture/ui-library-strategy.md docs/superpowers/plans/2026-06-22-enterprise-admin-framework.md
+git commit -m "docs: add aheart ui incubation plan"
+```
+
 ### Task 6: Design ProTable Contract
 
 **Files:**

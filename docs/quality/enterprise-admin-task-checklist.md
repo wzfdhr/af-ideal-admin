@@ -333,6 +333,27 @@ npm run build:prd
 - 至少一个 Mock-backed 示例页面通过 Pro 组件验证列表、表单、权限按钮、错误态和空状态，不允许只做静态展示。
 - 单元测试覆盖 adapter contract 的存在性和消息能力。
 
+### T-200A 建立 `aheart-ui` 同步孵化与切换治理计划
+
+**优先级：P0**
+
+**交付物**
+
+- 明确主项目与 `aheart-ui` 同步推进：主项目继续使用 Arco + Pro 组件交付企业级能力，`aheart-ui` 作为未来 UI 底座候选并行成熟。
+- 新增 `aheart-ui` 企业级成熟度矩阵，覆盖 Button、Table、Form、Input、Select、DatePicker、Upload、Tree、Cascader、Modal、Drawer、Message、Notification、Tabs、Menu、Layout、Theme、A11y、文档、单测、视觉回归、e2e smoke。
+- 建立 adapter parity 验证规则：同一个 Pro 组件用 Arco adapter 和 `aheart-ui` adapter 渲染时，交互、校验、loading、空状态、错误态、权限态和提交行为必须保持一致。
+- 建立 Mock-backed UI 适配实验页，覆盖列表查询、分页、表单提交、权限按钮、弹窗、抽屉、空状态和接口错误。
+- 规划一个真实业务页面双 adapter 迁移演练，优先选择字典、用户或角色管理页面。
+- 输出组件替换策略和回滚策略：先组件级候选验证，再页面级灰度替换，最后才允许全局切换。
+
+**验收标准**
+
+- 主项目开发不等待 `aheart-ui`，所有新业务页面仍按 Pro 组件和 Mock 交互闭环交付。
+- `aheart-ui` 任意组件进入候选 adapter 前，必须完成类型、文档、单测、视觉状态和 Mock-backed 业务交互验证。
+- 至少完成一个 Mock-backed UI 适配实验页，能够一键或配置切换 Arco adapter 与 `aheart-ui` candidate adapter。
+- 至少完成一个真实业务页面的双 adapter 迁移演练，并记录不兼容项、修复项和回滚方案。
+- 未通过成熟度矩阵和 parity 验证前，不允许把 `aheart-ui` 设为生产默认 UI 底座。
+
 ### T-201 建设 ProTable 基础能力
 
 **优先级：P1**

@@ -59,6 +59,43 @@ must exercise real loading, empty, error, permission, submit, and pagination
 states where applicable. This keeps the adapter boundary honest and avoids
 building static demos that do not represent enterprise usage.
 
+## Parallel Development Cadence
+
+The admin framework and `aheart-ui` should move in parallel. The admin product
+continues shipping enterprise features through Arco, Pro components, and Mock
+contracts. `aheart-ui` matures beside it as a candidate adapter, not as a blocker
+for workflow, low-code, dashboard, report, audit, tenant, or system modules.
+
+The synchronization rule is:
+
+1. Build business capabilities in AF-Ideal-Admin through Pro components.
+2. Extract repeated UI needs into adapter contracts and Pro component APIs.
+3. Implement matching `aheart-ui` components against those contracts.
+4. Validate each candidate component through Mock-backed business examples.
+5. Replace by component or by page only after parity checks pass.
+
+This keeps switching costs controlled. Business pages depend on stable Pro
+contracts, while the base UI implementation can evolve behind the adapter.
+
+## Candidate Adapter Gates
+
+An `aheart-ui` component can enter the candidate adapter only after it satisfies
+all applicable gates:
+
+- Public props, events, slots, and exposes are typed and documented.
+- Loading, disabled, readonly, empty, error, validation, and permission-adjacent
+  states match the Arco-backed Pro component behavior.
+- Unit tests cover public behavior instead of implementation details.
+- Visual smoke or screenshot checks cover common and edge states.
+- A Mock-backed example proves the component works inside a real list, form,
+  dialog, drawer, or permission workflow.
+- The component can be removed from the candidate adapter without breaking the
+  active Arco adapter.
+
+The first migration rehearsal should use one real business page, preferably
+dictionary, user, or role management, because those pages cover table, search,
+form, modal, permission button, empty state, and API error behavior.
+
 ## Migration Strategy
 
 1. Keep current pages stable on Arco.
