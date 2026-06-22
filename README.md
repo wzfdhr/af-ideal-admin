@@ -1,5 +1,10 @@
 # AF-Ideal-Admin
 
+## More Docs
+
+- [Auth and permission architecture](docs/architecture/auth-permission.md)
+- [Deployment](docs/deployment.md)
+
 AF-Ideal-Admin 是一个基于 Vue 3、TypeScript 和 Vite 的后台管理系统模板。项目内置登录鉴权、动态菜单、页面权限、按钮权限、可视化看板、表单页面、列表页面、系统管理页面和可拖拽表单设计器，适合作为中后台项目的二次开发基础。
 
 ## 项目概览
