@@ -1,4 +1,5 @@
 import { defaultLayout } from '@/router/constants'
+import { SYSTEM_DEPARTMENT_PERMISSIONS } from '@/constants/system-department'
 import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
 import { SYSTEM_MENU_PERMISSIONS } from '@/constants/system-menu'
 import { SYSTEM_ROLE_PERMISSIONS } from '@/constants/system-role'
@@ -63,6 +64,9 @@ const aboutRoutes: AppRouteRecordRaw = {
         locale: 'menu.system.department',
         requireAuth: true,
         roles: ['*'],
+        access: {
+          permissions: [SYSTEM_DEPARTMENT_PERMISSIONS.list],
+        },
       },
     },
     {

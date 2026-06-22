@@ -1,8 +1,10 @@
 import avatarExample from '@/assets/avatar-user.png'
+import { SYSTEM_DEPARTMENT_PERMISSIONS } from '@/constants/system-department'
 import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
 import { SYSTEM_MENU_PERMISSIONS } from '@/constants/system-menu'
 import { SYSTEM_ROLE_PERMISSIONS } from '@/constants/system-role'
 import { SYSTEM_USER_PERMISSIONS } from '@/constants/system-user'
+import type { SystemDepartmentRecord } from '@/api/system/department'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
 import type { SystemMenuRecord } from '@/api/system/menu'
 import type { SystemRoleRecord } from '@/api/system/role'
@@ -181,6 +183,17 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
           },
         },
         {
+          path: 'departmentSystem',
+          name: 'departmentSystem',
+          componentKey: 'SystemDepartmentPage',
+          meta: {
+            locale: 'menu.system.department',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [SYSTEM_DEPARTMENT_PERMISSIONS.list] },
+          },
+        },
+        {
           path: 'dictSystem',
           name: 'dictSystem',
           componentKey: 'SystemDictPage',
@@ -302,6 +315,10 @@ export const mockDictionaries = {
     { label: '停用', value: 'disabled' },
   ],
   menuStatus: [
+    { label: '启用', value: 'enabled' },
+    { label: '停用', value: 'disabled' },
+  ],
+  departmentStatus: [
     { label: '启用', value: 'enabled' },
     { label: '停用', value: 'disabled' },
   ],
@@ -493,6 +510,36 @@ export const mockSystemMenus: SystemMenuRecord[] = [
     status: 'disabled',
     createdAt: '2026-06-04 10:00:00',
     updatedAt: '2026-06-04 10:00:00',
+  },
+]
+
+export const mockSystemDepartments: SystemDepartmentRecord[] = [
+  {
+    id: 'department-1',
+    departmentName: '平台运营部',
+    leader: '系统管理员',
+    sort: 1,
+    status: 'enabled',
+    createdAt: '2026-06-01 10:00:00',
+    updatedAt: '2026-06-01 10:00:00',
+  },
+  {
+    id: 'department-2',
+    departmentName: '运营部',
+    leader: '运营人员',
+    sort: 2,
+    status: 'enabled',
+    createdAt: '2026-06-02 10:00:00',
+    updatedAt: '2026-06-02 10:00:00',
+  },
+  {
+    id: 'department-3',
+    departmentName: '外部协作',
+    leader: '受限用户',
+    sort: 3,
+    status: 'disabled',
+    createdAt: '2026-06-03 10:00:00',
+    updatedAt: '2026-06-03 10:00:00',
   },
 ]
 
