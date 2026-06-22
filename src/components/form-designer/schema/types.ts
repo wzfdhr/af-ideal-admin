@@ -1,4 +1,22 @@
-import type { AST, DataSourceConfig, FormConfig, WidgetsConfig } from '../types'
+import type {
+  AST,
+  DataSourceConfig,
+  FormConfig,
+  IConfigGrid,
+  IConfigTab,
+  NormalFormWidget,
+  WidgetsConfig,
+} from '../types'
+
+export type {
+  AST,
+  DataSourceConfig,
+  FormConfig,
+  IConfigGrid,
+  IConfigTab,
+  NormalFormWidget,
+  WidgetsConfig,
+}
 
 export const CURRENT_FORM_SCHEMA_VERSION = 1
 

@@ -1,5 +1,6 @@
 <template>
   <a-form
+    ref="formRef"
     :model="data"
     :size="ast.formConfig.size"
     :layout="ast.formConfig.layout"
@@ -14,23 +15,104 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, provide, PropType } from 'vue'
-import type { AST } from '@/components/form-designer/types'
+import { ref, provide, PropType, watch } from 'vue'
+import type {
+  VersionedFormSchema,
+  WidgetsConfig,
+} from '@/components/form-designer/schema'
 import WidgetRenderer from './renderer/index.vue'
 import { formData } from './renderer/use-form-preview'
 
-defineProps({
+type FormInstanceLike = {
+  validate?: () => Promise<unknown> | unknown
+}
+
+const readDefaultValue = (widget: WidgetsConfig) => {
+  if ('defaultValue' in widget.config) {
+    return widget.config.defaultValue
+  }
+
+  if ('defaultChecked' in widget.config) {
+    return widget.config.defaultChecked
+  }
+
+  return undefined
+}
+
+const createInitialFormData = (widgets: WidgetsConfig[]) => {
+  const values: Record<string, unknown> = {}
+
+  widgets.forEach((widget) => {
+    if (widget.type === 'grid') {
+      widget.cols.forEach((col) => {
+        Object.assign(values, createInitialFormData(col.widgets))
+      })
+      return
+    }
+
+    if (widget.type === 'tab') {
+      widget.panes.forEach((pane) => {
+        Object.assign(values, createInitialFormData(pane.widgets))
+      })
+      return
+    }
+
+    const defaultValue = readDefaultValue(widget)
+    if (defaultValue !== undefined) {
+      values[widget.uid] = defaultValue
+    }
+  })
+
+  return values
+}
+
+const props = defineProps({
   ast: {
-    type: Object as PropType<AST>,
+    type: Object as PropType<VersionedFormSchema>,
     required: true,
   },
 })
 
-const data = ref({})
+const emit = defineEmits<{
+  (event: 'submit', values: Record<string, unknown>): void
+}>()
+
+const formRef = ref<FormInstanceLike>()
+const data = ref<Record<string, unknown>>(
+  createInitialFormData(props.ast.widgetsConfig)
+)
+
+watch(
+  () => props.ast.widgetsConfig,
+  (widgets) => {
+    data.value = createInitialFormData(widgets)
+  },
+  { deep: true }
+)
 
 provide(formData, data)
 
+const getValues = () => ({ ...data.value })
+
+const validate = async () => {
+  const result = await formRef.value?.validate?.()
+  return result === undefined || result === true
+}
+
+const submit = async () => {
+  const valid = await validate()
+
+  if (valid) {
+    emit('submit', getValues())
+  }
+
+  return valid
+}
+
 defineExpose({
   data,
+  getValues,
+  submit,
+  validate,
 })
 </script>

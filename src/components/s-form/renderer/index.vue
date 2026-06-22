@@ -39,7 +39,7 @@
 
 <script lang="ts" setup>
 import { PropType } from 'vue'
-import type { WidgetsConfig } from '@/components/form-designer/types'
+import type { WidgetsConfig } from '@/components/form-designer/schema'
 import FormWidgetRenderer from './form-widget-renderer.vue'
 
 defineProps({

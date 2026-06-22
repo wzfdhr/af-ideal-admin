@@ -317,10 +317,10 @@
 import { ref, PropType, inject, nextTick } from 'vue'
 import axios from 'axios'
 import type {
-  WidgetsConfig,
   IConfigTab,
   IConfigGrid,
-} from '@/components/form-designer/types'
+  WidgetsConfig,
+} from '@/components/form-designer/schema'
 import { formData } from './use-form-preview'
 import { parseWidgetRules } from './rules'
 
