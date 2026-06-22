@@ -23,6 +23,16 @@ const exAbilityRoutes: AppRouteRecordRaw = {
         openInNewWindow: true,
       },
     },
+    {
+      path: 'workflowDesign',
+      name: 'workflowDesign',
+      component: () => import('@/views/workflowDesign/index.vue'),
+      meta: {
+        locale: 'menu.Scalability.workflowDesign',
+        requireAuth: true,
+        openInNewWindow: true,
+      },
+    },
   ],
 }
 

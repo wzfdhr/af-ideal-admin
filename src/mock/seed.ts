@@ -206,6 +206,39 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
         },
       ],
     },
+    {
+      path: '/Scalability',
+      name: 'Scalability',
+      componentKey: 'DefaultLayout',
+      meta: {
+        locale: 'menu.Scalability',
+        requireAuth: true,
+        order: 5,
+        icon: 'icon-scissor',
+      },
+      children: [
+        {
+          path: 'formDesign',
+          name: 'formDesign',
+          componentKey: 'FormDesignPage',
+          meta: {
+            locale: 'menu.Scalability.formDesign',
+            requireAuth: true,
+            roles: ['*'],
+          },
+        },
+        {
+          path: 'workflowDesign',
+          name: 'workflowDesign',
+          componentKey: 'WorkflowDesignPage',
+          meta: {
+            locale: 'menu.Scalability.workflowDesign',
+            requireAuth: true,
+            roles: ['*'],
+          },
+        },
+      ],
+    },
   ],
   user: [
     {

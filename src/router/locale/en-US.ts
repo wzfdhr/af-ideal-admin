@@ -22,6 +22,7 @@ export default {
   'menu.system.dict': 'Dict Configuration',
   'menu.formDesign': 'Scalability',
   'menu.Scalability.formDesign': 'Form design',
+  'menu.Scalability.workflowDesign': 'Workflow design',
   'menu.visualization': 'dataVisualization',
   'menu.visualization.analysis': 'analysis',
   'menu.visualization.multidimensionalAnalysis': 'multidimensionalAnalysis',
