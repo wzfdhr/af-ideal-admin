@@ -1,14 +1,22 @@
 import { ref, computed, h, getCurrentInstance, onMounted, Ref } from 'vue'
 import { useClipboard } from '@vueuse/core'
-import SForm from '../s-form/index.vue'
-import { migrateFormSchema, type VersionedFormSchema } from './schema'
+import { FormRenderer } from '@/components/form-runtime'
+import {
+  applyImportedFormSchema,
+  exportFormSchema,
+  migrateFormSchema,
+  type VersionedFormSchema,
+} from './schema'
 import type { ModalMethod } from '@arco-design/web-vue'
 
 // form designer actions
 export const useFormDesignerActions = (ast: Ref<VersionedFormSchema>) => {
-  const source = computed(() => JSON.stringify(ast.value))
+  const source = computed(() => exportFormSchema(ast.value))
   const previewVisible = ref(false)
   const dataSourceEditorVisible = ref(false)
+  const importVisible = ref(false)
+  const importSource = ref('')
+  const importError = ref('')
 
   const { copy, copied } = useClipboard({
     source,
@@ -24,7 +32,7 @@ export const useFormDesignerActions = (ast: Ref<VersionedFormSchema>) => {
       title: '表单预览',
       content: () =>
         h('div', {}, [
-          h(SForm, {
+          h(FormRenderer, {
             ast: ast.value,
           }),
         ]),
@@ -36,13 +44,37 @@ export const useFormDesignerActions = (ast: Ref<VersionedFormSchema>) => {
     dataSourceEditorVisible.value = true
   }
 
+  const showImportSchema = () => {
+    importSource.value = ''
+    importError.value = ''
+    importVisible.value = true
+  }
+
+  const applyImportSchema = () => {
+    try {
+      applyImportedFormSchema(ast, importSource.value)
+      importVisible.value = false
+      importError.value = ''
+      return true
+    } catch (error) {
+      importError.value =
+        error instanceof Error ? error.message : '表单 schema 导入失败'
+      return false
+    }
+  }
+
   return {
+    applyImportSchema,
     copy,
     copied,
-    showPreview,
-    showDataSourceEditor,
-    previewVisible,
     dataSourceEditorVisible,
+    importError,
+    importSource,
+    importVisible,
+    previewVisible,
+    showDataSourceEditor,
+    showImportSchema,
+    showPreview,
   }
 }
 

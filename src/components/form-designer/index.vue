@@ -24,7 +24,10 @@
           <div class="font-bold">操作</div>
           <a-space direction="vertical" class="mt-4 w-full">
             <a-button type="outline" long :disabled="copied" @click="copy()">
-              {{ copied ? '已复制' : '复制 AST 源码' }}
+              {{ copied ? '已复制' : '导出 schema JSON' }}
+            </a-button>
+            <a-button type="outline" long @click="showImportSchema">
+              导入 schema JSON
             </a-button>
             <a-button type="outline" long @click="showDataSourceEditor">
               编辑数据源
@@ -77,12 +80,27 @@
 
     <a-modal v-model:visible="previewVisible" fullscreen>
       <template #title>表单预览</template>
-      <s-form :ast="ast" />
+      <form-renderer :ast="ast" />
     </a-modal>
 
     <a-modal v-model:visible="dataSourceEditorVisible">
       <template #title>数据源编辑</template>
       <data-src-editor v-model:config="ast.dataSources" />
+    </a-modal>
+
+    <a-modal
+      v-model:visible="importVisible"
+      title="导入 schema JSON"
+      @before-ok="applyImportSchema"
+    >
+      <a-textarea
+        v-model="importSource"
+        :auto-size="{ minRows: 8, maxRows: 14 }"
+        placeholder="粘贴导出的 schema JSON"
+      />
+      <div v-if="importError" class="mt-2 text-red-500 text-xs">
+        {{ importError }}
+      </div>
     </a-modal>
   </div>
 </template>
@@ -90,7 +108,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue'
 import Draggable from 'vuedraggable'
-import SForm from '../s-form/index.vue'
+import { FormRenderer } from '@/components/form-runtime'
 import { fields, useWidgetActions } from './use-widgets'
 import WidgetForm from './widget-form.vue'
 import ConfigPanelForm from './config-panel-form.vue'
@@ -104,11 +122,16 @@ import type { WidgetsConfig } from './types'
 const activeTab = ref(1)
 const { ast } = useFormDesigner()
 const {
+  applyImportSchema,
   copied,
   copy,
   dataSourceEditorVisible,
+  importError,
+  importSource,
+  importVisible,
   previewVisible,
   showDataSourceEditor,
+  showImportSchema,
   showPreview,
 } = useFormDesignerActions(ast)
 

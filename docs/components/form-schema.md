@@ -71,3 +71,39 @@ const schema = migrateFormSchema(rawSchema)
 - widget 条目不是对象。
 
 导入、预览、发布和运行时渲染前必须捕获该错误，并向用户展示明确失败原因，不能污染当前表单状态。
+
+## 导入和导出
+
+设计器通过 schema 层的纯函数处理 JSON 导入导出：
+
+```ts
+import {
+  applyImportedFormSchema,
+  exportFormSchema,
+  importFormSchema,
+} from '@/components/form-designer/schema'
+```
+
+- `exportFormSchema(schema)`：导出格式化后的 JSON 字符串。
+- `importFormSchema(source)`：解析 JSON 并执行 schema 迁移。
+- `applyImportedFormSchema(astRef, source)`：先完成解析和迁移，成功后才替换当前 AST。
+
+非法 JSON 会抛出 `表单 schema JSON 格式错误`，不会污染当前设计器状态。
+
+## 发布和回滚
+
+表单发布接口位于 `src/api/form-schema.ts`：
+
+```ts
+import {
+  publishFormSchema,
+  rollbackFormSchema,
+  saveFormSchema,
+} from '@/api/form-schema'
+```
+
+- `saveFormSchema(id, schema)`：保存草稿。
+- `publishFormSchema(id, schema)`：发布前先执行 `migrateFormSchema` 校验。
+- `rollbackFormSchema(id, version)`：预留回滚接口。
+
+发布前 schema 校验失败时不会发起接口请求。

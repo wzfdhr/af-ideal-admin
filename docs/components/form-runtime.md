@@ -34,3 +34,5 @@ const schema = migrateFormSchema(rawSchema)
 运行时只消费 schema、渲染 widget、执行校验和提交，不承担拖拽、属性编辑、数据源编辑或设计器状态管理。
 
 远程选项数据源必须通过 `loadRemoteOptions` 的白名单、超时和响应适配逻辑加载，规则见 [form-remote-data-source.md](/Users/start/Desktop/af-ideal-admin/docs/components/form-remote-data-source.md)。
+
+表单设计器的预览弹窗也使用同一个 `FormRenderer`，确保预览和生产渲染逻辑一致。
