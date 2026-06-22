@@ -24,13 +24,10 @@
 </template>
 
 <script lang="ts" setup>
-import { useUserStore } from '@/store'
 import DataPanel from './widgets/data-panel.vue'
 import dataAvatar from './widgets/data-avatar.vue'
 import todoPanel from './widgets/todo-panel.vue'
 import actionPanel from './widgets/action-panel.vue'
 import noticePanel from './widgets/notice-panel.vue'
 import serviceChart from './widgets/service-chart.vue'
-
-// const { userInfo } = useUserStore()
 </script>

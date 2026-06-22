@@ -1,37 +1,68 @@
 import { useUserStore } from '@/store'
+import type { UserRole } from '@config'
 import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router'
+
+type PermissionRoute = RouteLocationNormalized | RouteRecordRaw
+type AccessibleRoute = { name: RouteRecordRaw['name'] } | null
+
+const canAccessMeta = (
+  meta: PermissionRoute['meta'],
+  role: UserRole | string
+) => {
+  const roles = meta?.roles
+
+  if (!meta?.requireAuth) return true
+  if (!roles || roles.length === 0) return true
+  if (roles.includes('*')) return true
+
+  return roles.includes(role)
+}
+
+export const canAccessRoute = (
+  route: PermissionRoute,
+  role: UserRole | string
+) => {
+  if ('matched' in route && route.matched.length) {
+    return route.matched.every((record) => canAccessMeta(record.meta, role))
+  }
+
+  return canAccessMeta(route.meta, role)
+}
+
+export const getFirstAccessibleRoute = (
+  rs: RouteRecordRaw[],
+  role: UserRole | string = ''
+): AccessibleRoute => {
+  const routes = [...rs]
+
+  while (routes.length) {
+    const route = routes.shift()
+
+    if (route && canAccessRoute(route, role)) {
+      const child = getFirstAccessibleRoute(route.children || [], role)
+      if (child) return child
+
+      if (!route.redirect) {
+        return { name: route.name }
+      }
+    }
+  }
+
+  return null
+}
 
 const usePermission = () => {
   const userStore = useUserStore()
 
   return {
-    hasAccessToRoute(route: RouteLocationNormalized | RouteRecordRaw) {
-      return (
-        !route.meta?.requireAuth ||
-        !route.meta?.roles ||
-        (route.meta?.roles as string[] | undefined)?.includes('*') ||
-        (route.meta?.roles as string[] | undefined)?.includes(userStore.role)
-      )
+    hasAccessToRoute(route: PermissionRoute) {
+      return canAccessRoute(route, userStore.role)
     },
-    getFirstAccessibleRoute(rs: any, role = 'admin') {
-      const routes = [...rs]
-      while (routes.length) {
-        const first = routes.shift()
-
-        if (
-          first?.meta?.roles?.find(
-            (el: string[]) => el.includes('*') || el.includes(role)
-          )
-        ) {
-          return { name: first.name }
-        }
-
-        if (first?.children) {
-          routes.push(...first.children)
-        }
-      }
-
-      return null
+    getFirstAccessibleRoute(
+      rs: RouteRecordRaw[],
+      role: UserRole | string = ''
+    ) {
+      return getFirstAccessibleRoute(rs, role)
     },
   }
 }

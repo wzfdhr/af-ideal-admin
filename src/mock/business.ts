@@ -95,7 +95,6 @@ setupMock({
         const { current = 1, pageSize = 20 } = qs.parseUrl(params.url).query
         const p = current as number
         const ps = pageSize as number
-        console.log(data)
         return responseWrap({
           list: data.list.slice((p - 1) * ps, p * ps),
           total: 55,

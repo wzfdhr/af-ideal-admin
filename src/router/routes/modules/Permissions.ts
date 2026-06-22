@@ -1,4 +1,4 @@
-import { defaultLayout } from '@/router/constants'
+import { defaultLayout, routeGroupLayout } from '@/router/constants'
 import { AppRouteRecordRaw } from '../../types'
 
 const dashboardRoutes: AppRouteRecordRaw = {
@@ -16,7 +16,7 @@ const dashboardRoutes: AppRouteRecordRaw = {
     {
       path: 'front',
       name: 'front',
-      component: '',
+      component: routeGroupLayout,
       meta: {
         locale: 'menu.permissions.front',
         requireAuth: true,
@@ -58,7 +58,7 @@ const dashboardRoutes: AppRouteRecordRaw = {
     {
       path: 'backend',
       name: 'backend',
-      component: '',
+      component: routeGroupLayout,
       meta: {
         locale: 'menu.permissions.backend',
         requireAuth: true,

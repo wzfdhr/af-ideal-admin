@@ -77,7 +77,6 @@ const getFillColor = (type: string) => {
 }
 
 const getIcon = (type: string) => {
-  console.log(type)
   const typeConfig = noticeTypeMap.find((e) => e.type === type)
   return typeConfig?.icon
 }

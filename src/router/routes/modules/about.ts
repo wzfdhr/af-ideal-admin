@@ -1,4 +1,3 @@
-import { defaultLayout } from '@/router/constants'
 import { AppRouteRecordRaw } from '../../types'
 
 const aboutRoutes: AppRouteRecordRaw = {

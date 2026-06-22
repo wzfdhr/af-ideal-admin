@@ -12,7 +12,7 @@ declare module 'vue-router' {
     activeMenu?: string
     order?: number
     noAffix?: boolean
-    ignoreCache?: boolean,
+    ignoreCache?: boolean
     openInNewWindow?: boolean
   }
 }

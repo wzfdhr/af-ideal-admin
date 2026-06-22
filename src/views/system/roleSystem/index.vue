@@ -129,10 +129,18 @@ const data = reactive([
   },
 ])
 const handleEdit = (obj: any, index: number) => {
-  console.log(index)
+  if (index < 0) return
+
+  formData.value.roleName = obj.roleName
+  formData.value.roleKey = obj.roleKey
+  formData.value.state = obj.state
 }
 const handleRemove = (obj: any) => {
-  console.log(obj)
+  const index = data.findIndex((item) => item.roleId === obj.roleId)
+
+  if (index > -1) {
+    data.splice(index, 1)
+  }
 }
 </script>
 

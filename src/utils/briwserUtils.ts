@@ -68,11 +68,9 @@ const isOutDated = (limitObj: any) => {
       Chrome: 103,
     }
   }
-  // console.log(navigator.userAgent);
   const browserVersionStr = navigator.userAgent.split(':')
   const name = browserVersionStr[0]
   const version = browserVersionStr[1]
-  console.log(browserVersionStr, name, version)
   return !limitObj[name] || (limitObj[name] && version < limitObj[name])
 }
 

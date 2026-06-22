@@ -1,5 +1,10 @@
 # AF-Ideal-Admin
 
+## More Docs
+
+- [Auth and permission architecture](docs/architecture/auth-permission.md)
+- [Deployment](docs/deployment.md)
+
 AF-Ideal-Admin 是一个基于 Vue 3、TypeScript 和 Vite 的后台管理系统模板。项目内置登录鉴权、动态菜单、页面权限、按钮权限、可视化看板、表单页面、列表页面、系统管理页面和可拖拽表单设计器，适合作为中后台项目的二次开发基础。
 
 ## 项目概览
@@ -126,7 +131,7 @@ npm run lint
 
 当前 `menuFromServer` 默认为 `false`，系统使用前端静态路由生成菜单。若切换为 `true`，会通过 `/api/user/menu` 获取服务端菜单。
 
-路由权限字段建议统一使用 `meta.roles`。当前项目里有少量页面使用了 `role` 或 `rules` 字段，权限钩子默认不会识别这些字段，后续扩展权限时需要留意。
+路由权限字段统一使用 `meta.roles`。后续新增路由时应继续沿用该字段，避免出现权限钩子无法识别的自定义字段。
 
 ## 请求与环境变量
 
@@ -146,15 +151,16 @@ Axios 拦截器位于 `src/api/request.ts`：
 | --- | --- |
 | `VITE_APP_ENV` | 当前环境标识 |
 | `VITE_BASE_URL` | 应用基础路径 |
-| `VITE_BOOT_URL` | 后端服务地址 |
+| `VITE_API_BASE_URL` | API 请求前缀，Axios 会使用该值作为公共前缀 |
+| `VITE_API_PROXY_TARGET` | 开发环境 API 代理目标 |
 | `VITE_APP_TITLE` | 页面标题 |
 
-注意：当前请求公共前缀来自 `config/index.ts` 的 `import.meta.env.BASE_URL`，不是 `VITE_BASE_URL`。如果要统一使用自定义环境变量，需要同步调整该配置。
+请求公共前缀来自 `config/index.ts` 的 `import.meta.env.VITE_API_BASE_URL`。开发服务器会把该前缀代理到 `VITE_API_PROXY_TARGET`。
 
 ## 开发注意事项
 
 - `src/mock` 只在 `import.meta.env.DEV` 为 `true` 时启用，生产构建不会自动启用 Mock。
-- Vite 开发服务器已配置 `/api` 代理到 `http://localhost:8080`，见 `vite.config.ts`。
+- Vite 开发服务器使用 `VITE_API_BASE_URL` 和 `VITE_API_PROXY_TARGET` 配置 API 代理，见 `vite.config.ts`。
 - `src/router/index.ts` 使用 `createWebHistory()`，部署到非根路径时需要同步确认前端路由与服务器回退配置。
 - `package.json` 没有 `build` 脚本，请使用 `build:dev` 或 `build:prd`。
 - 仓库中存在 `dist.zip` 和 `node_modules.zip`，日常开发更推荐通过源码构建和 `npm install` 安装依赖，避免依赖压缩包与锁文件长期漂移。
@@ -163,6 +169,6 @@ Axios 拦截器位于 `src/api/request.ts`：
 
 - 统一路由权限字段，全部收敛为 `meta.roles`。
 - 清理调试日志，例如权限守卫和菜单 store 中的 `console.log`。
-- 明确 `VITE_BASE_URL`、`VITE_BOOT_URL` 与 Axios `baseURL` 的关系。
+- 根据真实后端接口确认 `VITE_API_BASE_URL` 和 `VITE_API_PROXY_TARGET` 的部署策略。
 - 根据真实后端接口替换 Mock 数据，并补充接口契约文档。
 - 为核心权限逻辑、登录流程和表单设计器补充最小化测试。

@@ -86,15 +86,12 @@ const onVerificationCodeSend = async () => {
 
 const onSubmit = async ({
   errors,
-  values,
 }: {
   errors: Record<string, ValidatedError> | undefined
-  values: Record<string, any>
 }) => {
-  console.log(loginForm)
   await loginForm.value.validate()
   if (!errors) {
-    console.log(values)
+    errorMessage.value = ''
   }
 }
 </script>

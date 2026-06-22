@@ -47,12 +47,12 @@ export interface PaginationParams {
 }
 
 export const getGroups = async () =>
-  axios.get<GroupedBusinessEntry[]>('/api/business/groups')
+  axios.get<GroupedBusinessEntry[]>('/business/groups')
 export const getRecords = async (params: PaginationParams) =>
   axios.get<{
     list: BusinessRecord[]
     total: number
-  }>('/api/business/records', {
+  }>('/business/records', {
     params,
     paramsSerializer: (obj) => qs.stringify(obj),
   })
