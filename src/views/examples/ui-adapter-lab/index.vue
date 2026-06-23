@@ -17,6 +17,52 @@
       </div>
     </section>
 
+    <section
+      class="s-section ui-adapter-lab__coverage"
+      data-testid="ui-adapter-lab-coverage"
+    >
+      <div class="ui-adapter-lab__section-title">
+        <span>Adapter coverage</span>
+        <h3>组件覆盖矩阵</h3>
+      </div>
+      <div class="ui-adapter-lab__coverage-grid">
+        <article
+          v-for="item in coverageItems"
+          :key="item.name"
+          class="ui-adapter-lab__coverage-card"
+        >
+          <div>
+            <strong>{{ item.name }}</strong>
+            <span :class="['ui-adapter-lab__status', item.status]">
+              {{ item.statusText }}
+            </span>
+          </div>
+          <p>{{ item.description }}</p>
+        </article>
+      </div>
+    </section>
+
+    <section
+      class="s-section ui-adapter-lab__mock-scenarios"
+      data-testid="ui-adapter-lab-mock-scenarios"
+    >
+      <div class="ui-adapter-lab__section-title">
+        <span>Mock scenarios</span>
+        <h3>Mock 场景覆盖</h3>
+      </div>
+      <div class="ui-adapter-lab__scenario-grid">
+        <article
+          v-for="scenario in mockScenarios"
+          :key="scenario.name"
+          class="ui-adapter-lab__scenario"
+        >
+          <span>{{ scenario.state }}</span>
+          <strong>{{ scenario.name }}</strong>
+          <p>{{ scenario.description }}</p>
+        </article>
+      </div>
+    </section>
+
     <section class="s-section ui-adapter-lab__query">
       <ProForm
         ref="queryFormRef"
@@ -171,6 +217,91 @@ const statusOptions = [
   { label: '全部', value: '' },
   { label: 'Ready', value: 'ready' },
   { label: 'Blocked', value: 'blocked' },
+]
+
+const coverageItems = [
+  {
+    name: 'Button',
+    status: 'ready',
+    statusText: '已覆盖',
+    description: '普通按钮、危险按钮、权限按钮和加载态。',
+  },
+  {
+    name: 'Table',
+    status: 'ready',
+    statusText: '已覆盖',
+    description: 'ProTable 查询、分页、行操作和空态。',
+  },
+  {
+    name: 'Form',
+    status: 'ready',
+    statusText: '已覆盖',
+    description: 'ProForm schema、校验、默认值和提交回调。',
+  },
+  {
+    name: 'Upload',
+    status: 'blocked',
+    statusText: '补齐中',
+    description: '文件上传、预览、权限下载和失败重试。',
+  },
+  {
+    name: 'Tabs',
+    status: 'ready',
+    statusText: '已覆盖',
+    description: '路由标签、关闭行为和缓存视图切换。',
+  },
+  {
+    name: 'Modal',
+    status: 'ready',
+    statusText: '已覆盖',
+    description: '新增、编辑、确认提交和错误提示。',
+  },
+  {
+    name: 'Drawer',
+    status: 'ready',
+    statusText: '已覆盖',
+    description: '详情抽屉、字段展示和只读态。',
+  },
+  {
+    name: 'A11y',
+    status: 'blocked',
+    statusText: '治理中',
+    description: '焦点顺序、禁用说明和键盘访问约束。',
+  },
+  {
+    name: '国际化',
+    status: 'blocked',
+    statusText: '扩展中',
+    description: '菜单、表单项、空态和错误态双语对齐。',
+  },
+]
+
+const mockScenarios = [
+  {
+    name: '查询分页',
+    state: '正常态',
+    description: 'fetch-data 走 Mock API，覆盖关键词、状态和分页。',
+  },
+  {
+    name: '空态',
+    state: '无数据',
+    description: '点击空态按钮可模拟 no-such-component 查询。',
+  },
+  {
+    name: '错误态',
+    state: '异常',
+    description: '模拟 500 traceId，验证错误文案和消息提示。',
+  },
+  {
+    name: '权限态',
+    state: '受控',
+    description: '新增、编辑、详情均通过 PermissionButton 管理。',
+  },
+  {
+    name: '国际化',
+    state: '双语',
+    description: '路由菜单 key 与页面核心文案纳入 locale 校验。',
+  },
 ]
 
 const querySchema: ProFormField[] = [
@@ -411,6 +542,86 @@ const columns: TableColumnData[] = [
   font-size: 12px;
 }
 
+.ui-adapter-lab__section-title {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.ui-adapter-lab__section-title span {
+  color: #667085;
+  font-size: 12px;
+}
+
+.ui-adapter-lab__section-title h3 {
+  margin: 0;
+  color: #101828;
+}
+
+.ui-adapter-lab__coverage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ui-adapter-lab__coverage-card {
+  padding: 12px;
+  border: 1px solid #eaecf0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.ui-adapter-lab__coverage-card div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ui-adapter-lab__coverage-card p,
+.ui-adapter-lab__scenario p {
+  margin: 8px 0 0;
+  color: #475467;
+  line-height: 1.7;
+}
+
+.ui-adapter-lab__status {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.ui-adapter-lab__status.ready {
+  color: #027a48;
+  background: #ecfdf3;
+}
+
+.ui-adapter-lab__status.blocked {
+  color: #b54708;
+  background: #fffaeb;
+}
+
+.ui-adapter-lab__scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ui-adapter-lab__scenario {
+  min-height: 116px;
+  padding: 12px;
+  border: 1px solid #eaecf0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.ui-adapter-lab__scenario span {
+  display: block;
+  margin-bottom: 6px;
+  color: #667085;
+  font-size: 12px;
+}
+
 .ui-adapter-lab__query {
   display: flex;
   align-items: flex-start;
@@ -456,5 +667,24 @@ const columns: TableColumnData[] = [
 
 .ui-adapter-lab__detail dd {
   margin: 0;
+}
+
+@media (max-width: 1100px) {
+  .ui-adapter-lab__coverage-grid,
+  .ui-adapter-lab__scenario-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .ui-adapter-lab__governance,
+  .ui-adapter-lab__coverage-grid,
+  .ui-adapter-lab__scenario-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ui-adapter-lab__query {
+    flex-direction: column;
+  }
 }
 </style>

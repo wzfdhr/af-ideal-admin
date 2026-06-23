@@ -194,6 +194,24 @@ describe('UiAdapterLabPage', () => {
     expect(wrapper.text()).toContain('arco')
     expect(wrapper.text()).toContain('blocked')
     expect(wrapper.text()).toContain('Aheart Table')
+    ;[
+      '组件覆盖矩阵',
+      'Button',
+      'Table',
+      'Form',
+      'Upload',
+      'Tabs',
+      'Modal',
+      'Drawer',
+      'A11y',
+      '国际化',
+      'Mock 场景覆盖',
+      '权限态',
+      '错误态',
+      '空态',
+    ].forEach((text) => {
+      expect(wrapper.text()).toContain(text)
+    })
   })
 
   it('covers empty, error and create interactions through mock APIs', async () => {

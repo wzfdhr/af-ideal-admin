@@ -74,7 +74,11 @@ export const mockUsers: MockUserSeed[] = [
     username: 'user',
     password: 'user',
     role: 'user',
-    permissions: ['permission:page:view'],
+    permissions: [
+      'permission:page:view',
+      'permission:button:view',
+      'permission:testing:view',
+    ],
     tenantId: 'tenant-a',
     name: '普通用户',
     avatar: avatarExample,
@@ -231,6 +235,32 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             roles: ['*'],
           },
           children: [
+            {
+              path: 'page',
+              name: 'backendPage',
+              componentKey: 'BackendPermissionPage',
+              meta: {
+                locale: 'menu.permissions.backend.page',
+                requireAuth: true,
+                roles: ['*'],
+                access: {
+                  permissions: ['permission:backend-page:view'],
+                },
+              },
+            },
+            {
+              path: 'button',
+              name: 'backendButton',
+              componentKey: 'BackendPermissionButton',
+              meta: {
+                locale: 'menu.permissions.backend.button',
+                requireAuth: true,
+                roles: ['*'],
+                access: {
+                  permissions: ['permission:backend-button:view'],
+                },
+              },
+            },
             {
               path: 'data-scope',
               name: 'dataPermissionCenter',
@@ -615,6 +645,26 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
                 locale: 'menu.permissions.front.page',
                 requireAuth: true,
                 access: { permissions: ['permission:page:view'] },
+              },
+            },
+            {
+              path: 'button',
+              name: 'button',
+              componentKey: 'PermissionButtonPage',
+              meta: {
+                locale: 'menu.permissions.front.button',
+                requireAuth: true,
+                access: { permissions: ['permission:button:view'] },
+              },
+            },
+            {
+              path: 'testing',
+              name: 'testing',
+              componentKey: 'PermissionTestingPage',
+              meta: {
+                locale: 'menu.permissions.front.testing',
+                requireAuth: true,
+                access: { permissions: ['permission:testing:view'] },
               },
             },
           ],
