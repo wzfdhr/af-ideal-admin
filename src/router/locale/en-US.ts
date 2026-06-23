@@ -11,6 +11,7 @@ export default {
   'menu.permissions.button': 'ButtonPermissions',
   'menu.permissions.testing': 'backendPermissions',
   'menu.permissions.backend': 'TestingPermissions',
+  'menu.permissions.backend.dataScope': 'Data permissions',
   'menu.dashboard.analyse': 'AnalyseBench',
   'menu.about': 'SystemInformation',
   'menu.about.temp': 'About',

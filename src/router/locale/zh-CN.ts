@@ -12,6 +12,7 @@ export default {
   'menu.permissions.backend': '后台权限管理',
   'menu.permissions.backend.page': '页面权限',
   'menu.permissions.backend.button': '按钮权限',
+  'menu.permissions.backend.dataScope': '数据权限',
   'menu.permissions.front.testing': '权限测试页',
   'menu.dashboard.analyse': '分析台',
   'menu.about': '系统信息',

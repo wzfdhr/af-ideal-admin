@@ -1,4 +1,5 @@
 import avatarExample from '@/assets/avatar-user.png'
+import { DATA_PERMISSION_PERMISSIONS } from '@/constants/data-permission'
 import { SYSTEM_DEPARTMENT_PERMISSIONS } from '@/constants/system-department'
 import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
 import { SYSTEM_MENU_PERMISSIONS } from '@/constants/system-menu'
@@ -193,6 +194,44 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             requireAuth: true,
             roles: ['*'],
           },
+        },
+      ],
+    },
+    {
+      path: '/permissions',
+      name: 'permissions',
+      componentKey: 'DefaultLayout',
+      meta: {
+        locale: 'menu.permissions',
+        requireAuth: true,
+        order: 2,
+        icon: 'icon-apps',
+      },
+      children: [
+        {
+          path: 'backend',
+          name: 'backend',
+          componentKey: 'RouteGroupLayout',
+          meta: {
+            locale: 'menu.permissions.backend',
+            requireAuth: true,
+            roles: ['*'],
+          },
+          children: [
+            {
+              path: 'data-scope',
+              name: 'dataPermissionCenter',
+              componentKey: 'DataPermissionCenterPage',
+              meta: {
+                locale: 'menu.permissions.backend.dataScope',
+                requireAuth: true,
+                roles: ['*'],
+                access: {
+                  permissions: [DATA_PERMISSION_PERMISSIONS.view],
+                },
+              },
+            },
+          ],
         },
       ],
     },
