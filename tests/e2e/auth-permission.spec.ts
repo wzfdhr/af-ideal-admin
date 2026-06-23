@@ -29,6 +29,17 @@ const mockAuthApi = async (page: Page, role: 'admin' | 'user') => {
       ),
     })
   })
+
+  await page.route('**/api/audit/events', async (route) => {
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify(
+        ok({
+          id: 'e2e-audit-event',
+        })
+      ),
+    })
+  })
 }
 
 const loginAs = async (page: Page, username: 'admin' | 'user') => {
