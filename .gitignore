@@ -23,6 +23,10 @@ lib-cov
 coverage
 *.lcov
 
+# Test reports and browser artifacts
+test-results/
+playwright-report/
+
 # nyc test coverage
 .nyc_output
 
@@ -72,6 +76,10 @@ web_modules/
 # Build and dependency archives
 dist.zip
 node_modules.zip
+*.zip
+
+# OS metadata
+.DS_Store
 
 # Yarn Integrity file
 .yarn-integrity

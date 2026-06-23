@@ -11,6 +11,7 @@
 - [发布和版本管理规范](release-management.md)：Conventional Commits、版本号策略、Changelog 和发布前验证流程。
 - [Code review checklist](code-review-checklist.md)：Reviewer 合并前检查清单和暂缓合并标准。
 - [风险等级说明](risk-levels.md)：P0-P3 风险分级、测试要求和回滚口径。
+- [仓库卫生规范](repository-hygiene.md)：生成产物、依赖压缩包、本地报告和敏感信息的提交门禁。
 
 ## 架构参考
 
@@ -29,7 +30,7 @@
 5. 在 `src/router/routes/modules` 增加路由，并同步 `src/mock/seed.ts` 的服务端菜单。
 6. 页面优先使用 `ProTable`、`ProForm`、`PermissionButton` 和字典组件。
 7. 补单元测试，至少覆盖 API、Mock、路由菜单、权限按钮和核心页面交互。
-8. 提交前运行发布 checklist。
+8. 提交前运行发布 checklist，并按仓库卫生规范确认没有生成产物、依赖压缩包和敏感信息。
 
 ## 本地验证命令
 
