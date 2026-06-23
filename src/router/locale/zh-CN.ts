@@ -32,6 +32,8 @@ export default {
   'menu.resource.files': '文件资源',
   'menu.theme': '主题中心',
   'menu.theme.center': '主题配置',
+  'menu.plugin': '插件中心',
+  'menu.plugin.center': '插件管理',
   'menu.Scalability': '扩展能力',
   'menu.Scalability.formDesign': '表单设计器',
   'menu.Scalability.workflowDesign': '流程设计器',

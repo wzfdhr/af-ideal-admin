@@ -10,6 +10,7 @@ import setupLowCodeMock from './modules/low-code'
 import setupMenuMock from './modules/menu'
 import setupMessageMock from './modules/message'
 import setupPermissionMock from './modules/permission'
+import setupPluginMock from './modules/plugin'
 import setupReportMock from './modules/report'
 import setupSystemDepartmentMock from './modules/system-department'
 import setupSystemDictionaryMock from './modules/system-dictionary'
@@ -36,6 +37,7 @@ setupWorkflowMock()
 setupReportMock()
 setupAuditMock()
 setupMessageMock()
+setupPluginMock()
 setupSystemDepartmentMock()
 setupSystemDictionaryMock()
 setupSystemMenuMock()

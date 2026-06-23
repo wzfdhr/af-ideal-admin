@@ -30,6 +30,8 @@ export default {
   'menu.resource.files': 'File resources',
   'menu.theme': 'Theme center',
   'menu.theme.center': 'Theme settings',
+  'menu.plugin': 'Plugin center',
+  'menu.plugin.center': 'Plugin management',
   'menu.formDesign': 'Scalability',
   'menu.Scalability.formDesign': 'Form design',
   'menu.Scalability.workflowDesign': 'Workflow design',
