@@ -23,6 +23,9 @@
         <div class="panel-section">
           <div class="panel-title">操作</div>
           <a-space direction="vertical" class="w-full">
+            <a-button long :loading="loading" @click="loadDraft()">
+              加载示例流程
+            </a-button>
             <a-button long :loading="creating" @click="createDraft()">
               创建草稿
             </a-button>
@@ -50,6 +53,9 @@
             </a-button>
             <div v-if="actionMessage" class="action-message">
               {{ actionMessage }}
+            </div>
+            <div v-if="actionError" class="action-error">
+              {{ actionError }}
             </div>
           </a-space>
         </div>
@@ -132,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import WorkflowCanvas from './workflow-canvas.vue'
 import {
   getWorkflowNodeTypeLabel,
@@ -155,11 +161,14 @@ const {
 } = useWorkflowDesigner()
 
 const {
+  actionError,
   actionMessage,
   createDraft,
   creating,
   disableCurrent,
   disabling,
+  loadDraft,
+  loading,
   previewVisible,
   publishCurrent,
   publishing,
@@ -167,6 +176,10 @@ const {
   saving,
   showPreview,
 } = useWorkflowDesignerActions(schema, workflowId)
+
+onMounted(() => {
+  loadDraft()
+})
 
 const selectedNodeName = computed({
   get: () => selectedNode.value?.name || '',
@@ -302,6 +315,11 @@ const handleCanvasDrop = ({
 
 .action-message {
   color: #00b42a;
+  font-size: 12px;
+}
+
+.action-error {
+  color: #f53f3f;
   font-size: 12px;
 }
 

@@ -10,6 +10,7 @@ import type { WorkflowSchema } from '@/components/workflow-designer/schema'
 const apiMocks = vi.hoisted(() => ({
   createWorkflowDefinition: vi.fn(),
   disableWorkflowDefinition: vi.fn(),
+  getWorkflowDefinition: vi.fn(),
   publishWorkflowDefinition: vi.fn(),
   saveWorkflowDefinition: vi.fn(),
 }))
@@ -17,6 +18,7 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('@/api/workflow', () => ({
   createWorkflowDefinition: apiMocks.createWorkflowDefinition,
   disableWorkflowDefinition: apiMocks.disableWorkflowDefinition,
+  getWorkflowDefinition: apiMocks.getWorkflowDefinition,
   publishWorkflowDefinition: apiMocks.publishWorkflowDefinition,
   saveWorkflowDefinition: apiMocks.saveWorkflowDefinition,
 }))
@@ -126,5 +128,56 @@ describe('useWorkflowDesigner', () => {
       'workflow-new'
     )
     expect(actions.actionMessage.value).toBe('停用成功')
+  })
+
+  it('loads an existing workflow definition into the designer', async () => {
+    const schema = ref<WorkflowSchema>(createInitialWorkflowSchema())
+    const workflowId = ref('workflow-leave-approval')
+    const actions = useWorkflowDesignerActions(schema, workflowId)
+    const loadedSchema = createInitialWorkflowSchema()
+
+    apiMocks.getWorkflowDefinition.mockResolvedValueOnce({
+      id: 'workflow-leave-approval',
+      schema: loadedSchema,
+    })
+
+    await actions.loadDraft('workflow-leave-approval')
+
+    expect(apiMocks.getWorkflowDefinition).toHaveBeenCalledWith(
+      'workflow-leave-approval'
+    )
+    expect(workflowId.value).toBe('workflow-leave-approval')
+    expect(schema.value).toEqual(loadedSchema)
+    expect(actions.actionMessage.value).toBe('加载成功')
+  })
+
+  it('validates schema before publishing and keeps the api untouched when invalid', async () => {
+    const schema = ref<WorkflowSchema>({
+      version: 1,
+      nodes: [],
+      edges: [],
+    } as WorkflowSchema)
+    const workflowId = ref('workflow-leave-approval')
+    const actions = useWorkflowDesignerActions(schema, workflowId)
+
+    await actions.publishCurrent()
+
+    expect(apiMocks.publishWorkflowDefinition).not.toHaveBeenCalled()
+    expect(actions.actionError.value).toBe('非法流程 schema')
+  })
+
+  it('keeps permission publish errors recoverable in the action state', async () => {
+    const schema = ref<WorkflowSchema>(createInitialWorkflowSchema())
+    const workflowId = ref('workflow-leave-approval')
+    const actions = useWorkflowDesignerActions(schema, workflowId)
+
+    apiMocks.publishWorkflowDefinition.mockRejectedValueOnce(
+      new Error('没有流程发布权限')
+    )
+
+    await actions.publishCurrent()
+
+    expect(actions.actionError.value).toBe('没有流程发布权限')
+    expect(actions.publishing.value).toBe(false)
   })
 })

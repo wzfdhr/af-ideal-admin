@@ -2,6 +2,7 @@ import { computed, ref, type Ref } from 'vue'
 import {
   createWorkflowDefinition,
   disableWorkflowDefinition,
+  getWorkflowDefinition,
   publishWorkflowDefinition,
   saveWorkflowDefinition,
 } from '@/api/workflow'
@@ -242,15 +243,38 @@ export const useWorkflowDesignerActions = (
   workflowId: Ref<string>
 ) => {
   const actionMessage = ref('')
+  const actionError = ref('')
   const creating = ref(false)
   const disabling = ref(false)
+  const loading = ref(false)
   const previewVisible = ref(false)
   const publishing = ref(false)
   const saving = ref(false)
 
+  const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback
+
+  const loadDraft = async (id = workflowId.value) => {
+    loading.value = true
+    actionMessage.value = ''
+    actionError.value = ''
+
+    try {
+      const result = await getWorkflowDefinition(id)
+      workflowId.value = result.id
+      schema.value = validateWorkflowSchema(result.schema)
+      actionMessage.value = '加载成功'
+    } catch (error) {
+      actionError.value = getErrorMessage(error, '加载失败')
+    } finally {
+      loading.value = false
+    }
+  }
+
   const createDraft = async (name = '未命名流程') => {
     creating.value = true
     actionMessage.value = ''
+    actionError.value = ''
 
     try {
       const result = await createWorkflowDefinition({
@@ -270,6 +294,7 @@ export const useWorkflowDesignerActions = (
   const saveDraft = async () => {
     saving.value = true
     actionMessage.value = ''
+    actionError.value = ''
 
     try {
       await saveWorkflowDefinition(workflowId.value, schema.value)
@@ -282,10 +307,15 @@ export const useWorkflowDesignerActions = (
   const publishCurrent = async () => {
     publishing.value = true
     actionMessage.value = ''
+    actionError.value = ''
 
     try {
-      await publishWorkflowDefinition(workflowId.value, schema.value)
+      const validatedSchema = validateWorkflowSchema(schema.value)
+      schema.value = validatedSchema
+      await publishWorkflowDefinition(workflowId.value, validatedSchema)
       actionMessage.value = '发布成功'
+    } catch (error) {
+      actionError.value = getErrorMessage(error, '发布失败')
     } finally {
       publishing.value = false
     }
@@ -294,6 +324,7 @@ export const useWorkflowDesignerActions = (
   const disableCurrent = async () => {
     disabling.value = true
     actionMessage.value = ''
+    actionError.value = ''
 
     try {
       await disableWorkflowDefinition(workflowId.value)
@@ -308,11 +339,14 @@ export const useWorkflowDesignerActions = (
   }
 
   return {
+    actionError,
     actionMessage,
     createDraft,
     creating,
     disableCurrent,
     disabling,
+    loadDraft,
+    loading,
     previewVisible,
     publishCurrent,
     publishing,

@@ -1,12 +1,13 @@
 /* eslint-disable vue/one-component-per-file */
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, nextTick } from 'vue'
 import WorkflowDesigner from '@/components/workflow-designer/index.vue'
 
 const apiMocks = vi.hoisted(() => ({
   createWorkflowDefinition: vi.fn(),
   disableWorkflowDefinition: vi.fn(),
+  getWorkflowDefinition: vi.fn(),
   publishWorkflowDefinition: vi.fn(),
   saveWorkflowDefinition: vi.fn(),
 }))
@@ -14,6 +15,7 @@ const apiMocks = vi.hoisted(() => ({
 vi.mock('@/api/workflow', () => ({
   createWorkflowDefinition: apiMocks.createWorkflowDefinition,
   disableWorkflowDefinition: apiMocks.disableWorkflowDefinition,
+  getWorkflowDefinition: apiMocks.getWorkflowDefinition,
   publishWorkflowDefinition: apiMocks.publishWorkflowDefinition,
   saveWorkflowDefinition: apiMocks.saveWorkflowDefinition,
 }))
@@ -128,13 +130,37 @@ const mountDesigner = () =>
     },
   })
 
+const settle = async () => {
+  await Promise.resolve()
+  await nextTick()
+}
+
 describe('WorkflowDesigner page', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    apiMocks.getWorkflowDefinition.mockResolvedValue({
+      id: 'workflow-leave-approval',
+      schema: {
+        version: 1,
+        nodes: [
+          { id: 'start', type: 'start', name: '开始', config: {} },
+          { id: 'end', type: 'end', name: '结束', config: {} },
+        ],
+        edges: [
+          {
+            id: 'edge-start-end',
+            source: 'start',
+            target: 'end',
+            label: '',
+          },
+        ],
+      },
+    })
   })
 
   it('renders node palette, canvas and property panel', async () => {
     const wrapper = mountDesigner()
+    await settle()
 
     expect(wrapper.find('[data-testid="workflow-canvas"]').exists()).toBe(true)
     expect(
@@ -159,6 +185,7 @@ describe('WorkflowDesigner page', () => {
       id: 'workflow-leave-approval',
     })
     const wrapper = mountDesigner()
+    await settle()
 
     await wrapper
       .find('[data-testid="workflow-palette-approval"]')
