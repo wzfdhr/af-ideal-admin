@@ -37,6 +37,8 @@ export default {
   'menu.theme.center': '主题配置',
   'menu.plugin': '插件中心',
   'menu.plugin.center': '插件管理',
+  'menu.examples': '示例实验室',
+  'menu.examples.uiAdapterLab': 'UI 适配实验页',
   'menu.Scalability': '扩展能力',
   'menu.Scalability.formDesign': '表单设计器',
   'menu.Scalability.workflowDesign': '流程设计器',

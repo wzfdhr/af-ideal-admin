@@ -35,6 +35,8 @@ export default {
   'menu.theme.center': 'Theme settings',
   'menu.plugin': 'Plugin center',
   'menu.plugin.center': 'Plugin management',
+  'menu.examples': 'Examples',
+  'menu.examples.uiAdapterLab': 'UI adapter lab',
   'menu.formDesign': 'Scalability',
   'menu.Scalability.formDesign': 'Form design',
   'menu.Scalability.workflowDesign': 'Workflow design',

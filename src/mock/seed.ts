@@ -11,6 +11,7 @@ import { FILE_RESOURCE_PERMISSIONS } from '@/constants/file-resource'
 import { PLUGIN_PERMISSIONS } from '@/constants/plugin'
 import { THEME_PERMISSIONS } from '@/constants/theme'
 import { REPORT_PERMISSIONS } from '@/constants/report'
+import { UI_ADAPTER_LAB_PERMISSIONS } from '@/constants/ui-adapter-lab'
 import type { SystemDepartmentRecord } from '@/api/system/department'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
 import type { SystemMenuRecord } from '@/api/system/menu'
@@ -529,6 +530,30 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             requireAuth: true,
             roles: ['*'],
             access: { permissions: [PLUGIN_PERMISSIONS.view] },
+          },
+        },
+      ],
+    },
+    {
+      path: '/examples',
+      name: 'examples',
+      componentKey: 'DefaultLayout',
+      meta: {
+        locale: 'menu.examples',
+        requireAuth: true,
+        order: 13,
+        icon: 'icon-experiment',
+      },
+      children: [
+        {
+          path: 'ui-adapter-lab',
+          name: 'uiAdapterLab',
+          componentKey: 'UiAdapterLabPage',
+          meta: {
+            locale: 'menu.examples.uiAdapterLab',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [UI_ADAPTER_LAB_PERMISSIONS.view] },
           },
         },
       ],

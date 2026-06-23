@@ -23,6 +23,7 @@ import setupSystemRoleMock from './modules/system-role'
 import setupSystemUserMock from './modules/system-user'
 import setupTenantMock from './modules/tenant'
 import setupThemeMock from './modules/theme'
+import setupUiAdapterLabMock from './modules/ui-adapter-lab'
 import setupWorkflowMock from './modules/workflow'
 
 Mock.setup({
@@ -54,3 +55,4 @@ setupSystemUserMock()
 setupBusinessMock()
 setupTenantMock()
 setupThemeMock()
+setupUiAdapterLabMock()

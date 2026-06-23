@@ -101,9 +101,10 @@ subtasks:
    existing `AdminUiAdapter` surface through
    `src/components/pro-ui/adapters/aheart.ts`, and keep Arco as the active
    adapter.
-3. `T-200A.3` Mock-backed adapter lab: build one real interaction page covering
-   query, pagination, create/edit submit, modal, drawer, permission, empty, and
-   error states.
+3. `T-200A.3` Mock-backed adapter lab: build
+   `src/views/examples/ui-adapter-lab/index.vue` as a real interaction page
+   covering query, pagination, create/edit submit, modal, drawer, permission,
+   empty, and error states.
 4. `T-200A.4` Real-page migration rehearsal: run dictionary, user, or role
    management through both adapters and document parity gaps.
 5. `T-200A.5` Switch and rollback governance: allow component-level or
