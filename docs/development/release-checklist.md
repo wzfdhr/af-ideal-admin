@@ -47,7 +47,11 @@ npm run test:e2e
 - 验证命令和结果。
 - 风险点。
 - 回滚方式。
+- `CHANGELOG.md` 中的变更说明和迁移说明。
 - 是否需要后端接口、权限码或部署配置配合。
+
+正式版本发布还必须按 [发布和版本管理规范](release-management.md)
+同步 `package.json` 版本号、`CHANGELOG.md` 和 release 提交。
 
 ## 回滚策略
 
