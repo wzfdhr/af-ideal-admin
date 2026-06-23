@@ -216,4 +216,46 @@ describe('LowCodeBuilder page', () => {
       1
     )
   })
+
+  it('keeps invalid loaded schemas recoverable in the page error state', async () => {
+    apiMocks.fetchLowCodePages.mockResolvedValueOnce({
+      list: [
+        {
+          ...createPageRecord(),
+          schema: {
+            title: '非法页面',
+            dataSources: [],
+            materials: [
+              {
+                id: 'bad',
+                type: 'BadMaterial',
+                name: '坏物料',
+                props: {},
+              },
+            ],
+          },
+        },
+      ],
+      total: 1,
+    })
+
+    const wrapper = mountBuilder()
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="low-code-builder"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('非法低代码页面 schema')
+  })
+
+  it('keeps publish failures recoverable in the page error state', async () => {
+    apiMocks.publishLowCodePage.mockRejectedValueOnce(new Error('发布失败'))
+    const wrapper = mountBuilder()
+    await flushPromises()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="low-code-publish"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('发布失败')
+  })
 })

@@ -88,6 +88,9 @@
           <span v-if="actionMessage" class="action-message">
             {{ actionMessage }}
           </span>
+          <span v-if="actionError" class="action-error">
+            {{ actionError }}
+          </span>
         </div>
 
         <div class="low-code-canvas" data-testid="low-code-canvas">
@@ -253,6 +256,7 @@ const selectedMaterialId = ref('')
 const previewData = ref<LowCodeDataSourcePreviewResult>(emptyPreview)
 const previewError = ref('')
 const actionMessage = ref('')
+const actionError = ref('')
 const saving = ref(false)
 const publishing = ref(false)
 const rollingBack = ref(false)
@@ -321,6 +325,9 @@ const selectMaterial = (id: string) => {
   selectedMaterialId.value = id
 }
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback
+
 const getMaterialActions = (material: LowCodeMaterial): LowCodeAction[] =>
   Array.isArray(material.props.actions)
     ? (material.props.actions as LowCodeAction[])
@@ -385,39 +392,54 @@ const previewCurrentDataSource = async () => {
 }
 
 const selectPage = async (page: LowCodePageRecord) => {
-  currentPage.value = page
-  schema.value = validateLowCodePageSchema(page.schema)
-  selectedMaterialId.value = schema.value.materials[0]?.id || ''
-  await previewCurrentDataSource()
+  actionError.value = ''
+
+  try {
+    const validatedSchema = validateLowCodePageSchema(page.schema)
+    currentPage.value = page
+    schema.value = validatedSchema
+    selectedMaterialId.value = schema.value.materials[0]?.id || ''
+    await previewCurrentDataSource()
+  } catch (error) {
+    previewData.value = emptyPreview
+    actionError.value = getErrorMessage(error, '低代码页面加载失败')
+  }
 }
 
 const loadPages = async () => {
-  const result = await fetchLowCodePages({ current: 1, pageSize: 20 })
-  pageList.value = result.list
+  actionError.value = ''
 
-  if (result.list.length) {
-    await selectPage(result.list[0])
-    return
-  }
+  try {
+    const result = await fetchLowCodePages({ current: 1, pageSize: 20 })
+    pageList.value = result.list
 
-  const defaultSchema = createQueryTablePageSchema()
-  const created = await createLowCodePage({
-    name: defaultSchema.title,
-    schema: defaultSchema,
-  })
-  currentPage.value = {
-    id: created.id,
-    name: created.name || defaultSchema.title,
-    schema: created.schema || defaultSchema,
-    status: created.status || 'draft',
-    version: created.version || 1,
-    createdAt: '',
-    updatedAt: '',
+    if (result.list.length) {
+      await selectPage(result.list[0])
+      return
+    }
+
+    const defaultSchema = createQueryTablePageSchema()
+    const created = await createLowCodePage({
+      name: defaultSchema.title,
+      schema: defaultSchema,
+    })
+    currentPage.value = {
+      id: created.id,
+      name: created.name || defaultSchema.title,
+      schema: created.schema || defaultSchema,
+      status: created.status || 'draft',
+      version: created.version || 1,
+      createdAt: '',
+      updatedAt: '',
+    }
+    pageList.value = [currentPage.value]
+    schema.value = validateLowCodePageSchema(currentPage.value.schema)
+    selectedMaterialId.value = schema.value.materials[0]?.id || ''
+    await previewCurrentDataSource()
+  } catch (error) {
+    previewData.value = emptyPreview
+    actionError.value = getErrorMessage(error, '低代码页面加载失败')
   }
-  pageList.value = [currentPage.value]
-  schema.value = currentPage.value.schema
-  selectedMaterialId.value = schema.value.materials[0]?.id || ''
-  await previewCurrentDataSource()
 }
 
 const createMaterial = (type: LowCodeMaterialType): LowCodeMaterial => {
@@ -501,14 +523,20 @@ const mergeCurrentPage = (patch: Partial<LowCodePageRecord>) => {
 const saveCurrent = async () => {
   if (!currentPage.value) return
   saving.value = true
+  actionMessage.value = ''
+  actionError.value = ''
   try {
-    const result = await saveLowCodePage(currentPage.value.id, schema.value)
+    const validatedSchema = validateLowCodePageSchema(schema.value)
+    schema.value = validatedSchema
+    const result = await saveLowCodePage(currentPage.value.id, validatedSchema)
     mergeCurrentPage({
       schema: result.schema || schema.value,
       status: result.status || currentPage.value.status,
       version: result.version || currentPage.value.version,
     })
     actionMessage.value = '已保存'
+  } catch (error) {
+    actionError.value = getErrorMessage(error, '保存失败')
   } finally {
     saving.value = false
   }
@@ -517,14 +545,23 @@ const saveCurrent = async () => {
 const publishCurrent = async () => {
   if (!currentPage.value) return
   publishing.value = true
+  actionMessage.value = ''
+  actionError.value = ''
   try {
-    const result = await publishLowCodePage(currentPage.value.id, schema.value)
+    const validatedSchema = validateLowCodePageSchema(schema.value)
+    schema.value = validatedSchema
+    const result = await publishLowCodePage(
+      currentPage.value.id,
+      validatedSchema
+    )
     mergeCurrentPage({
       schema: result.schema || schema.value,
       status: result.status || 'published',
       version: result.version || currentPage.value.version,
     })
     actionMessage.value = '已发布'
+  } catch (error) {
+    actionError.value = getErrorMessage(error, '发布失败')
   } finally {
     publishing.value = false
   }
@@ -533,6 +570,8 @@ const publishCurrent = async () => {
 const rollbackCurrent = async () => {
   if (!currentPage.value) return
   rollingBack.value = true
+  actionMessage.value = ''
+  actionError.value = ''
   try {
     const rollbackVersion =
       currentPage.value.version > 1 ? currentPage.value.version - 1 : 1
@@ -546,6 +585,8 @@ const rollbackCurrent = async () => {
       version: result.version || rollbackVersion,
     })
     actionMessage.value = '已回滚'
+  } catch (error) {
+    actionError.value = getErrorMessage(error, '回滚失败')
   } finally {
     rollingBack.value = false
   }
@@ -681,6 +722,11 @@ onMounted(() => {
 
 .action-message {
   color: #00b42a;
+  font-size: 12px;
+}
+
+.action-error {
+  color: #f53f3f;
   font-size: 12px;
 }
 
