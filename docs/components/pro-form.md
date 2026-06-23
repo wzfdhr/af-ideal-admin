@@ -2,7 +2,7 @@
 
 `ProForm` is the schema-driven form entry for enterprise business pages. It
 centralizes default values, validation, submit loading, reset behavior, readonly
-mode, and async option loading.
+mode, submit errors, and async option loading.
 
 ## Minimal Usage
 
@@ -79,6 +79,26 @@ formRef.value?.getValues()
 
 `submit` validates fields first. When validation passes, it toggles submit
 loading while `submitter` is running and emits `submit` with the final values.
+This gives business pages a shared submit loading and error lifecycle instead of
+duplicating try/catch logic around every form.
+
+## Submit Errors
+
+If `submitter` rejects, `submit` returns `false`, clears submit loading, renders
+the `submitErrorText` message, and emits `submitError` with the original error,
+message, and submitted values:
+
+```vue
+<ProForm
+  :schema="schema"
+  submit-error-text="Save failed"
+  :submitter="submit"
+  @submit-error="handleSubmitError"
+/>
+```
+
+Validation errors still use `submitFailed` so required-field failures and
+transport or service failures stay separate.
 
 ## Readonly Mode
 

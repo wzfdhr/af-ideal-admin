@@ -28,6 +28,12 @@ export interface ProFormField {
   props?: Record<string, unknown>
 }
 
+export interface ProFormSubmitErrorPayload {
+  error: unknown
+  message: string
+  values: Record<string, unknown>
+}
+
 export interface ProFormProps {
   schema: ProFormField[]
   modelValue?: Record<string, unknown>
@@ -35,6 +41,7 @@ export interface ProFormProps {
   submitText?: string
   resetText?: string
   hideActions?: boolean
+  submitErrorText?: string
   submitter?: (values: Record<string, unknown>) => void | Promise<void>
 }
 

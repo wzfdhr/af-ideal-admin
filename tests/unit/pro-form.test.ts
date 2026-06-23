@@ -285,4 +285,65 @@ describe('ProForm', () => {
 
     expect(wrapper.find('option').text()).toBe('Enabled')
   })
+
+  it('normalizes submitter failures into a form error event', async () => {
+    const submitter = vi.fn().mockRejectedValue(new Error('Network down'))
+    const wrapper = mount(ProForm, {
+      props: {
+        submitErrorText: 'Save failed',
+        schema: [
+          {
+            field: 'name',
+            label: 'Name',
+            type: 'input',
+            defaultValue: 'Alice',
+          },
+        ],
+        submitter,
+      },
+    })
+
+    const result = await (
+      wrapper.vm as unknown as { submit: () => Promise<boolean> }
+    ).submit()
+    await nextTick()
+
+    expect(result).toBe(false)
+    expect(wrapper.find('[data-testid="pro-form-submit-error"]').text()).toBe(
+      'Save failed'
+    )
+    expect(wrapper.emitted('submit')).toBeUndefined()
+    expect(wrapper.emitted('submitError')?.[0]?.[0]).toMatchObject({
+      message: 'Save failed',
+      values: { name: 'Alice' },
+    })
+    expect(
+      wrapper.find('[data-type="primary"]').attributes('data-loading')
+    ).toBe('false')
+  })
+
+  it('keeps submitter error visible when action buttons are hidden', async () => {
+    const wrapper = mount(ProForm, {
+      props: {
+        hideActions: true,
+        submitErrorText: 'Background save failed',
+        schema: [
+          {
+            field: 'name',
+            label: 'Name',
+            type: 'input',
+            defaultValue: 'Alice',
+          },
+        ],
+        submitter: vi.fn().mockRejectedValue(new Error('Server offline')),
+      },
+    })
+
+    await (wrapper.vm as unknown as { submit: () => Promise<boolean> }).submit()
+    await nextTick()
+
+    expect(wrapper.find('[data-testid="pro-form-submit-error"]').text()).toBe(
+      'Background save failed'
+    )
+  })
 })

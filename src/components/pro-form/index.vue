@@ -20,6 +20,15 @@
       />
     </component>
 
+    <div
+      v-if="submitError"
+      class="pro-form__submit-error"
+      data-testid="pro-form-submit-error"
+      role="alert"
+    >
+      {{ submitError }}
+    </div>
+
     <div v-if="!hideActions && !readonly" class="pro-form__actions">
       <component
         :is="Button"
@@ -39,7 +48,12 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
 import { adminUi } from '@/components/pro-ui'
-import type { ProFormExpose, ProFormField, ProFormOption } from './types'
+import type {
+  ProFormExpose,
+  ProFormField,
+  ProFormOption,
+  ProFormSubmitErrorPayload,
+} from './types'
 
 const { Button, Form, FormItem, Input, Select } = adminUi
 
@@ -50,6 +64,7 @@ interface ProFormComponentProps {
   submitText?: string
   resetText?: string
   hideActions?: boolean
+  submitErrorText?: string
   submitter?: (values: Record<string, unknown>) => void | Promise<void>
 }
 
@@ -59,6 +74,7 @@ const props = withDefaults(defineProps<ProFormComponentProps>(), {
   submitText: '提交',
   resetText: '重置',
   hideActions: false,
+  submitErrorText: '提交失败，请稍后重试',
   submitter: undefined,
 })
 
@@ -66,6 +82,7 @@ const emit = defineEmits<{
   (event: 'update:modelValue', value: Record<string, unknown>): void
   (event: 'submit', value: Record<string, unknown>): void
   (event: 'submitFailed', errors: Record<string, string>): void
+  (event: 'submitError', payload: ProFormSubmitErrorPayload): void
   (event: 'reset', value: Record<string, unknown>): void
 }>()
 
@@ -73,6 +90,7 @@ const formModel = reactive<Record<string, unknown>>({})
 const errors = reactive<Record<string, string>>({})
 const optionMap = reactive<Record<string, ProFormOption[]>>({})
 const submitLoading = ref(false)
+const submitError = ref('')
 
 const getDefaultValues = () =>
   props.schema.reduce<Record<string, unknown>>((collector, field) => {
@@ -94,9 +112,14 @@ const clearErrors = () => {
   })
 }
 
+const clearSubmitError = () => {
+  submitError.value = ''
+}
+
 const getValues = () => ({ ...formModel })
 
 const setValues = (values: Record<string, unknown>) => {
+  clearSubmitError()
   Object.assign(formModel, values)
   emit('update:modelValue', getValues())
 }
@@ -144,6 +167,7 @@ const validate = async () => {
 
 const submit = async () => {
   submitLoading.value = true
+  clearSubmitError()
   const valid = await validate()
   if (!valid) {
     submitLoading.value = false
@@ -151,11 +175,20 @@ const submit = async () => {
     return false
   }
 
+  const values = getValues()
   try {
-    const values = getValues()
     await props.submitter?.(values)
     emit('submit', values)
     return true
+  } catch (error) {
+    const payload = {
+      error,
+      message: props.submitErrorText,
+      values,
+    }
+    submitError.value = payload.message
+    emit('submitError', payload)
+    return false
   } finally {
     submitLoading.value = false
   }
@@ -163,6 +196,7 @@ const submit = async () => {
 
 const reset = () => {
   clearErrors()
+  clearSubmitError()
   syncValues(getDefaultValues())
   emit('update:modelValue', getValues())
   emit('reset', getValues())
@@ -171,6 +205,7 @@ const reset = () => {
 const updateField = (field: string, value: unknown) => {
   formModel[field] = value
   delete errors[field]
+  clearSubmitError()
   emit('update:modelValue', getValues())
 }
 
@@ -223,3 +258,19 @@ defineExpose<ProFormExpose>({
   setValues,
 })
 </script>
+
+<style scoped>
+.pro-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.pro-form__submit-error {
+  width: 100%;
+  color: #c92a2a;
+  font-size: 14px;
+  line-height: 22px;
+}
+</style>
