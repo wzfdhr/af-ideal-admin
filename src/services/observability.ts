@@ -57,6 +57,11 @@ export interface WhiteScreenDocument {
   } | null
 }
 
+export interface WhiteScreenDetectedContext {
+  rootSelector: string
+  message: string
+}
+
 export interface WhiteScreenOptions {
   enabled?: boolean
   delay?: number
@@ -64,6 +69,7 @@ export interface WhiteScreenOptions {
   document?: WhiteScreenDocument
   setTimeout?: (callback: () => void, delay: number) => number
   clearTimeout?: (timerId: number) => void
+  onDetected?: (context: WhiteScreenDetectedContext) => void
 }
 
 export interface ObservabilityOptions {
@@ -330,7 +336,16 @@ export const createObservability = (
           !!root.innerHTML?.trim())
 
       if (!hasVisibleContent) {
-        reportWhiteScreen(`App root ${rootSelector} has no visible content`, {
+        const message = `App root ${rootSelector} has no visible content`
+        try {
+          whiteScreen.onDetected?.({
+            rootSelector,
+            message,
+          })
+        } catch {
+          // White-screen notice callbacks must not block telemetry reporting.
+        }
+        reportWhiteScreen(message, {
           rootSelector,
         })
       }

@@ -164,19 +164,34 @@ const handleErrorSideEffects = async (
   context: ApiErrorContext,
   options: RequestClientOptions
 ) => {
-  await options.onError?.(context)
+  const runSideEffect = async (
+    sideEffect?: (apiErrorContext: ApiErrorContext) => void | Promise<void>
+  ) => {
+    try {
+      await sideEffect?.(context)
+    } catch {
+      // Error reporting and auth redirects are side effects; they must not
+      // replace the original API error that business code receives.
+    }
+  }
+
+  await runSideEffect(options.onError)
 
   if (context.kind === 'unauthorized') {
-    await options.onUnauthorized?.(context)
+    await runSideEffect(options.onUnauthorized)
   }
   if (context.kind === 'forbidden') {
-    await options.onForbidden?.(context)
+    await runSideEffect(options.onForbidden)
   }
 
-  Message.error({
-    content: context.displayMessage,
-    duration: ERROR_TIP_DURATION,
-  })
+  try {
+    Message.error({
+      content: context.displayMessage,
+      duration: ERROR_TIP_DURATION,
+    })
+  } catch {
+    // UI notification failures should not change request error semantics.
+  }
 }
 
 export const createRequestClient = (

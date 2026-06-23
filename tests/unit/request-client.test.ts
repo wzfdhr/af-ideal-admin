@@ -338,4 +338,39 @@ describe('createRequestClient', () => {
       })
     )
   })
+
+  it('keeps original api errors when the observability hook fails', async () => {
+    const onError = vi.fn().mockRejectedValue(new Error('reporter offline'))
+    createRequestClient({
+      baseURL: '/api',
+      timeout: 15000,
+      authHeaderName: 'X-Access-Token',
+      getToken: () => null,
+      onError,
+    })
+
+    await expect(
+      axiosMock.responseErrorHandler?.({
+        response: {
+          status: 500,
+          data: {
+            code: 500,
+            msg: '服务异常',
+            traceId: 'trace-offline',
+          },
+        },
+      } as AxiosError)
+    ).rejects.toThrow('服务异常')
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'server',
+        traceId: 'trace-offline',
+      })
+    )
+    expect(Message.error).toHaveBeenCalledWith({
+      content: '服务异常 (traceId: trace-offline)',
+      duration: 5000,
+    })
+  })
 })
