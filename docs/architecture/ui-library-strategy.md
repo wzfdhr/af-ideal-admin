@@ -98,7 +98,9 @@ subtasks:
    type contracts, states, theme, accessibility, docs, unit tests, visual
    checks, and Mock-backed business demos.
 2. `T-200A.2` Candidate adapter contract: introduce `aheart-ui` only behind the
-   existing `AdminUiAdapter` surface and keep Arco as the active adapter.
+   existing `AdminUiAdapter` surface through
+   `src/components/pro-ui/adapters/aheart.ts`, and keep Arco as the active
+   adapter.
 3. `T-200A.3` Mock-backed adapter lab: build one real interaction page covering
    query, pagination, create/edit submit, modal, drawer, permission, empty, and
    error states.
