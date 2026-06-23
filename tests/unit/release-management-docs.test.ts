@@ -57,4 +57,49 @@ describe('release management documentation', () => {
     expect(guide).toContain('迁移说明')
     expect(checklist).toContain('CHANGELOG.md')
   })
+
+  it('requires release traceability evidence for every version', () => {
+    const packageJson = readJson<{ version: string }>('package.json')
+    const changelog = readFile('CHANGELOG.md')
+    const guide = readFile('docs/development/release-management.md')
+    const checklist = readFile('docs/development/release-checklist.md')
+    const currentVersionTitle = `## [${packageJson.version}]`
+    const currentVersionStart = changelog.indexOf(currentVersionTitle)
+    const currentVersionEnd = changelog.indexOf(
+      '\n## [',
+      currentVersionStart + 1
+    )
+    const currentVersionSection = changelog.slice(
+      currentVersionStart,
+      currentVersionEnd === -1 ? changelog.length : currentVersionEnd
+    )
+
+    expect(currentVersionStart).toBeGreaterThanOrEqual(0)
+    ;[
+      '## 发布证据记录模板',
+      '版本号',
+      'Git tag',
+      '变更说明',
+      '迁移说明',
+      '验证证据',
+      '回滚方式',
+      '后端 / 运维配合',
+    ].forEach((requiredText) => {
+      expect(guide).toContain(requiredText)
+    })
+    ;[
+      '## 版本号与发布证据',
+      '`package.json` version',
+      '`CHANGELOG.md` 当前版本条目',
+      'Git tag',
+      '验证证据',
+    ].forEach((requiredText) => {
+      expect(checklist).toContain(requiredText)
+    })
+    ;['### 发布证据', 'Git tag', '验证证据', '回滚方式'].forEach(
+      (requiredText) => {
+        expect(currentVersionSection).toContain(requiredText)
+      }
+    )
+  })
 })

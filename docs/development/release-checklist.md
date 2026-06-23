@@ -24,6 +24,14 @@ npm run build:prd
 npm run test:e2e
 ```
 
+## 版本号与发布证据
+
+- `package.json` version 已与计划发布版本完全一致。
+- `CHANGELOG.md` 当前版本条目已包含变更说明、迁移说明和发布证据。
+- Git tag 使用 `v<version>` 命名，并在正式发布后指向对应 release 提交或合并提交。
+- 验证证据已记录命令结果或 CI 链接，失败项不得进入发布。
+- 后端、运维、权限初始化、运行时配置和 Mock 数据切换要求已明确为需要或不需要。
+
 ## 功能验收
 
 - Mock 数据可完成无后端演示。

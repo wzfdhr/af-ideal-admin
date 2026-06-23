@@ -30,6 +30,13 @@
 - 接入真实后端时需要按 `docs/development/backend-integration.md` 对齐响应结构、认证头和服务端菜单 `componentKey`。
 - 新增业务页面应按 `docs/development/crud-page-guide.md` 使用 Pro 组件、权限码和 Mock 数据闭环。
 
+### 发布证据
+
+- 版本号：`0.0.1-alpha`，与 `package.json` version 一致。
+- Git tag：`v0.0.1-alpha`，正式发布时创建并指向 release 提交或合并提交。
+- 验证证据：发布前必须保留 `npm run lint:check`、`npm run typecheck`、`npm run test`、`npm run build:prd` 的通过结果或 CI 链接。
+- 回滚方式：优先 Git revert 对应 release 或阶段提交；运行时配置异常时恢复 `runtime-config.js` 或环境变量；菜单异常时临时关闭服务端菜单。
+
 ### 验证
 
 - `npm run lint:check`
