@@ -61,4 +61,26 @@ describe('product commercialization documentation', () => {
       expect(positioning).toContain(requiredText)
     })
   })
+
+  it('keeps the README aligned with the productized introduction', () => {
+    const readme = readFile('README.md')
+
+    ;[
+      'docs/product/index.md',
+      'docs/product/product-positioning.md',
+      'M5：产品化与可销售交付阶段',
+      'Mock-first',
+      '表单设计器',
+      '流程设计器',
+      '低代码',
+      '数据大屏',
+      '报表中心',
+      '审计日志',
+      '开源版',
+      '专业版',
+      '企业版',
+    ].forEach((requiredText) => {
+      expect(readme).toContain(requiredText)
+    })
+  })
 })

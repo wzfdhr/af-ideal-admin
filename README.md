@@ -1,12 +1,17 @@
 # AF-Ideal-Admin
 
-## More Docs
+AF-Ideal-Admin 是一套面向企业私有化交付、集团型管理系统、政企流程管理和内部数字化平台的中后台框架。项目已经从基础后台模板升级为企业级框架基线，并进入 `M5：产品化与可销售交付阶段`：重点补齐产品定位、演示租户、演示数据、部署交付、质量报告和商业版本边界。
 
+项目坚持 Mock-first：即使真实后端尚未完成，也可以通过稳定的虚拟数据完成登录、权限、表单设计器、流程设计器、低代码、数据大屏、报表中心和审计日志等核心能力的演示、测试和验收。
+
+## 文档入口
+
+- [Product documentation center](docs/product/index.md)
+- [Product positioning and edition matrix](docs/product/product-positioning.md)
 - [Development documentation center](docs/development/index.md)
+- [Capability map](docs/architecture/enterprise-admin-capability-map.md)
 - [Auth and permission architecture](docs/architecture/auth-permission.md)
 - [Deployment](docs/deployment.md)
-
-AF-Ideal-Admin 是一个基于 Vue 3、TypeScript 和 Vite 的后台管理系统模板。项目内置登录鉴权、动态菜单、页面权限、按钮权限、可视化看板、表单页面、列表页面、系统管理页面和可拖拽表单设计器，适合作为中后台项目的二次开发基础。
 
 ## 项目概览
 
@@ -19,6 +24,14 @@ AF-Ideal-Admin 是一个基于 Vue 3、TypeScript 和 Vite 的后台管理系统
 - 请求：Axios，全局请求/响应拦截器
 - Mock：Mock.js，仅在开发环境启用
 - 工程化：ESLint、Prettier、Husky、lint-staged
+
+## 产品版本
+
+| 版本 | 适用场景 | 能力边界 |
+| --- | --- | --- |
+| 开源版 | 学习、评估、基础二开 | 基础布局、登录、权限、系统管理 CRUD、基础 Mock 数据和开发文档 |
+| 专业版 | 标准企业后台交付 | 演示租户数据包、部署模板、产品化文档、质量报告、表单/流程/低代码/大屏增强 |
+| 企业版 | 私有化和行业定制 | 离线授权、行业模板、插件市场、租户隔离验收、后端适配和交付支持 |
 
 ## 快速开始
 
@@ -109,13 +122,19 @@ npm run lint
 ## 核心模块
 
 - 仪表盘：工作台、分析页，位于 `src/views/dashboard`
-- 可视化：分析页、多维分析页，位于 `src/views/visualization`
+- 可视化：数据大屏、多维分析页，位于 `src/views/visualization`
 - 表单：复杂步骤表单、高级表单、分步表单，位于 `src/views/form`
+- 表单设计器：schema、迁移、运行时渲染、远程选项、保存发布和 Mock 提交，位于 `src/views/formDesign` 和 `src/components/form-designer`
+- 流程设计器：流程 schema、画布、节点配置、运行中心、待办已办和审批记录，位于 `src/views/workflowDesign`、`src/views/workflowCenter` 和 `src/components/workflow-designer`
+- 低代码：页面 schema、物料、搭建器、预览、保存发布和查询数据，位于 `src/views/lowCodeBuilder` 和 `src/components/low-code`
+- 数据大屏：大屏工作区、图表组件、实时指标、排行、趋势和告警，位于 `src/views/visualization/dataScreen`
+- 报表中心：报表查询、导出任务、定时报表和导出审计，位于 `src/views/visualization/reportCenter` 和 `src/components/report-center`
+- 审计日志：登录、操作、权限变更、发布和导出日志 Mock 闭环，位于 `src/views/audit`
 - 列表：卡片列表、普通列表，位于 `src/views/list`
 - 权限：前端页面权限、按钮权限、后端菜单权限演示，位于 `src/views/permissions` 和 `src/views/backendPermissions`
 - 系统管理：用户、角色、菜单、部门、字典页面，位于 `src/views/system`
 - 用户中心：个人信息页，位于 `src/views/user`
-- 扩展能力：表单设计器，位于 `src/views/formDesign` 和 `src/components/form-designer`
+- 产品化增强：多租户、文件资源、主题中心、消息中心、插件中心和 UI adapter 实验页
 
 ## 路由与权限
 
@@ -168,10 +187,12 @@ Axios 拦截器位于 `src/api/request.ts`：
 - `package.json` 没有 `build` 脚本，请使用 `build:dev` 或 `build:prd`。
 - 静态部署模板位于 `deploy/nginx/default.conf` 和根目录 `Dockerfile`，详见 `docs/deployment.md`。
 
-## 后续优化建议
+## 产品化路线
 
-- 统一路由权限字段，全部收敛为 `meta.roles`。
-- 清理调试日志，例如权限守卫和菜单 store 中的 `console.log`。
-- 根据真实后端接口确认 `VITE_API_BASE_URL` 和 `VITE_API_PROXY_TARGET` 的部署策略。
-- 根据真实后端接口替换 Mock 数据，并补充接口契约文档。
-- 为核心权限逻辑、登录流程和表单设计器补充最小化测试。
+当前已完成企业级框架基线和 `T-601 产品定位与版本分层`。下一阶段按 `docs/quality/enterprise-admin-task-checklist.md` 的 `T-602` 到 `T-616` 推进：
+
+- 建立演示租户与演示数据包，支撑 15 到 30 分钟产品演示。
+- 输出产品演示路径、官网与产品文档、一键部署方案和商业交付包。
+- 补授权与版本控制预案、真实后端接入样板和自动化质量报告。
+- 推进多租户生产化、表单 / 流程联动、低代码页面生成、大屏模板市场和插件市场雏形。
+- 持续验证 `aheart-ui` adapter，保留 Arco 与自研组件库的切换和回滚边界。
