@@ -77,6 +77,15 @@ The synchronization rule is:
 This keeps switching costs controlled. Business pages depend on stable Pro
 contracts, while the base UI implementation can evolve behind the adapter.
 
+Development plan tracking:
+
+- `T-200` builds the replaceable UI adapter boundary and keeps Arco as the
+  active production adapter.
+- `T-200A` tracks `aheart-ui` parallel incubation, candidate adapter parity,
+  Mock-backed validation, migration rehearsal, and rollback governance.
+- `T-201` to `T-204` build Pro components and migrate real business modules so
+  future UI replacement happens behind stable business contracts.
+
 ## Candidate Adapter Gates
 
 An `aheart-ui` component can enter the candidate adapter only after it satisfies

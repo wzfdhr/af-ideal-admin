@@ -329,6 +329,8 @@ Goal: make the framework safe to connect to a real backend.
 Goal: reduce repeated code in CRUD and settings pages.
 
 - Add a replaceable UI adapter boundary for Arco now and `aheart-ui` later.
+- Run `aheart-ui` as a parallel incubation track with maturity gates, adapter
+  parity checks, Mock-backed validation, and one real-page migration rehearsal.
 - Build `ProTable`.
 - Build `ProForm`.
 - Build dictionary-backed field components.
