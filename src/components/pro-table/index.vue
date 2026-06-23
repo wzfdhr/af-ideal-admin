@@ -1,15 +1,23 @@
 <template>
-  <component
-    :is="Table"
-    class="pro-table"
-    :columns="columns"
-    :data="data"
-    :loading="loading"
-    :pagination="pagination"
-    :row-key="rowKey"
-    @page-change="handlePageChange"
-    @page-size-change="handlePageSizeChange"
-  />
+  <div class="pro-table">
+    <component
+      :is="Table"
+      :columns="columns"
+      :data="data"
+      :loading="loading"
+      :pagination="pagination"
+      :row-key="rowKey"
+      @page-change="handlePageChange"
+      @page-size-change="handlePageSizeChange"
+    />
+    <div
+      v-if="showEmptyState"
+      class="pro-table__empty"
+      data-testid="pro-table-empty"
+    >
+      {{ emptyText }}
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -31,10 +39,12 @@ interface ProTableComponentProps {
   ) => Promise<ProTableFetchResult<Record<string, unknown>>>
   rowKey: string
   defaultPageSize?: number
+  emptyText?: string
 }
 
 const props = withDefaults(defineProps<ProTableComponentProps>(), {
   defaultPageSize: 10,
+  emptyText: '暂无数据',
 })
 
 const loading = ref(false)
@@ -53,6 +63,8 @@ const pagination = computed(() => ({
   showTotal: true,
   showPageSize: true,
 }))
+
+const showEmptyState = computed(() => !loading.value && data.value.length === 0)
 
 const getFetchParams = (): ProTableFetchParams => ({
   current: paginationState.current,
@@ -106,3 +118,11 @@ defineExpose<ProTableExpose>({
   setFilters,
 })
 </script>
+
+<style scoped>
+.pro-table__empty {
+  padding: 16px 0;
+  color: #667085;
+  text-align: center;
+}
+</style>

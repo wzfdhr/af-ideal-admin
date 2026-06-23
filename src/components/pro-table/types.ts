@@ -16,6 +16,7 @@ export interface ProTableProps<T = Record<string, unknown>> {
   fetchData: (params: ProTableFetchParams) => Promise<ProTableFetchResult<T>>
   rowKey: string
   defaultPageSize?: number
+  emptyText?: string
 }
 
 export interface ProTableExpose {

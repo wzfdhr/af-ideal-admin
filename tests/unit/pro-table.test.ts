@@ -64,6 +64,8 @@ vi.mock('@/components/pro-ui', () => ({
 
 const settle = async () => {
   await Promise.resolve()
+  await Promise.resolve()
+  await nextTick()
   await nextTick()
 }
 
@@ -126,5 +128,23 @@ describe('ProTable', () => {
       pageSize: 10,
       filters: { status: 'enabled' },
     })
+  })
+
+  it('renders a stable empty state when no rows are returned', async () => {
+    const fetchData = vi.fn().mockResolvedValue({ list: [], total: 0 })
+    const wrapper = mount(ProTable, {
+      props: {
+        rowKey: 'id',
+        columns: [],
+        fetchData,
+        emptyText: 'No records',
+      },
+    })
+
+    await settle()
+
+    expect(wrapper.find('[data-testid="pro-table-empty"]').text()).toBe(
+      'No records'
+    )
   })
 })

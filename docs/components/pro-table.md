@@ -1,8 +1,8 @@
 # ProTable
 
 `ProTable` is the standard table entry for enterprise business pages. It keeps
-pagination, loading, refresh, and query reset behavior in one component so pages
-do not repeat the same data-fetching code.
+pagination, loading, empty state, refresh, and query reset behavior in one
+component so pages do not repeat the same data-fetching code.
 
 ## Minimal Usage
 
@@ -54,6 +54,20 @@ The function must return:
 
 The component updates its loading state before and after every request, and
 updates pagination total from the returned value.
+
+## Empty State
+
+When `fetchData` returns an empty list and loading has finished, `ProTable`
+renders a stable empty state. Use `emptyText` to customize the message:
+
+```vue
+<ProTable
+  row-key="id"
+  empty-text="No records"
+  :columns="columns"
+  :fetch-data="fetchData"
+/>
+```
 
 ## Query Reset
 
