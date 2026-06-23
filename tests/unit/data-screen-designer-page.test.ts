@@ -219,4 +219,40 @@ describe('DataScreenDesigner page', () => {
       })
     )
   })
+
+  it('keeps invalid loaded screen schemas recoverable in the page error state', async () => {
+    apiMocks.fetchDataScreens.mockResolvedValueOnce({
+      list: [
+        {
+          ...createDefinition(),
+          schema: {
+            ...createEnterpriseDataScreenSchema(),
+            width: 1280,
+          },
+        },
+      ],
+      total: 1,
+    })
+
+    const wrapper = mountDesigner()
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="data-screen-designer"]').exists()).toBe(
+      true
+    )
+    expect(wrapper.text()).toContain('非法大屏 schema')
+  })
+
+  it('keeps publish failures recoverable in the page error state', async () => {
+    apiMocks.publishDataScreen.mockRejectedValueOnce(new Error('发布失败'))
+    const wrapper = mountDesigner()
+    await flushPromises()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="data-screen-publish"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('发布失败')
+  })
 })

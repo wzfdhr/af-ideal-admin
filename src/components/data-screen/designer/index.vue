@@ -304,6 +304,9 @@ const mergeCurrentScreen = (patch: Partial<DataScreenDefinition>) => {
   )
 }
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback
+
 const refreshRealtimeData = async () => {
   refreshing.value = true
   errorMessage.value = ''
@@ -315,25 +318,39 @@ const refreshRealtimeData = async () => {
     })
   } catch (error) {
     realtimeData.value = emptyRealtimeData
-    errorMessage.value =
-      error instanceof Error ? error.message : '大屏实时数据获取失败'
+    errorMessage.value = getErrorMessage(error, '大屏实时数据获取失败')
   } finally {
     refreshing.value = false
   }
 }
 
 const selectScreen = async (screen: DataScreenDefinition) => {
-  currentScreen.value = screen
-  schema.value = validateDataScreenSchema(screen.schema)
-  await refreshRealtimeData()
+  errorMessage.value = ''
+
+  try {
+    const validatedSchema = validateDataScreenSchema(screen.schema)
+    currentScreen.value = screen
+    schema.value = validatedSchema
+    await refreshRealtimeData()
+  } catch (error) {
+    realtimeData.value = emptyRealtimeData
+    errorMessage.value = getErrorMessage(error, '大屏定义加载失败')
+  }
 }
 
 const loadScreens = async () => {
-  const result = await fetchDataScreens({ current: 1, pageSize: 20 })
-  screenList.value = result.list
+  errorMessage.value = ''
 
-  if (result.list.length) {
-    await selectScreen(result.list[0])
+  try {
+    const result = await fetchDataScreens({ current: 1, pageSize: 20 })
+    screenList.value = result.list
+
+    if (result.list.length) {
+      await selectScreen(result.list[0])
+    }
+  } catch (error) {
+    realtimeData.value = emptyRealtimeData
+    errorMessage.value = getErrorMessage(error, '大屏列表加载失败')
   }
 }
 
@@ -349,14 +366,20 @@ const toggleFullscreen = () => {
 const saveCurrent = async () => {
   if (!currentScreen.value) return
   saving.value = true
+  actionMessage.value = ''
+  errorMessage.value = ''
   try {
-    const result = await saveDataScreen(currentScreen.value.id, schema.value)
+    const validatedSchema = validateDataScreenSchema(schema.value)
+    schema.value = validatedSchema
+    const result = await saveDataScreen(currentScreen.value.id, validatedSchema)
     mergeCurrentScreen({
       schema: result.schema || schema.value,
       status: result.status || currentScreen.value.status,
       version: result.version || currentScreen.value.version,
     })
     actionMessage.value = '已保存'
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, '保存失败')
   } finally {
     saving.value = false
   }
@@ -365,14 +388,23 @@ const saveCurrent = async () => {
 const publishCurrent = async () => {
   if (!currentScreen.value) return
   publishing.value = true
+  actionMessage.value = ''
+  errorMessage.value = ''
   try {
-    const result = await publishDataScreen(currentScreen.value.id, schema.value)
+    const validatedSchema = validateDataScreenSchema(schema.value)
+    schema.value = validatedSchema
+    const result = await publishDataScreen(
+      currentScreen.value.id,
+      validatedSchema
+    )
     mergeCurrentScreen({
       schema: result.schema || schema.value,
       status: result.status || 'published',
       version: result.version || currentScreen.value.version,
     })
     actionMessage.value = '已发布'
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, '发布失败')
   } finally {
     publishing.value = false
   }
