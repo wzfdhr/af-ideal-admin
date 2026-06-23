@@ -107,7 +107,6 @@ import {
   type SystemDictionaryStatus,
 } from '@/api/system/dictionary'
 import { SYSTEM_DICT_STATUS_KEY } from '@/constants/system-dictionary'
-import type { DictionaryOption } from '@/services/dictionary'
 import type { ProFormExpose, ProFormField } from '@/components/pro-form/types'
 import type {
   ProTableExpose,
@@ -120,7 +119,6 @@ const { Message, Modal } = adminUi
 const tableRef = ref<ProTableExpose>()
 const queryFormRef = ref<ProFormExpose>()
 const editorFormRef = ref<ProFormExpose>()
-const statusOptions = ref<DictionaryOption[]>([])
 const editorVisible = ref(false)
 const detailVisible = ref(false)
 const deleteVisible = ref(false)
@@ -135,13 +133,11 @@ const editorTitle = computed(() =>
 )
 
 const loadStatusOptions = async () => {
-  const options = await dictionaryService.getOptions(SYSTEM_DICT_STATUS_KEY)
-  statusOptions.value = options
-  return options
+  return dictionaryService.getOptions(SYSTEM_DICT_STATUS_KEY)
 }
 
 const getStatusLabel = (value: string) =>
-  statusOptions.value.find((item) => item.value === value)?.label || value
+  dictionaryService.getLabel(SYSTEM_DICT_STATUS_KEY, value, value)
 
 const querySchema: ProFormField[] = [
   {

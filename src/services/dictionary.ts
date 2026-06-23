@@ -87,6 +87,18 @@ export const createDictionaryService = ({
     return cache.get(key) as Promise<DictionaryOption[]>
   }
 
+  const getLabel = (
+    key: string,
+    value: DictionaryOption['value'],
+    fallback = String(value)
+  ) => {
+    const state = getState(key)
+    const options = state.options.length
+      ? state.options
+      : staticDictionaries[key] || []
+    return options.find((option) => option.value === value)?.label || fallback
+  }
+
   const clear = (key?: string) => {
     if (key) {
       cache.delete(key)
@@ -100,6 +112,7 @@ export const createDictionaryService = ({
 
   return {
     getOptions,
+    getLabel,
     getState,
     clear,
   }

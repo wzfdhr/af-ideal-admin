@@ -27,10 +27,17 @@ import { dictionaryService } from '@/services/dictionary'
 
 const options = await dictionaryService.getOptions('gender')
 const state = dictionaryService.getState('gender')
+const label = dictionaryService.getLabel('gender', 'male', '未知')
 ```
 
-The service caches successful remote requests by key. Static dictionaries can be
-registered when creating an isolated service for tests or local-only options.
+The service caches successful remote requests by key and reuses the same
+in-flight request when multiple components ask for the same dictionary at the
+same time. Static dictionaries can be registered when creating an isolated
+service for tests or local-only options.
+
+Use `getLabel` for table and detail display after the page has loaded the
+dictionary with `getOptions`. This keeps table display and form selection on the
+same dictionary source instead of duplicating label mapping in each page.
 
 ## Components
 

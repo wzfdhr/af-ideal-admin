@@ -131,4 +131,38 @@ describe('dictionary components', () => {
     expect(mocks.getOptions).toHaveBeenCalledWith('status')
     expect(wrapper.find('[data-value="enabled"]').text()).toContain('启用')
   })
+
+  it('renders DictSelect loading errors and emits loadError', async () => {
+    mocks.getOptions.mockRejectedValueOnce(new Error('字典 gender 加载失败'))
+
+    const wrapper = mount(DictSelect, {
+      props: {
+        dictKey: 'gender',
+        modelValue: '',
+      },
+    })
+    await settle()
+
+    expect(wrapper.find('.dict-select__error').text()).toBe(
+      '字典 gender 加载失败'
+    )
+    expect(wrapper.emitted('loadError')?.[0]).toEqual(['字典 gender 加载失败'])
+  })
+
+  it('renders DictRadio loading errors and emits loadError', async () => {
+    mocks.getOptions.mockRejectedValueOnce(new Error('字典 status 加载失败'))
+
+    const wrapper = mount(DictRadio, {
+      props: {
+        dictKey: 'status',
+        modelValue: '',
+      },
+    })
+    await settle()
+
+    expect(wrapper.find('.dict-radio__error').text()).toBe(
+      '字典 status 加载失败'
+    )
+    expect(wrapper.emitted('loadError')?.[0]).toEqual(['字典 status 加载失败'])
+  })
 })

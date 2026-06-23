@@ -16,6 +16,7 @@ const apiMocks = vi.hoisted(() => ({
 
 const dictionaryMocks = vi.hoisted(() => ({
   getOptions: vi.fn(),
+  getLabel: vi.fn(),
 }))
 
 const messageMocks = vi.hoisted(() => ({
@@ -42,6 +43,7 @@ vi.mock('@/api/system/dictionary', () => ({
 vi.mock('@/services/dictionary', () => ({
   dictionaryService: {
     getOptions: dictionaryMocks.getOptions,
+    getLabel: dictionaryMocks.getLabel,
   },
 }))
 
@@ -262,6 +264,9 @@ describe('DictSystemPage', () => {
       { label: '启用', value: 'enabled' },
       { label: '停用', value: 'disabled' },
     ])
+    dictionaryMocks.getLabel.mockImplementation((_, value, fallback) =>
+      value === 'enabled' ? '启用' : fallback
+    )
     apiMocks.fetchSystemDictionaries.mockResolvedValue({
       list: [
         {
@@ -297,6 +302,18 @@ describe('DictSystemPage', () => {
       pageSize: 10,
     })
     expect(dictionaryMocks.getOptions).toHaveBeenCalledWith('dictStatus')
+  })
+
+  it('renders table status labels through the shared dictionary label source', async () => {
+    const wrapper = mountPage()
+    await settle()
+
+    expect(dictionaryMocks.getLabel).toHaveBeenCalledWith(
+      'dictStatus',
+      'enabled',
+      'enabled'
+    )
+    expect(wrapper.text()).toContain('启用')
   })
 
   it('submits query values to table reset filters', async () => {

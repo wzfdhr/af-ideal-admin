@@ -47,4 +47,15 @@ describe('dictionary service', () => {
       options: [],
     })
   })
+
+  it('resolves table display labels from the same cached dictionary source', async () => {
+    const fetcher = vi.fn().mockResolvedValue([{ label: '男', value: 'male' }])
+    const service = createDictionaryService({ fetcher })
+
+    await service.getOptions('gender')
+
+    expect(service.getLabel('gender', 'male')).toBe('男')
+    expect(service.getLabel('gender', 'unknown', '未知')).toBe('未知')
+    expect(fetcher).toHaveBeenCalledTimes(1)
+  })
 })
