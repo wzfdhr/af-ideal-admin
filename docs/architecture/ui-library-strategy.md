@@ -106,7 +106,11 @@ subtasks:
    covering query, pagination, create/edit submit, modal, drawer, permission,
    empty, and error states.
 4. `T-200A.4` Real-page migration rehearsal: run dictionary, user, or role
-   management through both adapters and document parity gaps.
+   management through both adapters and document parity gaps. The first
+   rehearsal uses dictionary management and is recorded in
+   `docs/architecture/aheart-ui-dict-migration-rehearsal.md`; its current
+   decision is blocked until the candidate adapter and detail display gaps are
+   closed.
 5. `T-200A.5` Switch and rollback governance: allow component-level or
    page-level replacement only after parity evidence exists, with rollback steps
    recorded before any production switch.

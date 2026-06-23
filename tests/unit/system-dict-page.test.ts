@@ -45,11 +45,34 @@ vi.mock('@/services/dictionary', () => ({
   },
 }))
 
-vi.mock('@/components/pro-ui', () => ({
-  adminUi: {
-    Message: messageMocks,
-  },
-}))
+vi.mock('@/components/pro-ui', async () => {
+  const vue = await import('vue')
+
+  return {
+    adminUi: {
+      Message: messageMocks,
+      Modal: vue.defineComponent({
+        name: 'MockAdminUiModal',
+        emits: ['before-ok'],
+        setup(_, { slots, attrs, emit }) {
+          const testId = String(attrs['data-testid'] || 'modal')
+          return () =>
+            vue.h('section', attrs, [
+              slots.default?.(),
+              vue.h(
+                'button',
+                {
+                  'data-testid': `${testId}-ok`,
+                  'onClick': () => emit('before-ok'),
+                },
+                'ok'
+              ),
+            ])
+        },
+      }),
+    },
+  }
+})
 
 vi.mock('@/components/pro-table/index.vue', () => ({
   default: defineComponent({
@@ -200,26 +223,6 @@ vi.mock('@/components/permission-button.vue', () => ({
   }),
 }))
 
-const ModalStub = defineComponent({
-  name: 'ModalStub',
-  emits: ['before-ok'],
-  setup(_, { slots, attrs, emit }) {
-    const testId = String(attrs['data-testid'] || 'modal')
-    return () =>
-      h('section', attrs, [
-        slots.default?.(),
-        h(
-          'button',
-          {
-            'data-testid': `${testId}-ok`,
-            'onClick': () => emit('before-ok'),
-          },
-          'ok'
-        ),
-      ])
-  },
-})
-
 const settle = async () => {
   await Promise.resolve()
   await Promise.resolve()
@@ -233,7 +236,6 @@ const mountPage = () =>
     global: {
       stubs: {
         's-navs': true,
-        'a-modal': ModalStub,
         'a-descriptions': defineComponent({
           setup(_, { slots }) {
             return () => h('dl', slots.default?.())

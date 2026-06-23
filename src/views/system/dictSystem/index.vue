@@ -29,7 +29,8 @@
       />
     </section>
 
-    <a-modal
+    <component
+      :is="Modal"
       v-model:visible="editorVisible"
       data-testid="dict-editor-modal"
       :title="editorTitle"
@@ -42,9 +43,10 @@
         :submitter="saveDictionary"
         hide-actions
       />
-    </a-modal>
+    </component>
 
-    <a-modal
+    <component
+      :is="Modal"
       v-model:visible="detailVisible"
       data-testid="dict-detail-modal"
       title="字典详情"
@@ -67,9 +69,10 @@
           {{ detailRecord.updatedAt }}
         </a-descriptions-item>
       </a-descriptions>
-    </a-modal>
+    </component>
 
-    <a-modal
+    <component
+      :is="Modal"
       v-model:visible="deleteVisible"
       data-testid="dict-delete-modal"
       title="删除字典"
@@ -80,7 +83,7 @@
         <strong>{{ pendingDeleteRecord?.dictName }}</strong>
         吗？删除后将无法在当前 Mock 数据中恢复。
       </p>
-    </a-modal>
+    </component>
   </main>
 </template>
 
@@ -112,7 +115,7 @@ import type {
 } from '@/components/pro-table/types'
 import type { TableColumnData } from '@arco-design/web-vue'
 
-const { Message } = adminUi
+const { Message, Modal } = adminUi
 
 const tableRef = ref<ProTableExpose>()
 const queryFormRef = ref<ProFormExpose>()
