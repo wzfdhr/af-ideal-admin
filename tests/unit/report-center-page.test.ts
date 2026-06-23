@@ -170,6 +170,14 @@ const exportTasks: ReportExportTask[] = [
     createdAt: '2026-06-23 00:00:00',
   },
   {
+    id: 'export-running',
+    reportId: 'order-detail',
+    reportName: '订单明细报表',
+    status: 'in-progress',
+    params: {},
+    createdAt: '2026-06-23 00:00:00',
+  },
+  {
     id: 'export-completed',
     reportId: 'order-detail',
     reportName: '订单明细报表',
@@ -177,6 +185,15 @@ const exportTasks: ReportExportTask[] = [
     params: {},
     createdAt: '2026-06-23 00:00:00',
     downloadUrl: '/mock/report.xlsx',
+  },
+  {
+    id: 'export-failed',
+    reportId: 'order-detail',
+    reportName: '订单明细报表',
+    status: 'failed',
+    params: {},
+    createdAt: '2026-06-23 00:00:00',
+    errorMessage: '导出任务失败',
   },
 ]
 
@@ -257,5 +274,72 @@ describe('ReportCenter page', () => {
     })
     expect(wrapper.text()).toContain('in-progress')
     expect(wrapper.text()).toContain('completed')
+  })
+
+  it('creates every Mock export task scenario from the page', async () => {
+    apiMocks.createReportExportTask.mockImplementation(
+      ({ reportId, scenario }) =>
+        Promise.resolve({
+          id: `export-${scenario}`,
+          reportId,
+          reportName: '销售趋势报表',
+          status: scenario,
+          params: {},
+          createdAt: '2026-06-23 00:00:00',
+        })
+    )
+    const wrapper = mountReportCenter()
+    await flushPromises()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="report-export-created"]').trigger('click')
+    await wrapper
+      .find('[data-testid="report-export-in-progress"]')
+      .trigger('click')
+    await wrapper
+      .find('[data-testid="report-export-completed"]')
+      .trigger('click')
+    await wrapper.find('[data-testid="report-export-failed"]').trigger('click')
+    await flushPromises()
+
+    expect(
+      apiMocks.createReportExportTask.mock.calls.map(([payload]) => ({
+        reportId: payload.reportId,
+        scenario: payload.scenario,
+      }))
+    ).toEqual([
+      { reportId: 'sales-trend', scenario: 'created' },
+      { reportId: 'sales-trend', scenario: 'in-progress' },
+      { reportId: 'sales-trend', scenario: 'completed' },
+      { reportId: 'sales-trend', scenario: 'failed' },
+    ])
+    ;['created', 'in-progress', 'completed', 'failed'].forEach((status) => {
+      expect(wrapper.text()).toContain(status)
+    })
+  })
+
+  it('keeps query failures recoverable in the page error state', async () => {
+    apiMocks.fetchReportData.mockRejectedValueOnce(new Error('报表查询失败'))
+
+    const wrapper = mountReportCenter()
+    await flushPromises()
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="report-center"]').exists()).toBe(true)
+    expect(wrapper.text()).toContain('报表查询失败')
+  })
+
+  it('keeps export failures recoverable in the page error state', async () => {
+    apiMocks.createReportExportTask.mockRejectedValueOnce(
+      new Error('导出任务创建失败')
+    )
+    const wrapper = mountReportCenter()
+    await flushPromises()
+    await flushPromises()
+
+    await wrapper.find('[data-testid="report-export"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('导出任务创建失败')
   })
 })

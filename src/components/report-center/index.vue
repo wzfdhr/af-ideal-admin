@@ -40,7 +40,7 @@
               type="primary"
               data-testid="report-export"
               :loading="exporting"
-              @click="createExport"
+              @click="createExport()"
             >
               导出
             </a-button>
@@ -56,6 +56,9 @@
             placeholder="客户 / 负责人"
           />
           <span>日期范围：{{ query.dateRange.join(' 至 ') || '全部' }}</span>
+        </div>
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
         </div>
 
         <div class="report-grid">
@@ -106,6 +109,17 @@
         <a-divider />
         <div class="panel-section">
           <div class="panel-title">导出任务</div>
+          <div class="export-scenarios">
+            <a-button
+              v-for="status in exportScenarios"
+              :key="status"
+              size="small"
+              :data-testid="`report-export-${status}`"
+              @click="createExport(status)"
+            >
+              {{ status }}
+            </a-button>
+          </div>
           <div v-for="task in exportTasks" :key="task.id" class="task-row">
             <span>{{ task.reportName }}</span>
             <strong>{{ task.status }}</strong>
@@ -128,6 +142,7 @@ import {
   type ReportDataQuery,
   type ReportDataResult,
   type ReportExportTask,
+  type ReportExportStatus,
   type ReportRecord,
   type ReportType,
 } from '@/api/report'
@@ -149,6 +164,14 @@ const query = reactive<Required<ReportDataQuery>>({
 })
 const querying = ref(false)
 const exporting = ref(false)
+const errorMessage = ref('')
+
+const exportScenarios: ReportExportStatus[] = [
+  'created',
+  'in-progress',
+  'completed',
+  'failed',
+]
 
 const trendOption = computed(() => ({
   grid: { left: 32, right: 16, top: 24, bottom: 24 },
@@ -190,50 +213,95 @@ const getQueryParams = (): Required<ReportDataQuery> => ({
   dateRange: [...query.dateRange],
 })
 
+const getErrorMessage = (error: unknown, fallback: string) =>
+  error instanceof Error ? error.message : fallback
+
 const queryCurrentReport = async () => {
   if (!currentReport.value) return
   querying.value = true
+  errorMessage.value = ''
   try {
     dataResult.value = await fetchReportData(
       currentReport.value.id,
       getQueryParams()
     )
+  } catch (error) {
+    dataResult.value = {
+      type: currentReport.value.type,
+      columns: currentReport.value.fields,
+      rows: [],
+      trend: [],
+      distribution: [],
+      total: 0,
+    }
+    errorMessage.value = getErrorMessage(error, '报表查询失败')
   } finally {
     querying.value = false
   }
 }
 
 const loadExportTasks = async () => {
-  const result = await fetchReportExportTasks({
-    reportId: currentReport.value?.id,
-  })
-  exportTasks.value = result.list
-}
-
-const selectReport = async (report: ReportRecord, loadDetail = true) => {
-  currentReport.value = loadDetail ? await getReportDetail(report.id) : report
-  await queryCurrentReport()
-  await loadExportTasks()
-}
-
-const loadReports = async () => {
-  const result = await fetchReports({ current: 1, pageSize: 20 })
-  reports.value = result.list
-  if (result.list.length) {
-    await selectReport(result.list[0], false)
+  try {
+    const result = await fetchReportExportTasks({
+      reportId: currentReport.value?.id,
+    })
+    exportTasks.value = result.list
+  } catch (error) {
+    exportTasks.value = []
+    errorMessage.value = getErrorMessage(error, '导出任务加载失败')
   }
 }
 
-const createExport = async () => {
+const selectReport = async (report: ReportRecord, loadDetail = true) => {
+  errorMessage.value = ''
+
+  try {
+    currentReport.value = loadDetail ? await getReportDetail(report.id) : report
+    await queryCurrentReport()
+    await loadExportTasks()
+  } catch (error) {
+    currentReport.value = report
+    dataResult.value = {
+      type: report.type,
+      columns: report.fields,
+      rows: [],
+      trend: [],
+      distribution: [],
+      total: 0,
+    }
+    exportTasks.value = []
+    errorMessage.value = getErrorMessage(error, '报表加载失败')
+  }
+}
+
+const loadReports = async () => {
+  errorMessage.value = ''
+
+  try {
+    const result = await fetchReports({ current: 1, pageSize: 20 })
+    reports.value = result.list
+    if (result.list.length) {
+      await selectReport(result.list[0], false)
+    }
+  } catch (error) {
+    reports.value = []
+    errorMessage.value = getErrorMessage(error, '报表列表加载失败')
+  }
+}
+
+const createExport = async (scenario: ReportExportStatus = 'in-progress') => {
   if (!currentReport.value) return
   exporting.value = true
+  errorMessage.value = ''
   try {
     const task = await createReportExportTask({
       reportId: currentReport.value.id,
       params: getQueryParams(),
-      scenario: 'in-progress',
+      scenario,
     })
     exportTasks.value = [task, ...exportTasks.value]
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error, '导出任务创建失败')
   } finally {
     exporting.value = false
   }
@@ -352,6 +420,12 @@ onMounted(() => {
   border-radius: 8px;
 }
 
+.error-message {
+  margin-bottom: 12px;
+  color: #f53f3f;
+  font-size: 13px;
+}
+
 .query-bar :deep(.arco-input-wrapper),
 .query-bar input {
   width: 220px;
@@ -408,5 +482,12 @@ onMounted(() => {
 .task-row strong {
   color: #165dff;
   font-weight: 600;
+}
+
+.export-scenarios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 </style>
