@@ -45,10 +45,25 @@ const isLabelAlign = (value: unknown): value is FormConfig['labelAlign'] =>
   typeof value === 'string' &&
   LABEL_ALIGNS.includes(value as FormConfig['labelAlign'])
 
-const normalizeVersion = (version: unknown) =>
-  typeof version === 'number' && Number.isInteger(version) && version > 0
-    ? version
-    : CURRENT_FORM_SCHEMA_VERSION
+const normalizeVersion = (version: unknown) => {
+  if (version === undefined) {
+    return CURRENT_FORM_SCHEMA_VERSION
+  }
+
+  if (
+    typeof version !== 'number' ||
+    !Number.isInteger(version) ||
+    version < 1
+  ) {
+    return CURRENT_FORM_SCHEMA_VERSION
+  }
+
+  if (version > CURRENT_FORM_SCHEMA_VERSION) {
+    throw new Error('不支持的表单 schema 版本')
+  }
+
+  return CURRENT_FORM_SCHEMA_VERSION
+}
 
 const normalizeFormConfig = (schema: LegacyFormSchema): FormConfig => {
   let rawConfig: Record<string, unknown> = {}

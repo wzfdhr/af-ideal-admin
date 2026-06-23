@@ -10,6 +10,12 @@
 import { CURRENT_FORM_SCHEMA_VERSION } from '@/components/form-designer/schema'
 ```
 
+版本策略：
+
+- `legacy schema`：缺少 `version` 或版本字段不合法时，按历史 schema 处理并迁移到 `CURRENT_FORM_SCHEMA_VERSION`。
+- `current schema`：版本等于当前版本时保持语义稳定，只补齐缺失默认值。
+- `future version`：版本大于当前版本时抛出 `不支持的表单 schema 版本`，避免运行时消费未知契约。
+
 ## 标准结构
 
 ```ts

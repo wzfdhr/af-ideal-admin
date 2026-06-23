@@ -57,6 +57,15 @@ describe('form schema migration', () => {
     expect(migrateFormSchema(schema)).toEqual(schema)
   })
 
+  it('rejects schemas from unsupported future versions', () => {
+    expect(() =>
+      migrateFormSchema({
+        version: CURRENT_FORM_SCHEMA_VERSION + 1,
+        widgetsConfig: [],
+      })
+    ).toThrow('不支持的表单 schema 版本')
+  })
+
   it('rejects invalid schemas', () => {
     expect(() => migrateFormSchema(null)).toThrow('非法表单 schema')
     expect(() =>
