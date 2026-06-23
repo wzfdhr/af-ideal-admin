@@ -310,6 +310,24 @@ describe('MenuSystemPage', () => {
     })
   })
 
+  it('opens detail and editor actions through detail api calls', async () => {
+    const wrapper = mountPage()
+    await settle()
+
+    await wrapper
+      .find('[data-permission="system:menu:detail"]')
+      .trigger('click')
+    await settle()
+    expect(apiMocks.getSystemMenuDetail).toHaveBeenCalledWith('1')
+
+    await wrapper
+      .find('[data-permission="system:menu:update"]')
+      .trigger('click')
+    await settle()
+    expect(apiMocks.getSystemMenuDetail).toHaveBeenCalledTimes(2)
+    expect(apiMocks.getSystemMenuDetail).toHaveBeenLastCalledWith('1')
+  })
+
   it('renders permission actions and confirms delete before calling api', async () => {
     const wrapper = mountPage()
     await settle()

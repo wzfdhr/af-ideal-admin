@@ -1,7 +1,8 @@
 # System CRUD Page Standard
 
-This standard starts with the dictionary management page and should be reused
-for user, role, menu, and department modules.
+This standard applies to user, role, menu, department, and dictionary system
+modules. New system resources should follow the same contract before they are
+accepted as enterprise CRUD pages.
 
 ## Page Contract
 
@@ -11,6 +12,10 @@ for user, role, menu, and department modules.
   import action.
 - Use dictionary service options for select fields and table enum display.
 - Keep detail, editor, and delete confirmation in explicit modal states.
+- `detail modal`: detail actions must fetch fresh detail data before opening.
+- `editor modal`: update actions must fetch detail data before filling forms.
+- `failure message`: list, detail, save, and delete failures must show a clear
+  message and keep user input recoverable.
 - Never hide failed requests silently. Show a message and keep the page in a
   recoverable state.
 
@@ -46,4 +51,6 @@ Each migrated system module should include:
 - Page tests for initial `ProTable` loading.
 - Page tests for query form submitting filters to the table.
 - Page tests for permission action rendering.
+- Page tests for detail modal and editor modal actions calling detail APIs.
 - Page tests for dangerous operations requiring confirmation before calling API.
+- Page tests or API tests for failure message behavior on recoverable errors.

@@ -306,6 +306,24 @@ describe('DepartmentSystemPage', () => {
     })
   })
 
+  it('opens detail and editor actions through detail api calls', async () => {
+    const wrapper = mountPage()
+    await settle()
+
+    await wrapper
+      .find('[data-permission="system:department:detail"]')
+      .trigger('click')
+    await settle()
+    expect(apiMocks.getSystemDepartmentDetail).toHaveBeenCalledWith('1')
+
+    await wrapper
+      .find('[data-permission="system:department:update"]')
+      .trigger('click')
+    await settle()
+    expect(apiMocks.getSystemDepartmentDetail).toHaveBeenCalledTimes(2)
+    expect(apiMocks.getSystemDepartmentDetail).toHaveBeenLastCalledWith('1')
+  })
+
   it('renders permission actions and confirms delete before calling api', async () => {
     const wrapper = mountPage()
     await settle()

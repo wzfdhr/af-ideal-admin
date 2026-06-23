@@ -332,6 +332,24 @@ describe('DictSystemPage', () => {
     })
   })
 
+  it('opens detail and editor actions through detail api calls', async () => {
+    const wrapper = mountPage()
+    await settle()
+
+    await wrapper
+      .find('[data-permission="system:dict:detail"]')
+      .trigger('click')
+    await settle()
+    expect(apiMocks.getSystemDictionaryDetail).toHaveBeenCalledWith('1')
+
+    await wrapper
+      .find('[data-permission="system:dict:update"]')
+      .trigger('click')
+    await settle()
+    expect(apiMocks.getSystemDictionaryDetail).toHaveBeenCalledTimes(2)
+    expect(apiMocks.getSystemDictionaryDetail).toHaveBeenLastCalledWith('1')
+  })
+
   it('renders permission actions and confirms delete before calling api', async () => {
     const wrapper = mountPage()
     await settle()

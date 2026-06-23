@@ -312,6 +312,24 @@ describe('RoleSystemPage', () => {
     })
   })
 
+  it('opens detail and editor actions through detail api calls', async () => {
+    const wrapper = mountPage()
+    await settle()
+
+    await wrapper
+      .find('[data-permission="system:role:detail"]')
+      .trigger('click')
+    await settle()
+    expect(apiMocks.getSystemRoleDetail).toHaveBeenCalledWith('1')
+
+    await wrapper
+      .find('[data-permission="system:role:update"]')
+      .trigger('click')
+    await settle()
+    expect(apiMocks.getSystemRoleDetail).toHaveBeenCalledTimes(2)
+    expect(apiMocks.getSystemRoleDetail).toHaveBeenLastCalledWith('1')
+  })
+
   it('renders permission actions and confirms delete before calling api', async () => {
     const wrapper = mountPage()
     await settle()

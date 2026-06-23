@@ -58,6 +58,9 @@ describe('development documentation center', () => {
 
   it('documents CRUD, backend and permission contracts for new modules', () => {
     const crudGuide = readFile('docs/development/crud-page-guide.md')
+    const systemCrudStandard = readFile(
+      'docs/quality/system-crud-page-standard.md'
+    )
     const backendGuide = readFile('docs/development/backend-integration.md')
     const permissionGuide = readFile(
       'docs/development/permission-integration.md'
@@ -67,6 +70,16 @@ describe('development documentation center', () => {
     expect(crudGuide).toContain('ProForm')
     expect(crudGuide).toContain('PermissionButton')
     expect(crudGuide).toContain('Mock')
+    expect(crudGuide).toContain('detail modal')
+    expect(crudGuide).toContain('editor modal')
+    expect(crudGuide).toContain('failure message')
+
+    expect(systemCrudStandard).toContain(
+      'user, role, menu, department, and dictionary'
+    )
+    expect(systemCrudStandard).toContain('detail modal')
+    expect(systemCrudStandard).toContain('editor modal')
+    expect(systemCrudStandard).toContain('failure message')
 
     expect(backendGuide).toContain('VITE_API_BASE_URL')
     expect(backendGuide).toContain('X-Access-Token')
