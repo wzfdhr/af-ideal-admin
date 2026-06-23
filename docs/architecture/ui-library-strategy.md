@@ -113,7 +113,8 @@ subtasks:
    closed.
 5. `T-200A.5` Switch and rollback governance: allow component-level or
    page-level replacement only after parity evidence exists, with rollback steps
-   recorded before any production switch.
+   recorded before any production switch. The governance gate is recorded in
+   `docs/architecture/aheart-ui-switch-governance.md`.
 
 ## Candidate Adapter Gates
 

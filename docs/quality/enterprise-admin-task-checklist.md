@@ -353,7 +353,7 @@ npm run build:prd
 - `T-200A.2` 候选 adapter 接入：只允许通过 `AdminUiAdapter` 暴露 `aheart-ui`，Arco 继续作为生产默认 adapter。
 - `T-200A.3` Mock-backed 适配实验页：覆盖查询、分页、表单提交、弹窗、抽屉、权限按钮、空状态和接口错误，不允许静态组件画廊冒充验收。
 - `T-200A.4` 真实页面迁移演练：优先选择字典、用户或角色管理页面，记录双 adapter 的交互、视觉、权限和错误态差异。
-- `T-200A.5` 切换与回滚治理：组件级或页面级替换前必须有 parity 证据、风险记录和回滚步骤。
+- `T-200A.5` 切换与回滚治理：组件级或页面级替换前必须有 parity 证据、风险记录和回滚步骤，证据文档为 `docs/architecture/aheart-ui-switch-governance.md`。
 
 **验收标准**
 
