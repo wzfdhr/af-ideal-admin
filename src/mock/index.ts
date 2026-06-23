@@ -17,6 +17,7 @@ import setupSystemMenuMock from './modules/system-menu'
 import setupSystemRoleMock from './modules/system-role'
 import setupSystemUserMock from './modules/system-user'
 import setupTenantMock from './modules/tenant'
+import setupThemeMock from './modules/theme'
 import setupWorkflowMock from './modules/workflow'
 
 Mock.setup({
@@ -42,3 +43,4 @@ setupSystemRoleMock()
 setupSystemUserMock()
 setupBusinessMock()
 setupTenantMock()
+setupThemeMock()

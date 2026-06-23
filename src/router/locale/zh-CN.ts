@@ -30,6 +30,8 @@ export default {
   'menu.tenant.center': '租户中心',
   'menu.resource': '资源中心',
   'menu.resource.files': '文件资源',
+  'menu.theme': '主题中心',
+  'menu.theme.center': '主题配置',
   'menu.Scalability': '扩展能力',
   'menu.Scalability.formDesign': '表单设计器',
   'menu.Scalability.workflowDesign': '流程设计器',

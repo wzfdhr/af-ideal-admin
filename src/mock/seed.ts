@@ -7,6 +7,7 @@ import { SYSTEM_USER_PERMISSIONS } from '@/constants/system-user'
 import { MESSAGE_PERMISSIONS } from '@/constants/message'
 import { TENANT_PERMISSIONS } from '@/constants/tenant'
 import { FILE_RESOURCE_PERMISSIONS } from '@/constants/file-resource'
+import { THEME_PERMISSIONS } from '@/constants/theme'
 import type { SystemDepartmentRecord } from '@/api/system/department'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
 import type { SystemMenuRecord } from '@/api/system/menu'
@@ -406,6 +407,30 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             requireAuth: true,
             roles: ['*'],
             access: { permissions: [FILE_RESOURCE_PERMISSIONS.list] },
+          },
+        },
+      ],
+    },
+    {
+      path: '/theme',
+      name: 'theme',
+      componentKey: 'DefaultLayout',
+      meta: {
+        locale: 'menu.theme',
+        requireAuth: true,
+        order: 11,
+        icon: 'icon-brush',
+      },
+      children: [
+        {
+          path: 'center',
+          name: 'themeCenter',
+          componentKey: 'ThemeCenterPage',
+          meta: {
+            locale: 'menu.theme.center',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [THEME_PERMISSIONS.view] },
           },
         },
       ],

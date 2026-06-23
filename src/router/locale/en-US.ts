@@ -28,6 +28,8 @@ export default {
   'menu.tenant.center': 'Tenant center',
   'menu.resource': 'Resource center',
   'menu.resource.files': 'File resources',
+  'menu.theme': 'Theme center',
+  'menu.theme.center': 'Theme settings',
   'menu.formDesign': 'Scalability',
   'menu.Scalability.formDesign': 'Form design',
   'menu.Scalability.workflowDesign': 'Workflow design',
