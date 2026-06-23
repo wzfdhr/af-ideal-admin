@@ -86,6 +86,27 @@ Development plan tracking:
 - `T-201` to `T-204` build Pro components and migrate real business modules so
   future UI replacement happens behind stable business contracts.
 
+## Development Plan Placement
+
+The `aheart-ui` work is part of Phase P2, not a prerequisite for continuing
+workflow, low-code, dashboard, report, tenant, file, theme, plugin, or message
+modules. It should be tracked as a parallel productization stream with these
+subtasks:
+
+1. `T-200A.1` Component maturity matrix: track each `aheart-ui` component
+   against enterprise gates for type contracts, states, theme, accessibility,
+   docs, unit tests, visual checks, and Mock-backed business demos.
+2. `T-200A.2` Candidate adapter contract: introduce `aheart-ui` only behind the
+   existing `AdminUiAdapter` surface and keep Arco as the active adapter.
+3. `T-200A.3` Mock-backed adapter lab: build one real interaction page covering
+   query, pagination, create/edit submit, modal, drawer, permission, empty, and
+   error states.
+4. `T-200A.4` Real-page migration rehearsal: run dictionary, user, or role
+   management through both adapters and document parity gaps.
+5. `T-200A.5` Switch and rollback governance: allow component-level or
+   page-level replacement only after parity evidence exists, with rollback steps
+   recorded before any production switch.
+
 ## Candidate Adapter Gates
 
 An `aheart-ui` component can enter the candidate adapter only after it satisfies

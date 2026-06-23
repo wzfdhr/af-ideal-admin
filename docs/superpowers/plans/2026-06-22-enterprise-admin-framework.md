@@ -843,6 +843,7 @@ git commit -m "feat: add replaceable ui foundation boundary"
 - Future create: `src/components/pro-ui/adapters/aheart.ts`
 - Future create: `tests/unit/pro-ui-adapter-parity.test.ts`
 - Future create: `src/views/examples/ui-adapter-lab/index.vue`
+- Future create: `docs/architecture/aheart-ui-maturity-matrix.md`
 
 - [ ] **Step 1: Add the task to the enterprise checklist**
 
@@ -854,6 +855,16 @@ Add `T-200A 建立 aheart-ui 同步孵化与切换治理计划` after `T-200` in
 - Business pages continue to ship through Pro components and Mock-backed APIs.
 - `aheart-ui` becomes a candidate adapter only component by component.
 - Switching is allowed only after maturity matrix and adapter parity checks pass.
+- The work is split into `T-200A.1` to `T-200A.5` so it can progress in
+  parallel without blocking enterprise capability delivery.
+
+Subtask tracking:
+
+- `T-200A.1` Create and maintain the component maturity matrix.
+- `T-200A.2` Add the `aheart-ui` candidate adapter behind `AdminUiAdapter`.
+- `T-200A.3` Build the Mock-backed UI adapter lab.
+- `T-200A.4` Run one real-page dual-adapter migration rehearsal.
+- `T-200A.5` Define switch and rollback governance before production adoption.
 
 - [ ] **Step 2: Extend the UI library strategy**
 
@@ -877,7 +888,24 @@ The synchronization rule is:
 5. Replace by component or by page only after parity checks pass.
 ```
 
-- [ ] **Step 3: Add candidate adapter parity test when aheart-ui is installable**
+- [ ] **Step 3: Create the aheart-ui maturity matrix**
+
+Create `docs/architecture/aheart-ui-maturity-matrix.md` and track these rows:
+
+```md
+| Area | Component Or Capability | Type Contract | States | Theme | A11y | Docs | Unit Tests | Visual Check | Mock Demo | Candidate Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Core | Button | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Not ready |
+| Data | Table | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Not ready |
+| Form | Form | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Not ready |
+```
+
+At minimum, include Button, Table, Form, Input, Select, DatePicker, Upload,
+Tree, Cascader, Modal, Drawer, Message, Notification, Tabs, Menu, Layout,
+Theme, and A11y. A component may move to candidate status only after all
+applicable columns are complete.
+
+- [ ] **Step 4: Add candidate adapter parity test when aheart-ui is installable**
 
 Create `tests/unit/pro-ui-adapter-parity.test.ts` after `aheart-ui` can be
 installed by workspace alias or package dependency:
@@ -914,7 +942,7 @@ describe('admin ui adapter parity', () => {
 })
 ```
 
-- [ ] **Step 4: Add a Mock-backed UI adapter lab**
+- [ ] **Step 5: Add a Mock-backed UI adapter lab**
 
 Create `src/views/examples/ui-adapter-lab/index.vue` after the first candidate
 adapter exists. The page must use existing Mock APIs and Pro components to cover
@@ -922,7 +950,7 @@ list query, pagination, create/edit form submit, permission button, modal,
 drawer, empty state, and request error state. The page must not be a static
 component gallery.
 
-- [ ] **Step 5: Run one real page migration rehearsal**
+- [ ] **Step 6: Run one real page migration rehearsal**
 
 Pick one of these pages for the first rehearsal:
 
@@ -939,7 +967,20 @@ in `docs/architecture/ui-library-strategy.md`:
 - rollback steps
 - decision on whether the component can graduate from candidate to active use
 
-- [ ] **Step 6: Run verification**
+- [ ] **Step 7: Add switch and rollback governance**
+
+Extend `docs/architecture/ui-library-strategy.md` with:
+
+- component-level replacement rule
+- page-level gray replacement rule
+- production default switch rule
+- rollback trigger
+- owner and evidence required for each switch decision
+
+Expected: no `aheart-ui` component can become the production default without a
+recorded parity result, Mock-backed demo evidence, and rollback instructions.
+
+- [ ] **Step 8: Run verification**
 
 Run:
 
@@ -951,12 +992,12 @@ npm run typecheck
 Expected: the current Arco adapter remains stable while the `aheart-ui`
 incubation task is tracked as a future gated migration path.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 9: Commit**
 
 Run:
 
 ```bash
-git add docs/quality/enterprise-admin-task-checklist.md docs/architecture/ui-library-strategy.md docs/superpowers/plans/2026-06-22-enterprise-admin-framework.md
+git add docs/quality/enterprise-admin-task-checklist.md docs/architecture/ui-library-strategy.md docs/architecture/aheart-ui-maturity-matrix.md docs/superpowers/plans/2026-06-22-enterprise-admin-framework.md
 git commit -m "docs: add aheart ui incubation plan"
 ```
 
