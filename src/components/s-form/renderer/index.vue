@@ -11,10 +11,12 @@
         :key="i"
         :span="widget.cols[i].span"
       >
-        <widget-renderer
-          v-if="col.widgets.length > 0 && col.widgets[0] !== undefined"
-          :widget="col.widgets[0]"
-        />
+        <template v-for="nestedWidget in col.widgets" :key="nestedWidget.uid">
+          <widget-renderer
+            v-if="nestedWidget !== undefined"
+            :widget="nestedWidget"
+          />
+        </template>
       </a-col>
     </a-row>
   </template>

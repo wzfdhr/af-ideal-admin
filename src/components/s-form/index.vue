@@ -9,8 +9,6 @@
     <template v-for="(item, i) in ast.widgetsConfig" :key="i">
       <widget-renderer v-if="item !== undefined" :widget="item" />
     </template>
-
-    <pre>{{ data }}</pre>
   </a-form>
 </template>
 

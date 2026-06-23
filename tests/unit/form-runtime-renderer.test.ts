@@ -2,9 +2,12 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import { defineComponent, h, nextTick } from 'vue'
-import FormRuntimeRenderer, { FormRenderer } from '@/components/form-runtime'
-import { migrateFormSchema } from '@/components/form-designer/schema'
-import type { VersionedFormSchema } from '@/components/form-designer/schema'
+import FormRuntimeRenderer, {
+  CURRENT_FORM_SCHEMA_VERSION,
+  FormRenderer,
+  migrateFormSchema,
+} from '@/components/form-runtime'
+import type { VersionedFormSchema } from '@/components/form-runtime'
 
 const formSchema = migrateFormSchema({
   widgetsConfig: [
@@ -72,6 +75,10 @@ const mountRenderer = (schema: VersionedFormSchema = formSchema) =>
         'a-input': defineComponent({
           name: 'AInput',
           props: {
+            modelValue: {
+              type: [String, Number, Boolean],
+              default: '',
+            },
             placeholder: {
               type: String,
               default: '',
@@ -81,12 +88,25 @@ const mountRenderer = (schema: VersionedFormSchema = formSchema) =>
             return () =>
               h('input', {
                 'data-testid': 'runtime-input',
+                'data-model-value': String(props.modelValue),
                 'placeholder': props.placeholder,
               })
           },
         }),
-        'a-row': true,
-        'a-col': true,
+        'a-row': defineComponent({
+          name: 'ARow',
+          setup(_, { slots }) {
+            return () =>
+              h('div', { 'data-testid': 'runtime-row' }, slots.default?.())
+          },
+        }),
+        'a-col': defineComponent({
+          name: 'ACol',
+          setup(_, { slots }) {
+            return () =>
+              h('div', { 'data-testid': 'runtime-col' }, slots.default?.())
+          },
+        }),
         'a-tabs': true,
         'a-tab-pane': true,
         'a-input-number': true,
@@ -118,6 +138,14 @@ describe('FormRuntimeRenderer', () => {
     expect(FormRuntimeRenderer).toBe(FormRenderer)
   })
 
+  it('exports schema migration helpers from the runtime boundary', () => {
+    expect(CURRENT_FORM_SCHEMA_VERSION).toBe(1)
+    expect(migrateFormSchema({ widgetsConfig: [] })).toMatchObject({
+      version: CURRENT_FORM_SCHEMA_VERSION,
+      widgetsConfig: [],
+    })
+  })
+
   it('renders core input widgets from versioned schemas', () => {
     const wrapper = mountRenderer()
 
@@ -128,6 +156,59 @@ describe('FormRuntimeRenderer', () => {
     expect(
       wrapper.find('[data-testid="runtime-input"]').attributes('placeholder')
     ).toBe('请输入客户名称')
+  })
+
+  it('renders every widget nested inside runtime grid columns', () => {
+    const wrapper = mountRenderer(
+      migrateFormSchema({
+        widgetsConfig: [
+          {
+            type: 'grid',
+            uid: 'contactGrid',
+            name: '联系信息',
+            config: {},
+            cols: [
+              {
+                span: 24,
+                widgets: [
+                  {
+                    type: 'input',
+                    uid: 'contactName',
+                    name: '联系人',
+                    config: {
+                      label: '联系人',
+                      defaultValue: 'Alice',
+                    },
+                  },
+                  {
+                    type: 'input',
+                    uid: 'contactPhone',
+                    name: '联系电话',
+                    config: {
+                      label: '联系电话',
+                      defaultValue: '17600000000',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      })
+    )
+
+    expect(wrapper.find('[data-testid="label-contactName"]').text()).toBe(
+      '联系人'
+    )
+    expect(wrapper.find('[data-testid="label-contactPhone"]').text()).toBe(
+      '联系电话'
+    )
+  })
+
+  it('does not render raw runtime data debug output', () => {
+    const wrapper = mountRenderer()
+
+    expect(wrapper.find('pre').exists()).toBe(false)
   })
 
   it('exposes validation and submit methods for production usage', async () => {
