@@ -93,9 +93,10 @@ workflow, low-code, dashboard, report, tenant, file, theme, plugin, or message
 modules. It should be tracked as a parallel productization stream with these
 subtasks:
 
-1. `T-200A.1` Component maturity matrix: track each `aheart-ui` component
-   against enterprise gates for type contracts, states, theme, accessibility,
-   docs, unit tests, visual checks, and Mock-backed business demos.
+1. `T-200A.1` Component maturity matrix: track each `aheart-ui` component in
+   `docs/architecture/aheart-ui-maturity-matrix.md` against enterprise gates for
+   type contracts, states, theme, accessibility, docs, unit tests, visual
+   checks, and Mock-backed business demos.
 2. `T-200A.2` Candidate adapter contract: introduce `aheart-ui` only behind the
    existing `AdminUiAdapter` surface and keep Arco as the active adapter.
 3. `T-200A.3` Mock-backed adapter lab: build one real interaction page covering
