@@ -20,6 +20,8 @@ export default {
   'menu.system.department': 'Department Configuration',
   'menu.system.menu': 'Menu Configuration',
   'menu.system.dict': 'Dict Configuration',
+  'menu.message': 'Message center',
+  'menu.message.center': 'Messages',
   'menu.audit': 'Audit center',
   'menu.audit.logs': 'Audit logs',
   'menu.formDesign': 'Scalability',

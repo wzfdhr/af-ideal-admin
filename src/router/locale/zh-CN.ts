@@ -22,6 +22,8 @@ export default {
   'menu.system.department': '部门配置',
   'menu.system.dict': '字典配置',
   'menu.system.menu': '菜单配置',
+  'menu.message': '消息中心',
+  'menu.message.center': '消息管理',
   'menu.audit': '审计中心',
   'menu.audit.logs': '审计日志',
   'menu.Scalability': '扩展能力',

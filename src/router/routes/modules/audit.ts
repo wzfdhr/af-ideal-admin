@@ -8,7 +8,7 @@ const auditRoutes: AppRouteRecordRaw = {
   meta: {
     locale: 'menu.audit',
     requireAuth: true,
-    order: 7,
+    order: 8,
     icon: 'icon-safe',
   },
   children: [

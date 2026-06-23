@@ -4,6 +4,7 @@ import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
 import { SYSTEM_MENU_PERMISSIONS } from '@/constants/system-menu'
 import { SYSTEM_ROLE_PERMISSIONS } from '@/constants/system-role'
 import { SYSTEM_USER_PERMISSIONS } from '@/constants/system-user'
+import { MESSAGE_PERMISSIONS } from '@/constants/message'
 import type { SystemDepartmentRecord } from '@/api/system/department'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
 import type { SystemMenuRecord } from '@/api/system/menu'
@@ -266,7 +267,7 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
       meta: {
         locale: 'menu.audit',
         requireAuth: true,
-        order: 7,
+        order: 8,
         icon: 'icon-safe',
       },
       children: [
@@ -278,6 +279,30 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             locale: 'menu.audit.logs',
             requireAuth: true,
             roles: ['*'],
+          },
+        },
+      ],
+    },
+    {
+      path: '/message',
+      name: 'message',
+      componentKey: 'DefaultLayout',
+      meta: {
+        locale: 'menu.message',
+        requireAuth: true,
+        order: 7,
+        icon: 'icon-message',
+      },
+      children: [
+        {
+          path: 'center',
+          name: 'messageCenter',
+          componentKey: 'MessageCenterPage',
+          meta: {
+            locale: 'menu.message.center',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [MESSAGE_PERMISSIONS.list] },
           },
         },
       ],
