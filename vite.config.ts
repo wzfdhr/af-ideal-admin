@@ -4,13 +4,15 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import eslint from 'vite-plugin-eslint'
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   const rootDir = __dirname
   const env = loadEnv(mode, rootDir, '')
   const apiBaseUrl = env.VITE_API_BASE_URL || '/api'
   const apiProxyTarget = env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:10888'
+  const isServe = command === 'serve'
 
   return {
+    base: env.VITE_BASE_URL || '/',
     plugins: [
       vue(),
       vueJsx(),
@@ -45,14 +47,16 @@ export default defineConfig(({ mode }) => {
       ],
       extensions: ['.ts', '.js'],
     },
-    server: {
-      proxy: {
-        [apiBaseUrl]: {
-          target: apiProxyTarget,
-          changeOrigin: true,
-        },
-      },
-      cors: true,
-    },
+    server: isServe
+      ? {
+          proxy: {
+            [apiBaseUrl]: {
+              target: apiProxyTarget,
+              changeOrigin: true,
+            },
+          },
+          cors: true,
+        }
+      : undefined,
   }
 })

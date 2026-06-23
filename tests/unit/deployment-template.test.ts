@@ -31,6 +31,26 @@ describe('deployment templates', () => {
     expect(nginxConfig).toContain('no-store')
   })
 
+  it('keeps vite proxy serve-only and uses the deployed base path', () => {
+    const viteConfig = readFile('vite.config.ts')
+
+    expect(viteConfig).toContain("base: env.VITE_BASE_URL || '/'")
+    expect(viteConfig).toContain("command === 'serve'")
+    expect(viteConfig).toContain('server: isServe')
+    expect(viteConfig).toContain('[apiBaseUrl]')
+  })
+
+  it('ships a runtime-configurable nginx template for container api upstreams', () => {
+    const nginxTemplate = readFile('deploy/nginx/default.conf.template')
+    const dockerfile = readFile('Dockerfile')
+
+    expect(nginxTemplate).toMatch(/\$\{API_PROXY_PASS\}/)
+    expect(nginxTemplate).toContain('try_files $uri $uri/ /index.html')
+    expect(nginxTemplate).toContain('location = /runtime-config.js')
+    expect(dockerfile).toContain('API_PROXY_PASS=http://backend:8080')
+    expect(dockerfile).toContain('/etc/nginx/templates/default.conf.template')
+  })
+
   it('ships a container template for static hosting', () => {
     const dockerfile = readFile('Dockerfile')
     const dockerIgnore = readFile('.dockerignore')
@@ -40,5 +60,22 @@ describe('deployment templates', () => {
     expect(dockerfile).toContain('deploy/nginx/default.conf')
     expect(dockerIgnore).toContain('node_modules')
     expect(dockerIgnore).toContain('dist')
+  })
+
+  it('documents an executable deployment runbook for new contributors', () => {
+    const deploymentDoc = readFile('docs/deployment.md')
+
+    ;[
+      'VITE_BASE_URL',
+      'VITE_API_BASE_URL',
+      'API_PROXY_PASS',
+      'docker run --rm -p 8080:80 -e API_PROXY_PASS=',
+      'nginx -t',
+      'curl -I http://127.0.0.1:8080/visualization/reportCenter',
+      'curl -I http://127.0.0.1:8080/runtime-config.js',
+      'Vite proxy is only enabled for local `vite serve`',
+    ].forEach((keyword) => {
+      expect(deploymentDoc).toContain(keyword)
+    })
   })
 })
