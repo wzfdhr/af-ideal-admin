@@ -6,6 +6,7 @@ import { SYSTEM_ROLE_PERMISSIONS } from '@/constants/system-role'
 import { SYSTEM_USER_PERMISSIONS } from '@/constants/system-user'
 import { MESSAGE_PERMISSIONS } from '@/constants/message'
 import { TENANT_PERMISSIONS } from '@/constants/tenant'
+import { FILE_RESOURCE_PERMISSIONS } from '@/constants/file-resource'
 import type { SystemDepartmentRecord } from '@/api/system/department'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
 import type { SystemMenuRecord } from '@/api/system/menu'
@@ -381,6 +382,30 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             requireAuth: true,
             roles: ['*'],
             access: { permissions: [TENANT_PERMISSIONS.list] },
+          },
+        },
+      ],
+    },
+    {
+      path: '/resource',
+      name: 'resource',
+      componentKey: 'DefaultLayout',
+      meta: {
+        locale: 'menu.resource',
+        requireAuth: true,
+        order: 10,
+        icon: 'icon-file',
+      },
+      children: [
+        {
+          path: 'files',
+          name: 'fileResourceCenter',
+          componentKey: 'FileResourceCenterPage',
+          meta: {
+            locale: 'menu.resource.files',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [FILE_RESOURCE_PERMISSIONS.list] },
           },
         },
       ],

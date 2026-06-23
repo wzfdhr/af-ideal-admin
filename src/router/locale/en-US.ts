@@ -26,6 +26,8 @@ export default {
   'menu.audit.logs': 'Audit logs',
   'menu.tenant': 'Tenants',
   'menu.tenant.center': 'Tenant center',
+  'menu.resource': 'Resource center',
+  'menu.resource.files': 'File resources',
   'menu.formDesign': 'Scalability',
   'menu.Scalability.formDesign': 'Form design',
   'menu.Scalability.workflowDesign': 'Workflow design',

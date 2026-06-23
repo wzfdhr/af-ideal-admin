@@ -28,6 +28,8 @@ export default {
   'menu.audit.logs': '审计日志',
   'menu.tenant': '多租户',
   'menu.tenant.center': '租户中心',
+  'menu.resource': '资源中心',
+  'menu.resource.files': '文件资源',
   'menu.Scalability': '扩展能力',
   'menu.Scalability.formDesign': '表单设计器',
   'menu.Scalability.workflowDesign': '流程设计器',

@@ -4,6 +4,7 @@ import setupAuthMock from './modules/auth'
 import setupBusinessMock from './modules/business'
 import setupDataScreenMock from './modules/data-screen'
 import setupDictionaryMock from './modules/dictionary'
+import setupFileResourceMock from './modules/file-resource'
 import setupFormDesignerMock from './modules/form-designer'
 import setupLowCodeMock from './modules/low-code'
 import setupMenuMock from './modules/menu'
@@ -28,6 +29,7 @@ setupPermissionMock()
 setupDictionaryMock()
 setupFormDesignerMock()
 setupDataScreenMock()
+setupFileResourceMock()
 setupLowCodeMock()
 setupWorkflowMock()
 setupReportMock()
