@@ -36,10 +36,10 @@ describe('message subscription documentation', () => {
     )
 
     expect(capabilityMap).toContain(
-      '| 消息中心 | 已具备消息管理页面、订阅配置、跳转联动、Mock 推送模拟'
+      '| 消息中心 | 已具备消息管理页面、订阅配置、消息模板、接收人范围、发送任务 Mock'
     )
     expect(capabilityMap).toContain(
-      '补真实 WebSocket 网关、消息模板、接收人范围和发送任务管理'
+      '补真实 WebSocket 网关、消息队列、模板审批和发送审计归档'
     )
   })
 })

@@ -39,6 +39,19 @@ const messageRoutes: AppRouteRecordRaw = {
         },
       },
     },
+    {
+      path: 'templates',
+      name: 'messageTemplates',
+      component: () => import('@/views/message/templates/index.vue'),
+      meta: {
+        locale: 'menu.message.templates',
+        requireAuth: true,
+        roles: ['*'],
+        access: {
+          permissions: [MESSAGE_PERMISSIONS.template],
+        },
+      },
+    },
   ],
 }
 

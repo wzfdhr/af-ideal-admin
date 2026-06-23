@@ -24,6 +24,7 @@ export default {
   'menu.message': 'Message center',
   'menu.message.center': 'Messages',
   'menu.message.subscriptions': 'Subscriptions',
+  'menu.message.templates': 'Templates',
   'menu.audit': 'Audit center',
   'menu.audit.logs': 'Audit logs',
   'menu.tenant': 'Tenants',

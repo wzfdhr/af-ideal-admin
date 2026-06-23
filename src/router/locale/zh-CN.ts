@@ -26,6 +26,7 @@ export default {
   'menu.message': '消息中心',
   'menu.message.center': '消息管理',
   'menu.message.subscriptions': '订阅配置',
+  'menu.message.templates': '模板任务',
   'menu.audit': '审计中心',
   'menu.audit.logs': '审计日志',
   'menu.tenant': '多租户',

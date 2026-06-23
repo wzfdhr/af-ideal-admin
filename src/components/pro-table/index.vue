@@ -15,16 +15,25 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { adminUi } from '@/components/pro-ui'
+import type { TableColumnData } from '@arco-design/web-vue'
 import type {
   ProTableExpose,
   ProTableFetchParams,
   ProTableFetchResult,
-  ProTableProps,
 } from './types'
 
 const { Table } = adminUi
 
-const props = withDefaults(defineProps<ProTableProps>(), {
+interface ProTableComponentProps {
+  columns: TableColumnData[]
+  fetchData: (
+    params: ProTableFetchParams
+  ) => Promise<ProTableFetchResult<Record<string, unknown>>>
+  rowKey: string
+  defaultPageSize?: number
+}
+
+const props = withDefaults(defineProps<ProTableComponentProps>(), {
   defaultPageSize: 10,
 })
 

@@ -359,6 +359,17 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             access: { permissions: [MESSAGE_PERMISSIONS.subscribe] },
           },
         },
+        {
+          path: 'templates',
+          name: 'messageTemplates',
+          componentKey: 'MessageTemplatesPage',
+          meta: {
+            locale: 'menu.message.templates',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [MESSAGE_PERMISSIONS.template] },
+          },
+        },
       ],
     },
     {

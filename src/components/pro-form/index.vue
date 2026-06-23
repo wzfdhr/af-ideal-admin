@@ -39,16 +39,21 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, watch } from 'vue'
 import { adminUi } from '@/components/pro-ui'
-import type {
-  ProFormExpose,
-  ProFormField,
-  ProFormOption,
-  ProFormProps,
-} from './types'
+import type { ProFormExpose, ProFormField, ProFormOption } from './types'
 
 const { Button, Form, FormItem, Input, Select } = adminUi
 
-const props = withDefaults(defineProps<ProFormProps>(), {
+interface ProFormComponentProps {
+  schema: ProFormField[]
+  modelValue?: Record<string, unknown>
+  readonly?: boolean
+  submitText?: string
+  resetText?: string
+  hideActions?: boolean
+  submitter?: (values: Record<string, unknown>) => void | Promise<void>
+}
+
+const props = withDefaults(defineProps<ProFormComponentProps>(), {
   modelValue: () => ({}),
   readonly: false,
   submitText: '提交',

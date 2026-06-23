@@ -135,7 +135,7 @@ Mock 模块：`src/mock/modules/message-subscription.ts`。
 ## 后续增强
 
 - 接入真实 WebSocket 网关和前端连接状态。
-- 增加消息模板、变量填充和发送任务管理。
+- 消息模板、变量填充和发送任务管理见 `docs/components/message-template-tasks.md`。
 - 增加接收人范围：用户、角色、部门、租户和数据权限范围。
 - 与审计日志联动，记录订阅变更和推送任务。
 - 与流程、报表、权限变更事件联动，形成统一事件中心。

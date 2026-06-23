@@ -7,33 +7,30 @@ const rootDir = path.resolve(__dirname, '../..')
 const readFile = (filePath: string) =>
   fs.readFileSync(path.join(rootDir, filePath), 'utf8')
 
-describe('message center documentation', () => {
-  it('documents message center contract, mock scenarios and permissions', () => {
-    const docPath = 'docs/components/message-center.md'
+describe('message template task documentation', () => {
+  it('documents template contract, send task mock and permissions', () => {
+    const docPath = 'docs/components/message-template-tasks.md'
 
     expect(fs.existsSync(path.join(rootDir, docPath))).toBe(true)
 
     const doc = readFile(docPath)
 
     ;[
-      '/messages/notifications',
-      'message:list',
-      'message:read',
-      'message:batch-read',
-      '/message/subscriptions',
-      '/message/templates',
+      '/messages/templates',
+      '/messages/send-tasks',
+      'message:template',
+      'message:send',
       'Mock',
-      '站内信',
-      '公告',
-      '待办',
-      '告警',
-      '批量已读',
+      '消息模板',
+      '变量预览',
+      '接收人范围',
+      '发送任务',
     ].forEach((keyword) => {
       expect(doc).toContain(keyword)
     })
   })
 
-  it('keeps the enterprise capability map aligned with delivered message MVP', () => {
+  it('keeps the enterprise capability map aligned with delivered template MVP', () => {
     const capabilityMap = readFile(
       'docs/architecture/enterprise-admin-capability-map.md'
     )

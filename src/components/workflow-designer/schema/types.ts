@@ -9,7 +9,7 @@ export const WORKFLOW_NODE_TYPES = [
   'end',
 ] as const
 
-export type WorkflowNodeType = (typeof WORKFLOW_NODE_TYPES)[number]
+export type WorkflowNodeType = typeof WORKFLOW_NODE_TYPES[number]
 
 export interface WorkflowNodeConfig {
   approvers?: string[]
