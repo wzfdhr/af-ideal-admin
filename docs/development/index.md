@@ -8,6 +8,8 @@
 - [后端接入指南](backend-integration.md)：接口路径、响应结构、认证头、运行时配置和 Mock 对齐规则。
 - [权限接入指南](permission-integration.md)：路由权限、菜单权限、按钮权限和服务端菜单约束。
 - [发布 checklist](release-checklist.md)：提交、构建、验收、回滚和发布前检查。
+- [Code review checklist](code-review-checklist.md)：Reviewer 合并前检查清单和暂缓合并标准。
+- [风险等级说明](risk-levels.md)：P0-P3 风险分级、测试要求和回滚口径。
 
 ## 架构参考
 
