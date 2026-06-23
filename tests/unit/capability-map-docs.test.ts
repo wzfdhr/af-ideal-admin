@@ -60,4 +60,26 @@ describe('enterprise capability map documentation', () => {
     expect(capabilityMap).toContain('文件与资源管理')
     expect(capabilityMap).toContain('插件化')
   })
+
+  it('documents product planning acceptance for each capability', () => {
+    const capabilityMap = readFile(
+      'docs/architecture/enterprise-admin-capability-map.md'
+    )
+
+    expect(capabilityMap).toContain('## 模块规划与验收矩阵')
+    ;['阶段', '已具备能力', '缺失能力', 'Mock 验收入口', '验收标准'].forEach(
+      (requiredText) => {
+        expect(capabilityMap).toContain(requiredText)
+      }
+    )
+
+    requiredCapabilities.forEach((capability) => {
+      const rowPattern = new RegExp(
+        `\\|\\s*${capability}\\s*\\|\\s*(MVP|增强能力|长期生态)\\s*\\|\\s*已具备能力：[^|\\n]+\\|\\s*缺失能力：[^|\\n]+\\|\\s*Mock 验收入口：[^|\\n]+\\|[^\\n]+\\|`,
+        'u'
+      )
+
+      expect(rowPattern.test(capabilityMap)).toBe(true)
+    })
+  })
 })
