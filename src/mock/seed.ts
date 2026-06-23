@@ -10,6 +10,7 @@ import { TENANT_PERMISSIONS } from '@/constants/tenant'
 import { FILE_RESOURCE_PERMISSIONS } from '@/constants/file-resource'
 import { PLUGIN_PERMISSIONS } from '@/constants/plugin'
 import { THEME_PERMISSIONS } from '@/constants/theme'
+import { REPORT_PERMISSIONS } from '@/constants/report'
 import type { SystemDepartmentRecord } from '@/api/system/department'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
 import type { SystemMenuRecord } from '@/api/system/menu'
@@ -193,6 +194,17 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             locale: 'menu.visualization.reportCenter',
             requireAuth: true,
             roles: ['*'],
+          },
+        },
+        {
+          path: 'reportSchedules',
+          name: 'reportSchedules',
+          componentKey: 'VisualizationReportSchedules',
+          meta: {
+            locale: 'menu.visualization.reportSchedules',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [REPORT_PERMISSIONS.schedule] },
           },
         },
       ],

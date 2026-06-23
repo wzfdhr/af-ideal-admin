@@ -15,6 +15,7 @@ import setupMessageTemplateMock from './modules/message-template'
 import setupPermissionMock from './modules/permission'
 import setupPluginMock from './modules/plugin'
 import setupReportMock from './modules/report'
+import setupReportScheduleMock from './modules/report-schedule'
 import setupSystemDepartmentMock from './modules/system-department'
 import setupSystemDictionaryMock from './modules/system-dictionary'
 import setupSystemMenuMock from './modules/system-menu'
@@ -39,6 +40,7 @@ setupFileResourceMock()
 setupLowCodeMock()
 setupWorkflowMock()
 setupReportMock()
+setupReportScheduleMock()
 setupAuditMock()
 setupMessageMock()
 setupMessageSubscriptionMock()

@@ -1,4 +1,5 @@
 import { defaultLayout } from '@/router/constants'
+import { REPORT_PERMISSIONS } from '@/constants/report'
 import { AppRouteRecordRaw } from '../../types'
 
 const userRoutes: AppRouteRecordRaw = {
@@ -51,6 +52,20 @@ const userRoutes: AppRouteRecordRaw = {
         locale: 'menu.visualization.reportCenter',
         requireAuth: true,
         roles: ['*'],
+      },
+    },
+    {
+      path: 'reportSchedules',
+      name: 'reportSchedules',
+      component: () =>
+        import('@/views/visualization/reportSchedules/index.vue'),
+      meta: {
+        locale: 'menu.visualization.reportSchedules',
+        requireAuth: true,
+        roles: ['*'],
+        access: {
+          permissions: [REPORT_PERMISSIONS.schedule],
+        },
       },
     },
   ],
