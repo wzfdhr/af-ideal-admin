@@ -55,6 +55,30 @@ describe('loadRemoteOptions', () => {
     })
   })
 
+  it('loads standard mock business responses without a custom adapter', async () => {
+    const request = vi.fn().mockResolvedValue({
+      data: {
+        code: 20000,
+        msg: 'success',
+        data: [{ label: '张三', value: 'u-1' }],
+      },
+    })
+
+    await expect(
+      loadRemoteOptions({
+        dataSources: [
+          {
+            key: 'users',
+            name: '用户列表',
+            url: '/api/form-options/users',
+          },
+        ],
+        sourceUrl: '/api/form-options/users',
+        request,
+      })
+    ).resolves.toEqual([{ label: '张三', value: 'u-1' }])
+  })
+
   it('blocks arbitrary remote urls even when they are present in schema', async () => {
     const request = vi.fn()
 

@@ -69,6 +69,16 @@ const assertMockBusinessResponse = (response: unknown) => {
   )
 }
 
+const getMockBusinessOptionList = (response: unknown) => {
+  const payload = getMockBusinessPayload(response)
+
+  if (!payload || payload.code !== 20000 || !Array.isArray(payload.data)) {
+    return undefined
+  }
+
+  return payload.data
+}
+
 const findDataSource = ({
   dataSources,
   sourceKey,
@@ -100,9 +110,10 @@ const normalizeOptions = (
   const listPath = adapter.listPath || 'data'
   const labelField = adapter.labelField || 'label'
   const valueField = adapter.valueField || 'value'
+  const businessOptionList = getMockBusinessOptionList(response)
   const list = Array.isArray(response)
     ? response
-    : getValueByPath(response, listPath)
+    : businessOptionList || getValueByPath(response, listPath)
 
   if (!Array.isArray(list)) {
     throw new Error('远程选项响应格式错误')
