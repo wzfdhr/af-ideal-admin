@@ -91,4 +91,47 @@ describe('development documentation center', () => {
     expect(permissionGuide).toContain('v-allow')
     expect(permissionGuide).toContain('PermissionButton')
   })
+
+  it('keeps CRUD API examples aligned with existing system API types', () => {
+    const crudGuide = readFile('docs/development/crud-page-guide.md')
+    const systemUserApi = readFile('src/api/system/user.ts')
+
+    ;[
+      'SystemUserQuery',
+      'SystemUserPayload',
+      'SystemUserPageResult',
+      'fetchSystemUsers',
+      'getSystemUserDetail',
+      'createSystemUser',
+      'updateSystemUser',
+      'deleteSystemUser',
+      '/system/users',
+      'request.get<SystemUserPageResult>',
+      'request.post<SystemUserRecord>',
+      'request.put<SystemUserRecord>',
+      'request.delete<null>',
+    ].forEach((keyword) => {
+      expect(crudGuide).toContain(keyword)
+      expect(systemUserApi).toContain(keyword)
+    })
+  })
+
+  it('documents an executable new-member CRUD acceptance checklist', () => {
+    const crudGuide = readFile('docs/development/crud-page-guide.md')
+
+    ;[
+      '## 新成员执行检查表',
+      'Step 1: API 契约',
+      'Step 2: Mock 闭环',
+      'Step 3: 路由与菜单',
+      'Step 4: 页面状态',
+      'Step 5: 验证命令',
+      'tests/unit/<domain>-api.test.ts',
+      'tests/unit/<domain>-mock.test.ts',
+      'tests/unit/<domain>-route.test.ts',
+      'tests/unit/<domain>-page.test.ts',
+    ].forEach((keyword) => {
+      expect(crudGuide).toContain(keyword)
+    })
+  })
 })

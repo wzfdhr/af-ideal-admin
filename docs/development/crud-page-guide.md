@@ -39,6 +39,69 @@ export interface DomainPageResult {
 - `updateXxx(id, payload)`
 - `deleteXxx(id)`
 
+现有 `src/api/system/user.ts` 是标准 CRUD API 契约样例，新模块可以按同形结构替换领域名和字段：
+
+```ts
+export interface SystemUserQuery {
+  current: number
+  pageSize: number
+  username?: string
+  phone?: string
+  status?: SystemUserStatus
+}
+
+export interface SystemUserPayload {
+  username: string
+  name: string
+  phone: string
+  email: string
+  dept: string
+  status: SystemUserStatus
+  role: string
+}
+
+export interface SystemUserPageResult {
+  list: SystemUserRecord[]
+  total: number
+}
+
+export const fetchSystemUsers = async (params: SystemUserQuery) => {
+  const response = await request.get<SystemUserPageResult>('/system/users', {
+    params,
+  })
+  return response.data
+}
+
+export const getSystemUserDetail = async (id: string) => {
+  const response = await request.get<SystemUserRecord>(`/system/users/${id}`)
+  return response.data
+}
+
+export const createSystemUser = async (payload: SystemUserPayload) => {
+  const response = await request.post<SystemUserRecord>(
+    '/system/users',
+    payload
+  )
+  return response.data
+}
+
+export const updateSystemUser = async (
+  id: string,
+  payload: SystemUserPayload
+) => {
+  const response = await request.put<SystemUserRecord>(
+    `/system/users/${id}`,
+    payload
+  )
+  return response.data
+}
+
+export const deleteSystemUser = async (id: string) => {
+  const response = await request.delete<null>(`/system/users/${id}`)
+  return response.data
+}
+```
+
 ## Mock 要求
 
 Mock 不是静态展示数据，必须支持页面核心交互：
@@ -102,6 +165,42 @@ Mock 不是静态展示数据，必须支持页面核心交互：
 - `failure message`：列表、详情、保存、删除失败必须有明确错误提示。
 
 提交前运行：
+
+```bash
+npm run lint:check
+npm run typecheck
+npm run test
+npm run build:prd
+```
+
+## 新成员执行检查表
+
+Step 1: API 契约
+
+- 在 `src/api/<domain>.ts` 定义 `Record`、`Query`、`Payload` 和 `PageResult` 类型。
+- 查询函数返回 `{ list, total }`，详情、新增、编辑、删除函数使用资源路径。
+- API 函数命名与当前系统 CRUD 保持同形，例如 `fetchSystemUsers`、`getSystemUserDetail`、`createSystemUser`、`updateSystemUser`、`deleteSystemUser`。
+- 补 `tests/unit/<domain>-api.test.ts`，断言 URL、params、payload 和返回 data。
+
+Step 2: Mock 闭环
+
+- 在 `src/mock/modules/<domain>.ts` 使用同 URL、同响应结构实现查询、分页、新增、编辑、删除。
+- Mock 必须覆盖空数据、接口错误或业务失败场景。
+- 补 `tests/unit/<domain>-mock.test.ts`，用真实 Mock store 验证查询、写入、更新、删除和异常状态。
+
+Step 3: 路由与菜单
+
+- 在 `src/router/routes/modules/<domain>.ts` 增加本地路由和 `meta.access` 权限码。
+- 在 `src/mock/seed.ts` 增加服务端菜单 Mock，`name`、`path`、`componentKey`、`meta.locale` 与本地路由一致。
+- 补 `tests/unit/<domain>-route.test.ts`，验证本地路由、权限码和服务端菜单一致。
+
+Step 4: 页面状态
+
+- 页面优先使用 `ProTable`、`ProForm`、`PermissionButton` 和字典组件。
+- 页面必须覆盖 loading、空状态、错误态、无权限态、详情弹窗、编辑弹窗和删除确认。
+- 补 `tests/unit/<domain>-page.test.ts`，验证初始加载、查询、详情、编辑、删除、失败提示和权限按钮。
+
+Step 5: 验证命令
 
 ```bash
 npm run lint:check
