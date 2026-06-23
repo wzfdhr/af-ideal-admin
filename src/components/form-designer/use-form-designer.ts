@@ -2,8 +2,10 @@ import { ref, computed, Ref } from 'vue'
 import { useClipboard } from '@vueuse/core'
 import {
   createFormSchema,
+  getFormSchemaDetail,
   publishFormSchema,
   saveFormSchema,
+  submitFormRuntime,
 } from '@/api/form-schema'
 import {
   applyImportedFormSchema,
@@ -11,6 +13,11 @@ import {
   migrateFormSchema,
   type VersionedFormSchema,
 } from './schema'
+
+type FormRendererExpose = {
+  getValues: () => Record<string, unknown>
+  validate: () => Promise<boolean>
+}
 
 // form designer actions
 export const useFormDesignerActions = (
@@ -21,13 +28,16 @@ export const useFormDesignerActions = (
   const actionMessage = ref('')
   const actionError = ref('')
   const creating = ref(false)
+  const loading = ref(false)
   const previewVisible = ref(false)
+  const previewRendererRef = ref<FormRendererExpose>()
   const dataSourceEditorVisible = ref(false)
   const importVisible = ref(false)
   const importSource = ref('')
   const importError = ref('')
   const publishing = ref(false)
   const saving = ref(false)
+  const submittingPreview = ref(false)
 
   const { copy, copied } = useClipboard({
     source,
@@ -48,6 +58,23 @@ export const useFormDesignerActions = (
 
   const showDataSourceEditor = () => {
     dataSourceEditorVisible.value = true
+  }
+
+  const loadDraft = async (id = formId.value) => {
+    loading.value = true
+    actionMessage.value = ''
+    actionError.value = ''
+
+    try {
+      const result = await getFormSchemaDetail(id)
+      formId.value = result.id
+      ast.value = migrateFormSchema(result.schema)
+      actionMessage.value = '加载成功'
+    } catch (error) {
+      actionError.value = getErrorMessage(error, '加载失败')
+    } finally {
+      loading.value = false
+    }
   }
 
   const showImportSchema = () => {
@@ -120,6 +147,32 @@ export const useFormDesignerActions = (
     }
   }
 
+  const submitPreview = async () => {
+    submittingPreview.value = true
+    actionMessage.value = ''
+    actionError.value = ''
+
+    try {
+      const renderer = previewRendererRef.value
+      if (!renderer) {
+        throw new Error('预览表单未初始化')
+      }
+
+      const valid = await renderer.validate()
+      if (!valid) {
+        actionError.value = '表单校验未通过'
+        return
+      }
+
+      await submitFormRuntime(formId.value, renderer.getValues())
+      actionMessage.value = '提交成功'
+    } catch (error) {
+      actionError.value = getErrorMessage(error, '提交失败')
+    } finally {
+      submittingPreview.value = false
+    }
+  }
+
   return {
     actionError,
     actionMessage,
@@ -132,14 +185,19 @@ export const useFormDesignerActions = (
     importError,
     importSource,
     importVisible,
+    loadDraft,
+    loading,
     publishCurrent,
     publishing,
+    previewRendererRef,
     previewVisible,
     saveDraft,
     saving,
     showDataSourceEditor,
     showImportSchema,
     showPreview,
+    submitPreview,
+    submittingPreview,
   }
 }
 

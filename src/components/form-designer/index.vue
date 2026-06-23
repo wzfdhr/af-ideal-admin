@@ -23,6 +23,9 @@
         <div class="m-4">
           <div class="font-bold">操作</div>
           <a-space direction="vertical" class="mt-4 w-full">
+            <a-button long :loading="loading" @click="loadDraft()">
+              加载示例表单
+            </a-button>
             <a-button long :loading="creating" @click="createDraft()">
               创建草稿
             </a-button>
@@ -105,7 +108,20 @@
 
     <a-modal v-model:visible="previewVisible" fullscreen>
       <template #title>表单预览</template>
-      <form-renderer :ast="ast" />
+      <form-renderer ref="previewRendererRef" :ast="ast" />
+      <template #footer>
+        <a-space>
+          <a-button @click="previewVisible = false">关闭</a-button>
+          <a-button
+            type="primary"
+            :loading="submittingPreview"
+            data-testid="form-designer-preview-submit"
+            @click="submitPreview"
+          >
+            提交 Mock
+          </a-button>
+        </a-space>
+      </template>
     </a-modal>
 
     <a-modal v-model:visible="dataSourceEditorVisible">
@@ -131,7 +147,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import Draggable from 'vuedraggable'
 import { FormRenderer } from '@/components/form-runtime'
 import { fields, useWidgetActions } from './use-widgets'
@@ -158,17 +174,26 @@ const {
   importError,
   importSource,
   importVisible,
+  loadDraft,
+  loading,
   publishCurrent,
   publishing,
+  previewRendererRef,
   previewVisible,
   saveDraft,
   saving,
   showDataSourceEditor,
   showImportSchema,
   showPreview,
+  submitPreview,
+  submittingPreview,
 } = useFormDesignerActions(ast, formId)
 
 const { selectedWidget, cloneWidgetConfigFromRaw } = useWidgetActions(ast)
+
+onMounted(() => {
+  loadDraft()
+})
 // watch(ast.value, () => {
 //   window.localStorage.setItem('ast', ast.value as any)
 // })

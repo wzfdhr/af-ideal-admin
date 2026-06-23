@@ -9,14 +9,18 @@ import { migrateFormSchema } from '@/components/form-designer/schema'
 
 const apiMocks = vi.hoisted(() => ({
   createFormSchema: vi.fn(),
+  getFormSchemaDetail: vi.fn(),
   publishFormSchema: vi.fn(),
   saveFormSchema: vi.fn(),
+  submitFormRuntime: vi.fn(),
 }))
 
 vi.mock('@/api/form-schema', () => ({
   createFormSchema: apiMocks.createFormSchema,
+  getFormSchemaDetail: apiMocks.getFormSchemaDetail,
   publishFormSchema: apiMocks.publishFormSchema,
   saveFormSchema: apiMocks.saveFormSchema,
+  submitFormRuntime: apiMocks.submitFormRuntime,
 }))
 
 vi.mock('@vueuse/core', async () => {
@@ -84,6 +88,75 @@ describe('useFormDesignerActions', () => {
     await vm.publishCurrent()
     expect(apiMocks.publishFormSchema).toHaveBeenCalledWith('form-2', vm.ast)
     expect(vm.actionMessage).toBe('发布成功')
+  })
+
+  it('loads an existing mock schema detail into the designer', async () => {
+    const wrapper = mountDesignerHarness()
+    const vm = wrapper.vm as unknown as {
+      actionMessage: string
+      ast: ReturnType<typeof migrateFormSchema>
+      formId: string
+      loadDraft: (id?: string) => Promise<void>
+    }
+    const schema = migrateFormSchema({
+      widgetsConfig: [
+        {
+          type: 'input',
+          uid: 'customerName',
+          name: '客户名称',
+          config: {
+            label: '客户名称',
+          },
+        },
+      ],
+    })
+
+    apiMocks.getFormSchemaDetail.mockResolvedValueOnce({
+      id: 'form-customer-registration',
+      schema,
+    })
+
+    await vm.loadDraft('form-customer-registration')
+
+    expect(apiMocks.getFormSchemaDetail).toHaveBeenCalledWith(
+      'form-customer-registration'
+    )
+    expect(vm.formId).toBe('form-customer-registration')
+    expect(vm.ast).toEqual(schema)
+    expect(vm.actionMessage).toBe('加载成功')
+  })
+
+  it('submits preview runtime values through the mock runtime api', async () => {
+    const wrapper = mountDesignerHarness()
+    const vm = wrapper.vm as unknown as {
+      actionMessage: string
+      previewRendererRef: {
+        getValues: () => Record<string, unknown>
+        validate: () => Promise<boolean>
+      }
+      submitPreview: () => Promise<void>
+    }
+
+    vm.previewRendererRef = {
+      getValues: () => ({
+        customerName: 'Alice',
+      }),
+      validate: () => Promise.resolve(true),
+    }
+    apiMocks.submitFormRuntime.mockResolvedValueOnce({
+      id: 'submit-1',
+      status: 'submitted',
+    })
+
+    await vm.submitPreview()
+
+    expect(apiMocks.submitFormRuntime).toHaveBeenCalledWith(
+      'form-customer-registration',
+      {
+        customerName: 'Alice',
+      }
+    )
+    expect(vm.actionMessage).toBe('提交成功')
   })
 
   it('opens preview through designer state', () => {

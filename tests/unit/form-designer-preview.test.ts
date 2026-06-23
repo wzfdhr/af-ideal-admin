@@ -1,8 +1,24 @@
 /* eslint-disable vue/one-component-per-file */
 import { mount } from '@vue/test-utils'
 import { defineComponent, h, nextTick } from 'vue'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import FormDesigner from '@/components/form-designer/index.vue'
+
+const apiMocks = vi.hoisted(() => ({
+  createFormSchema: vi.fn(),
+  getFormSchemaDetail: vi.fn(),
+  publishFormSchema: vi.fn(),
+  saveFormSchema: vi.fn(),
+  submitFormRuntime: vi.fn(),
+}))
+
+vi.mock('@/api/form-schema', () => ({
+  createFormSchema: apiMocks.createFormSchema,
+  getFormSchemaDetail: apiMocks.getFormSchemaDetail,
+  publishFormSchema: apiMocks.publishFormSchema,
+  saveFormSchema: apiMocks.saveFormSchema,
+  submitFormRuntime: apiMocks.submitFormRuntime,
+}))
 
 vi.mock('@vueuse/core', async () => {
   const vue = await vi.importActual<typeof import('vue')>('vue')
@@ -25,7 +41,14 @@ vi.mock('@/components/form-runtime', async () => {
         required: true,
       },
     },
-    setup(props) {
+    setup(props, { expose }) {
+      expose({
+        getValues: () => ({
+          customerName: 'Alice',
+        }),
+        validate: () => Promise.resolve(true),
+      })
+
       return () =>
         vue.h('div', {
           'data-testid': 'designer-preview-renderer',
@@ -71,6 +94,7 @@ const ModalStub = defineComponent({
         ? h('section', { 'data-testid': 'designer-modal' }, [
             slots.title?.(),
             slots.default?.(),
+            slots.footer?.(),
           ])
         : null
   },
@@ -99,8 +123,31 @@ const mountDesigner = () =>
   })
 
 describe('FormDesigner preview', () => {
-  it('renders preview with the shared runtime renderer', async () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    apiMocks.getFormSchemaDetail.mockResolvedValue({
+      id: 'form-customer-registration',
+      schema: {
+        version: 1,
+        formConfig: {
+          size: 'medium',
+          layout: 'vertical',
+          labelAlign: 'right',
+        },
+        dataSources: [],
+        widgetsConfig: [],
+      },
+    })
+    apiMocks.submitFormRuntime.mockResolvedValue({
+      id: 'submit-1',
+      status: 'submitted',
+    })
+  })
+
+  it('renders preview with the shared runtime renderer and submits to mock runtime api', async () => {
     const wrapper = mountDesigner()
+    await Promise.resolve()
+    await nextTick()
 
     expect(
       wrapper.find('[data-testid="designer-preview-renderer"]').exists()
@@ -112,5 +159,17 @@ describe('FormDesigner preview', () => {
     expect(
       wrapper.find('[data-testid="designer-preview-renderer"]').exists()
     ).toBe(true)
+
+    await wrapper
+      .find('[data-testid="form-designer-preview-submit"]')
+      .trigger('click')
+    await Promise.resolve()
+
+    expect(apiMocks.submitFormRuntime).toHaveBeenCalledWith(
+      'form-customer-registration',
+      {
+        customerName: 'Alice',
+      }
+    )
   })
 })
