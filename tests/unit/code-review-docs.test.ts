@@ -55,4 +55,33 @@ describe('enterprise code review documentation', () => {
     expect(riskLevels).toContain('P3')
     expect(riskLevels).toContain('回滚')
   })
+
+  it('requires reviewer decision evidence and sensitive-area test mapping', () => {
+    const template = readFile('.github/pull_request_template.md')
+    const checklist = readFile('docs/development/code-review-checklist.md')
+    const riskLevels = readFile('docs/development/risk-levels.md')
+
+    ;[
+      'Reviewer 判定记录',
+      '结论：可合并 / 请求修改 / 暂缓合并',
+      '验证证据',
+      '敏感区域测试矩阵',
+      '权限 / 认证 / 请求 / 表单 schema',
+    ].forEach((keyword) => {
+      expect(template).toContain(keyword)
+    })
+    ;[
+      '## 阻断合并条件',
+      '## 风险等级判定矩阵',
+      'P0 必须阻断',
+      'P1 必须补测',
+      'P2 必须说明回滚',
+      'P3 可按最小验证放行',
+    ].forEach((keyword) => {
+      expect(checklist).toContain(keyword)
+    })
+
+    expect(riskLevels).toContain('风险等级判定矩阵')
+    expect(riskLevels).toContain('从高到低取最高风险等级')
+  })
 })
