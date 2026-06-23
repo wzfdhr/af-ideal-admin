@@ -85,4 +85,36 @@ describe('useFormDesignerActions', () => {
     expect(apiMocks.publishFormSchema).toHaveBeenCalledWith('form-2', vm.ast)
     expect(vm.actionMessage).toBe('发布成功')
   })
+
+  it('opens preview through designer state', () => {
+    const wrapper = mountDesignerHarness()
+    const vm = wrapper.vm as unknown as {
+      previewVisible: boolean
+      showPreview: () => void
+    }
+
+    expect(vm.previewVisible).toBe(false)
+
+    vm.showPreview()
+
+    expect(vm.previewVisible).toBe(true)
+  })
+
+  it('validates schema before publishing and keeps the api untouched when invalid', async () => {
+    const wrapper = mountDesignerHarness()
+    const vm = wrapper.vm as unknown as {
+      actionError: string
+      ast: unknown
+      publishCurrent: () => Promise<void>
+    }
+
+    vm.ast = {
+      widgetsConfig: 'bad',
+    }
+
+    await vm.publishCurrent()
+
+    expect(apiMocks.publishFormSchema).not.toHaveBeenCalled()
+    expect(vm.actionError).toBe('非法表单 schema')
+  })
 })

@@ -46,11 +46,19 @@
             <a-button type="outline" long @click="showDataSourceEditor">
               编辑数据源
             </a-button>
-            <a-button type="primary" long @click="showPreview">
+            <a-button
+              type="primary"
+              long
+              data-testid="form-designer-preview"
+              @click="showPreview"
+            >
               预览表单
             </a-button>
             <div v-if="actionMessage" class="text-xs text-green-600">
               {{ actionMessage }}
+            </div>
+            <div v-if="actionError" class="text-xs text-red-500">
+              {{ actionError }}
             </div>
           </a-space>
         </div>
@@ -139,6 +147,7 @@ import type { WidgetsConfig } from './types'
 const activeTab = ref(1)
 const { ast, formId } = useFormDesigner()
 const {
+  actionError,
   actionMessage,
   applyImportSchema,
   copied,

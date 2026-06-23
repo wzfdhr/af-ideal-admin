@@ -113,3 +113,13 @@ import {
 - `rollbackFormSchema(id, version)`：预留回滚接口。
 
 发布前 schema 校验失败时不会发起接口请求。
+
+## 设计器动作约束
+
+表单设计器的操作入口位于 `useFormDesignerActions`：
+
+- 导入：`applyImportedFormSchema` 会先解析 JSON 并迁移 schema，成功后才替换当前 AST。
+- 导出：`exportFormSchema` 输出的 JSON 必须可以再次通过 `importFormSchema` 导入并保持语义等价。
+- 预览：`showPreview` 会先执行 `migrateFormSchema`，再打开 `previewVisible` 对应的本地预览弹窗。
+- 渲染：预览弹窗只使用 `@/components/form-runtime` 导出的 `FormRenderer`，不得维护第二套预览 renderer。
+- 发布：`publishCurrent` 会先执行本地 schema 校验，失败时写入 `actionError`，不得调用发布 API。

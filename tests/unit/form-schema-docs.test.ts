@@ -22,4 +22,23 @@ describe('form schema documentation', () => {
       expect(doc).toContain(keyword)
     })
   })
+
+  it('documents import, export, preview, publish, and rollback constraints', () => {
+    const doc = readFile('docs/components/form-schema.md')
+
+    ;[
+      'exportFormSchema',
+      'importFormSchema',
+      'applyImportedFormSchema',
+      '表单 schema JSON 格式错误',
+      'previewVisible',
+      'FormRenderer',
+      'publishFormSchema',
+      'rollbackFormSchema',
+      '发布前 schema 校验失败时不会发起接口请求',
+      'actionError',
+    ].forEach((keyword) => {
+      expect(doc).toContain(keyword)
+    })
+  })
 })

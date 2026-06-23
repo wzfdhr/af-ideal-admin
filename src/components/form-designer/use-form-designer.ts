@@ -1,6 +1,5 @@
-import { ref, computed, h, getCurrentInstance, onMounted, Ref } from 'vue'
+import { ref, computed, Ref } from 'vue'
 import { useClipboard } from '@vueuse/core'
-import { FormRenderer } from '@/components/form-runtime'
 import {
   createFormSchema,
   publishFormSchema,
@@ -12,7 +11,6 @@ import {
   migrateFormSchema,
   type VersionedFormSchema,
 } from './schema'
-import type { ModalMethod } from '@arco-design/web-vue'
 
 // form designer actions
 export const useFormDesignerActions = (
@@ -21,6 +19,7 @@ export const useFormDesignerActions = (
 ) => {
   const source = computed(() => exportFormSchema(ast.value))
   const actionMessage = ref('')
+  const actionError = ref('')
   const creating = ref(false)
   const previewVisible = ref(false)
   const dataSourceEditorVisible = ref(false)
@@ -34,22 +33,17 @@ export const useFormDesignerActions = (
     source,
   })
 
-  let Modal: ModalMethod | undefined
+  const getErrorMessage = (error: unknown, fallback: string) =>
+    error instanceof Error ? error.message : fallback
 
-  onMounted(() => {
-    Modal = getCurrentInstance()?.appContext.config.globalProperties.$modal
-  })
   const showPreview = () => {
-    Modal?.open({
-      title: '表单预览',
-      content: () =>
-        h('div', {}, [
-          h(FormRenderer, {
-            ast: ast.value,
-          }),
-        ]),
-      fullscreen: true,
-    })
+    try {
+      ast.value = migrateFormSchema(ast.value)
+      actionError.value = ''
+      previewVisible.value = true
+    } catch (error) {
+      actionError.value = getErrorMessage(error, '表单预览失败')
+    }
   }
 
   const showDataSourceEditor = () => {
@@ -67,10 +61,11 @@ export const useFormDesignerActions = (
       applyImportedFormSchema(ast, importSource.value)
       importVisible.value = false
       importError.value = ''
+      actionError.value = ''
+      actionMessage.value = '导入成功'
       return true
     } catch (error) {
-      importError.value =
-        error instanceof Error ? error.message : '表单 schema 导入失败'
+      importError.value = getErrorMessage(error, '表单 schema 导入失败')
       return false
     }
   }
@@ -78,6 +73,7 @@ export const useFormDesignerActions = (
   const createDraft = async (name = '未命名表单') => {
     creating.value = true
     actionMessage.value = ''
+    actionError.value = ''
 
     try {
       const result = await createFormSchema({
@@ -97,6 +93,7 @@ export const useFormDesignerActions = (
   const saveDraft = async () => {
     saving.value = true
     actionMessage.value = ''
+    actionError.value = ''
 
     try {
       await saveFormSchema(formId.value, ast.value)
@@ -109,16 +106,22 @@ export const useFormDesignerActions = (
   const publishCurrent = async () => {
     publishing.value = true
     actionMessage.value = ''
+    actionError.value = ''
 
     try {
-      await publishFormSchema(formId.value, ast.value)
+      const validatedSchema = migrateFormSchema(ast.value)
+      ast.value = validatedSchema
+      await publishFormSchema(formId.value, validatedSchema)
       actionMessage.value = '发布成功'
+    } catch (error) {
+      actionError.value = getErrorMessage(error, '发布失败')
     } finally {
       publishing.value = false
     }
   }
 
   return {
+    actionError,
     actionMessage,
     applyImportSchema,
     copy,
