@@ -26,6 +26,19 @@ const messageRoutes: AppRouteRecordRaw = {
         },
       },
     },
+    {
+      path: 'subscriptions',
+      name: 'messageSubscriptions',
+      component: () => import('@/views/message/subscriptions/index.vue'),
+      meta: {
+        locale: 'menu.message.subscriptions',
+        requireAuth: true,
+        roles: ['*'],
+        access: {
+          permissions: [MESSAGE_PERMISSIONS.subscribe],
+        },
+      },
+    },
   ],
 }
 

@@ -7,32 +7,30 @@ const rootDir = path.resolve(__dirname, '../..')
 const readFile = (filePath: string) =>
   fs.readFileSync(path.join(rootDir, filePath), 'utf8')
 
-describe('message center documentation', () => {
-  it('documents message center contract, mock scenarios and permissions', () => {
-    const docPath = 'docs/components/message-center.md'
+describe('message subscription documentation', () => {
+  it('documents subscription contract, mock push and permissions', () => {
+    const docPath = 'docs/components/message-subscriptions.md'
 
     expect(fs.existsSync(path.join(rootDir, docPath))).toBe(true)
 
     const doc = readFile(docPath)
 
     ;[
-      '/messages/notifications',
-      'message:list',
-      'message:read',
-      'message:batch-read',
-      '/message/subscriptions',
+      '/messages/subscriptions',
+      '/messages/subscriptions/push-simulations',
+      'message:subscribe',
+      'message:push',
       'Mock',
-      '站内信',
-      '公告',
-      '待办',
-      '告警',
-      '批量已读',
+      'WebSocket',
+      '订阅配置',
+      '跳转联动',
+      '推送模拟',
     ].forEach((keyword) => {
       expect(doc).toContain(keyword)
     })
   })
 
-  it('keeps the enterprise capability map aligned with delivered message MVP', () => {
+  it('keeps the enterprise capability map aligned with delivered subscription MVP', () => {
     const capabilityMap = readFile(
       'docs/architecture/enterprise-admin-capability-map.md'
     )

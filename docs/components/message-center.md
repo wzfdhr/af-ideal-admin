@@ -5,6 +5,7 @@
 ## 页面入口
 
 - 路由：`/message/center`
+- 订阅配置路由：`/message/subscriptions`
 - 页面：`src/views/message/center/index.vue`
 - 路由模块：`src/router/routes/modules/message.ts`
 - 服务端菜单 Mock：`src/mock/seed.ts`
@@ -17,6 +18,7 @@
 - 单条标为已读。
 - 当前筛选范围批量已读。
 - 展示总数、未读总数和分类型未读数。
+- 订阅配置、跳转联动和 Mock 推送模拟见 `docs/components/message-subscriptions.md`。
 
 ## API 契约
 
@@ -103,6 +105,6 @@ Mock 模块：`src/mock/modules/message.ts`。
 
 - 与流程工作台联动，待办消息点击后进入具体流程实例。
 - 与审计和报表导出联动，敏感操作和导出结果自动产生消息。
-- 增加消息订阅配置、WebSocket 推送和桌面通知。
+- 接入真实 WebSocket 网关、消息模板、发送任务和桌面通知。
 - 增加多租户、组织范围和接收人维度。
 - 增加消息模板和发送任务管理。

@@ -348,6 +348,17 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             access: { permissions: [MESSAGE_PERMISSIONS.list] },
           },
         },
+        {
+          path: 'subscriptions',
+          name: 'messageSubscriptions',
+          componentKey: 'MessageSubscriptionsPage',
+          meta: {
+            locale: 'menu.message.subscriptions',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [MESSAGE_PERMISSIONS.subscribe] },
+          },
+        },
       ],
     },
     {

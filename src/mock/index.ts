@@ -10,6 +10,7 @@ import setupFormDesignerMock from './modules/form-designer'
 import setupLowCodeMock from './modules/low-code'
 import setupMenuMock from './modules/menu'
 import setupMessageMock from './modules/message'
+import setupMessageSubscriptionMock from './modules/message-subscription'
 import setupPermissionMock from './modules/permission'
 import setupPluginMock from './modules/plugin'
 import setupReportMock from './modules/report'
@@ -39,6 +40,7 @@ setupWorkflowMock()
 setupReportMock()
 setupAuditMock()
 setupMessageMock()
+setupMessageSubscriptionMock()
 setupPluginMock()
 setupSystemDepartmentMock()
 setupSystemDictionaryMock()
