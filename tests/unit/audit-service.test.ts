@@ -117,4 +117,96 @@ describe('audit service', () => {
       })
     )
   })
+
+  it('redacts sensitive fields before audit events leave the frontend', async () => {
+    vi.mocked(createAuditEvent).mockResolvedValueOnce({
+      id: 'audit-1',
+      module: 'auth',
+      action: 'login',
+      eventType: 'security',
+      result: 'failure',
+      target: {
+        type: 'session',
+        id: 'admin',
+      },
+      occurredAt: '2026-06-23T10:00:00.000Z',
+    })
+    setAuditContextProvider({
+      now: () => new Date('2026-06-23T10:00:00.000Z'),
+    })
+
+    await recordAuditEvent({
+      module: 'auth',
+      action: 'login',
+      eventType: 'security',
+      result: 'failure',
+      target: {
+        type: 'session',
+        id: 'admin',
+      },
+      detail: {
+        password: 'secret-password',
+        request: 'password=secret-password&token=secret-token',
+        authorization: 'Bearer secret-token',
+        idCard: '11010519491231002X',
+        nested: {
+          'X-Access-Token': 'header-secret-token',
+        },
+      },
+    })
+
+    const payload = vi.mocked(createAuditEvent).mock.calls[0][0]
+
+    expect(payload.detail).toEqual({
+      password: '[redacted]',
+      request: 'password=[redacted]&token=[redacted]',
+      authorization: '[redacted]',
+      idCard: '[redacted-id-card]',
+      nested: {
+        'X-Access-Token': '[redacted]',
+      },
+    })
+    expect(JSON.stringify(payload)).not.toMatch(
+      /secret-password|secret-token|11010519491231002X/
+    )
+  })
+
+  it('does not block business flow when audit failure reporting fails', async () => {
+    const reportAuditError = vi
+      .fn()
+      .mockRejectedValue(new Error('observability unavailable'))
+    setActiveObservability({
+      reportVueError: vi.fn(),
+      reportRouterError: vi.fn(),
+      reportRequestError: vi.fn(),
+      reportWhiteScreen: vi.fn(),
+      reportAuditError,
+      startWhiteScreenDetection: vi.fn(() => vi.fn()),
+    })
+    vi.mocked(createAuditEvent).mockRejectedValueOnce(
+      new Error('audit service unavailable')
+    )
+
+    await expect(
+      recordAuditEvent({
+        module: 'system',
+        action: 'role.update',
+        eventType: 'permission',
+        result: 'success',
+        target: {
+          type: 'role',
+          id: 'role-admin',
+          name: '管理员',
+        },
+      })
+    ).resolves.toBeUndefined()
+
+    expect(reportAuditError).toHaveBeenCalledWith(
+      expect.any(Error),
+      expect.objectContaining({
+        module: 'system',
+        action: 'role.update',
+      })
+    )
+  })
 })

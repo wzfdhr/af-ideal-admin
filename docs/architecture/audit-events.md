@@ -96,9 +96,17 @@ Mock 查询支持：
 
 审计写入是旁路能力。`recordAuditEvent` 捕获审计接口异常，并通过 `observability` 的 `audit` 来源上报。审计失败不能影响登录、退出、菜单保存、角色保存等主业务结果。
 
+审计与可观测性是双旁路：如果审计接口失败，主业务继续；如果审计失败后的 `reportAuditError` 也失败，主业务仍然继续。任何审计链路异常都不能替代原业务流程的成功或失败语义。
+
 ## 脱敏规则
 
 审计 detail 不允许保存 token、密码、Authorization、访问 token 或身份证号。Mock 层会对 detail 递归脱敏；真实后端也必须再次脱敏和校验。
+
+`recordAuditEvent` 在前端提交前脱敏，会递归处理 `detail`、`operator`、`target` 和其他上下文字段：
+
+- 敏感 key：`token`、`password`、`authorization`、`X-Access-Token`、`access-token`。
+- 敏感字符串：`token=...`、`password=...`、`Authorization=...`、`Bearer ...`。
+- 身份证号：18 位身份证格式统一替换为 `[redacted-id-card]`。
 
 ## 前后端责任边界
 
@@ -106,7 +114,7 @@ Mock 查询支持：
 
 - 在关键操作成功或失败后提交审计事件。
 - 提供当前可见的操作者、对象、动作、结果和页面上下文。
-- 不提交密码、token、Authorization 等敏感字段。
+- 提交前脱敏，不提交密码、token、Authorization、身份证号等敏感字段。
 - 审计失败时不阻断主流程，并把失败交给可观测性服务。
 
 后端负责：
