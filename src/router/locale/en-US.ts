@@ -24,6 +24,8 @@ export default {
   'menu.message.center': 'Messages',
   'menu.audit': 'Audit center',
   'menu.audit.logs': 'Audit logs',
+  'menu.tenant': 'Tenants',
+  'menu.tenant.center': 'Tenant center',
   'menu.formDesign': 'Scalability',
   'menu.Scalability.formDesign': 'Form design',
   'menu.Scalability.workflowDesign': 'Workflow design',

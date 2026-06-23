@@ -5,6 +5,7 @@ import { SYSTEM_MENU_PERMISSIONS } from '@/constants/system-menu'
 import { SYSTEM_ROLE_PERMISSIONS } from '@/constants/system-role'
 import { SYSTEM_USER_PERMISSIONS } from '@/constants/system-user'
 import { MESSAGE_PERMISSIONS } from '@/constants/message'
+import { TENANT_PERMISSIONS } from '@/constants/tenant'
 import type { SystemDepartmentRecord } from '@/api/system/department'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
 import type { SystemMenuRecord } from '@/api/system/menu'
@@ -356,6 +357,30 @@ export const mockMenus: Record<MockRole, MockMenuNode[]> = {
             locale: 'menu.Scalability.lowCodeBuilder',
             requireAuth: true,
             roles: ['*'],
+          },
+        },
+      ],
+    },
+    {
+      path: '/tenant',
+      name: 'tenant',
+      componentKey: 'DefaultLayout',
+      meta: {
+        locale: 'menu.tenant',
+        requireAuth: true,
+        order: 9,
+        icon: 'icon-apps',
+      },
+      children: [
+        {
+          path: 'center',
+          name: 'tenantCenter',
+          componentKey: 'TenantCenterPage',
+          meta: {
+            locale: 'menu.tenant.center',
+            requireAuth: true,
+            roles: ['*'],
+            access: { permissions: [TENANT_PERMISSIONS.list] },
           },
         },
       ],

@@ -26,6 +26,8 @@ export default {
   'menu.message.center': '消息管理',
   'menu.audit': '审计中心',
   'menu.audit.logs': '审计日志',
+  'menu.tenant': '多租户',
+  'menu.tenant.center': '租户中心',
   'menu.Scalability': '扩展能力',
   'menu.Scalability.formDesign': '表单设计器',
   'menu.Scalability.workflowDesign': '流程设计器',
