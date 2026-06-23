@@ -28,4 +28,27 @@ describe('audit event documentation', () => {
       expect(doc).toContain(keyword)
     })
   })
+
+  it('documents the T-404 mock query loop and display redaction rules', () => {
+    const doc = readFile('docs/architecture/audit-events.md')
+
+    ;[
+      'T-404',
+      'GET /audit/events',
+      'operatorName',
+      'module',
+      'result',
+      'eventType',
+      'dateRange',
+      'auth.login',
+      'system.role.update',
+      'workflow.publish',
+      'form.publish',
+      'data-screen.publish',
+      'report.export',
+      '页面展示前二次脱敏',
+    ].forEach((keyword) => {
+      expect(doc).toContain(keyword)
+    })
+  })
 })

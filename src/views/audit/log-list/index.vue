@@ -218,12 +218,59 @@ const resetFilters = async () => {
 const formatTime = (value: string) =>
   value.replace('T', ' ').replace('.000Z', '')
 
+const SENSITIVE_KEYS = new Set([
+  'authorization',
+  'password',
+  'token',
+  'x-access-token',
+  'access-token',
+  'accesstoken',
+])
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null
+
+const maskSensitiveString = (value: string) =>
+  value
+    .replace(
+      /(authorization|password|token|x-access-token|access-token)\s*[:=]\s*[^,\s;&]+/gi,
+      '$1=[redacted]'
+    )
+    .replace(/Bearer\s+[^,\s;&]+/gi, 'Bearer [redacted]')
+    .replace(/\b\d{17}[\dXx]\b/g, '[redacted-id-card]')
+
+const sanitizeDetailValue = (value: unknown, key?: string): unknown => {
+  if (key && SENSITIVE_KEYS.has(key.toLowerCase())) {
+    return '[redacted]'
+  }
+
+  if (typeof value === 'string') {
+    return maskSensitiveString(value)
+  }
+
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeDetailValue(item))
+  }
+
+  if (isRecord(value)) {
+    return Object.keys(value).reduce<Record<string, unknown>>(
+      (result, itemKey) => {
+        result[itemKey] = sanitizeDetailValue(value[itemKey], itemKey)
+        return result
+      },
+      {}
+    )
+  }
+
+  return value
+}
+
 const formatDetail = (detail?: Record<string, unknown>) => {
   if (!detail || Object.keys(detail).length === 0) {
     return '-'
   }
 
-  return JSON.stringify(detail)
+  return JSON.stringify(sanitizeDetailValue(detail))
 }
 
 onMounted(loadLogs)

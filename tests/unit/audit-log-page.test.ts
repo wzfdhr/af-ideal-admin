@@ -35,6 +35,8 @@ const records: AuditEventRecord[] = [
     occurredAt: '2026-06-22T10:00:00.000Z',
     detail: {
       ip: '127.0.0.1',
+      password: 'secret-password',
+      authorization: 'Bearer secret-token',
     },
   },
   {
@@ -109,15 +111,24 @@ describe('AuditLogPage', () => {
     expect(wrapper.text()).toContain('permission')
     expect(wrapper.text()).toContain('export')
     expect(wrapper.text()).not.toContain('secret-token')
+    expect(wrapper.text()).not.toContain('secret-password')
+    expect(wrapper.text()).toContain('[redacted]')
   })
 
-  it('queries logs with operator, module and result filters', async () => {
+  it('queries logs with operator, module, time, event type and result filters', async () => {
     const wrapper = mount(AuditLogPage)
     await flushPromises()
 
     await wrapper.find('[data-testid="audit-operator"]').setValue('系统管理员')
     await wrapper.find('[data-testid="audit-module"]').setValue('system')
     await wrapper.find('[data-testid="audit-result"]').setValue('success')
+    await wrapper
+      .find('[data-testid="audit-event-type"]')
+      .setValue('permission')
+    await wrapper
+      .find('[data-testid="audit-date-start"]')
+      .setValue('2026-06-01')
+    await wrapper.find('[data-testid="audit-date-end"]').setValue('2026-06-23')
     await wrapper.find('[data-testid="audit-query"]').trigger('click')
     await flushPromises()
 
@@ -127,8 +138,8 @@ describe('AuditLogPage', () => {
       operatorName: '系统管理员',
       module: 'system',
       result: 'success',
-      eventType: '',
-      dateRange: [],
+      eventType: 'permission',
+      dateRange: ['2026-06-01', '2026-06-23'],
     })
   })
 })
