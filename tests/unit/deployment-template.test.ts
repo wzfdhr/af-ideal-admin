@@ -33,8 +33,10 @@ describe('deployment templates', () => {
 
   it('keeps vite proxy serve-only and uses the deployed base path', () => {
     const viteConfig = readFile('vite.config.ts')
+    const routerConfig = readFile('src/router/index.ts')
 
     expect(viteConfig).toContain("base: env.VITE_BASE_URL || '/'")
+    expect(routerConfig).toContain('createWebHistory(import.meta.env.BASE_URL)')
     expect(viteConfig).toContain("command === 'serve'")
     expect(viteConfig).toContain('server: isServe')
     expect(viteConfig).toContain('[apiBaseUrl]')
