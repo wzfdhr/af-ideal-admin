@@ -11,6 +11,7 @@
 import Chart from 'vue-echarts'
 import { ref, computed, nextTick } from 'vue'
 import { processSize } from '@/utils'
+import 'echarts'
 
 const props = defineProps({
   height: {

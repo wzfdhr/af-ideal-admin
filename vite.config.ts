@@ -4,6 +4,55 @@ import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
 import eslint from 'vite-plugin-eslint'
 
+const createManualChunks = (id: string) => {
+  if (!id.includes('node_modules')) {
+    return undefined
+  }
+
+  if (id.includes('@arco-design')) {
+    return 'arco-vendor'
+  }
+
+  if (
+    id.includes('echarts') ||
+    id.includes('zrender') ||
+    id.includes('vue-echarts')
+  ) {
+    return 'chart-vendor'
+  }
+
+  if (id.includes('@antv/x6')) {
+    return 'x6-vendor'
+  }
+
+  if (
+    id.includes('/vue/') ||
+    id.includes('vue-router') ||
+    id.includes('vue-i18n') ||
+    id.includes('pinia') ||
+    id.includes('@vueuse')
+  ) {
+    return 'vue-vendor'
+  }
+
+  if (
+    id.includes('axios') ||
+    id.includes('crypto-js') ||
+    id.includes('dayjs') ||
+    id.includes('lodash') ||
+    id.includes('mitt') ||
+    id.includes('mockjs') ||
+    id.includes('nprogress') ||
+    id.includes('query-string') ||
+    id.includes('sortablejs') ||
+    id.includes('vuedraggable')
+  ) {
+    return 'utility-vendor'
+  }
+
+  return 'vendor'
+}
+
 export default defineConfig(({ command, mode }) => {
   const rootDir = __dirname
   const env = loadEnv(mode, rootDir, '')
@@ -28,6 +77,9 @@ export default defineConfig(({ command, mode }) => {
     build: {
       rollupOptions: {
         external: '@antv/x6-plugin-dnd',
+        output: {
+          manualChunks: createManualChunks,
+        },
       },
     },
     resolve: {

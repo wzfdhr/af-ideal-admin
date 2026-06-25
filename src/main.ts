@@ -21,7 +21,6 @@ import '@/styles/index.scss'
 import SIcon from '@/components/s-icon.vue'
 import SNavs from '@/components/s-navs.vue'
 import pkg from '../package.json'
-import 'echarts'
 
 const app = createApp(App)
 // app.component('Chart', ECharts)
