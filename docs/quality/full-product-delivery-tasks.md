@@ -125,3 +125,4 @@
 - users-page-browser-fixed.log完成真实创建、校验失败保留输入、编辑/刷新、私有密码重置与旧会话拒绝、停用/再次拒绝、撤销及双租户隔离。users-page-all-real-browser.log共20项真实页面回归通过，含原R1；users-page-legacy-smoke.log原3项通过。没有注入成功响应。
 - 真实参考页面、菜单/路由/按钮授权已接入；只在显式专属演示初始化中给两名合成管理员用户治理权限，未授联系资料原值读取和通配权限。原私有R1初始化权限不自动升级。
 - 此增量仍需其自己的CI、本人修改密码、真实角色/权限、更新Mock闭环、部署/备份/回退和完整模块验收。FP-004保持进行中，不标为全部完成。
+- c88035cd03df80f4b70fc2ae3bcde7402408b002的实际CI36892910191已通过，verify/real-business均success；源提交和状态保存users-ui-remote-ci.json，artifact归档ci-36892910191。这轮实际运行包含427单测、55数据库/HTTP、20真实浏览器及独立Mock/旧smoke；不是整体发布成功。
