@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - framework
@@ -104,6 +105,7 @@ jobs:
         run: |
           npm run api:migrate
           npm run api:seed
+          node services/reference-api/dist/platform-demo.js
           npm run api:start > test-results/r1-ci/api.log 2>&1 &
           npm run worker:start > test-results/r1-ci/worker.log 2>&1 &
           for attempt in $(seq 1 40); do

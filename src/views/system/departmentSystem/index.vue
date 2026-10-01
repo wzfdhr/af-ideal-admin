@@ -78,7 +78,7 @@
       <p>
         确认删除部门
         <strong>{{ pendingDeleteRecord?.departmentName }}</strong>
-        吗？删除后将无法在当前 Mock 数据中恢复。
+        吗？删除后不可直接恢复；有关联成员或子部门时不能删除。
       </p>
     </a-modal>
   </main>
@@ -91,6 +91,7 @@ import ProTable from '@/components/pro-table/index.vue'
 import PermissionButton from '@/components/permission-button.vue'
 import { adminUi } from '@/components/pro-ui'
 import { dictionaryService } from '@/services/dictionary'
+import { createCommandRetry } from '@/services/command-retry'
 import {
   createSystemDepartment,
   deleteSystemDepartment,
@@ -123,9 +124,11 @@ const detailVisible = ref(false)
 const deleteVisible = ref(false)
 const editorMode = ref<'create' | 'update'>('create')
 const editingId = ref('')
+const editingRevision = ref<number>()
 const detailRecord = ref<SystemDepartmentRecord>()
 const pendingDeleteRecord = ref<SystemDepartmentRecord>()
 const editorModel = ref<Record<string, unknown>>({})
+const retry = createCommandRetry()
 
 const editorTitle = computed(() =>
   editorMode.value === 'create' ? '新增部门' : '编辑部门'
@@ -213,12 +216,17 @@ const toPayload = (
     values.status === 'disabled' ? 'disabled' : 'enabled'
   const sort = Number(values.sort)
 
-  return {
+  const result: SystemDepartmentPayload = {
     departmentName: String(values.departmentName || '').trim(),
     leader: String(values.leader || '').trim(),
     sort: Number.isFinite(sort) && sort > 0 ? sort : 1,
     status,
   }
+  if (editorMode.value === 'update' && editingRevision.value !== undefined)
+    result.expectedRevision = editingRevision.value
+  if (values.parentId !== undefined)
+    result.parentId = values.parentId === null ? null : String(values.parentId)
+  return result
 }
 
 const fetchDepartmentData = async (params: ProTableFetchParams) => {
@@ -230,7 +238,7 @@ const fetchDepartmentData = async (params: ProTableFetchParams) => {
     })
   } catch {
     Message.error('部门列表加载失败')
-    return { list: [], total: 0 }
+    throw new Error('部门列表加载失败，请重试')
   }
 }
 
@@ -242,7 +250,9 @@ const handleReset = (values: Record<string, unknown>) =>
 
 const openCreate = () => {
   editorMode.value = 'create'
+  retry.clear()
   editingId.value = ''
+  editingRevision.value = undefined
   editorModel.value = {
     departmentName: '',
     leader: '',
@@ -256,7 +266,9 @@ const openEdit = async (record: SystemDepartmentRecord) => {
   try {
     const detail = await getSystemDepartmentDetail(record.id)
     editorMode.value = 'update'
+    retry.clear()
     editingId.value = detail.id
+    editingRevision.value = detail.revision
     editorModel.value = { ...detail }
     editorVisible.value = true
   } catch {
@@ -281,10 +293,16 @@ const openDeleteConfirm = (record: SystemDepartmentRecord) => {
 const saveDepartment = async (values: Record<string, unknown>) => {
   const payload = toPayload(values)
   if (editorMode.value === 'create') {
-    await createSystemDepartment(payload)
+    await createSystemDepartment(payload, retry.key('create', payload))
+    retry.complete('create')
     Message.success('新增成功')
   } else {
-    await updateSystemDepartment(editingId.value, payload)
+    await updateSystemDepartment(
+      editingId.value,
+      payload,
+      retry.key(`update:${editingId.value}`, payload)
+    )
+    retry.complete(`update:${editingId.value}`)
     Message.success('保存成功')
   }
 
@@ -307,7 +325,15 @@ const confirmDelete = async () => {
   }
 
   try {
-    await deleteSystemDepartment(pendingDeleteRecord.value.id)
+    const item = pendingDeleteRecord.value
+    if (item.revision === undefined) await deleteSystemDepartment(item.id)
+    else
+      await deleteSystemDepartment(
+        item.id,
+        item.revision,
+        retry.key(`delete:${item.id}`, { expectedRevision: item.revision })
+      )
+    retry.complete(`delete:${item.id}`)
     Message.success('删除成功')
     deleteVisible.value = false
     pendingDeleteRecord.value = undefined

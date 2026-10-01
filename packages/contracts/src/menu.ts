@@ -110,6 +110,28 @@ export const createR1Menu = (permissions: string[]) => {
         },
       ],
     })
+  if (
+    permissions.includes('system:department:list') ||
+    permissions.includes('*')
+  )
+    entries.push({
+      path: '/system',
+      name: 'system',
+      componentKey: 'DefaultLayout',
+      meta: { requireAuth: true, locale: 'menu.system', order: 6 },
+      children: [
+        {
+          path: 'departmentSystem',
+          name: 'departmentSystem',
+          componentKey: 'SystemDepartmentPage',
+          meta: {
+            requireAuth: true,
+            locale: 'menu.system.department',
+            access: { permissions: ['system:department:list'] },
+          },
+        },
+      ],
+    })
   return entries
 }
 
