@@ -14,7 +14,14 @@ const login = async (page: Page, username: string) => {
   await expect(page.getByTestId('leave-workplace')).toBeVisible()
 }
 
-test('an expired session keeps unsaved input for an explicit restore after reauthentication', async ({
+const confirm = async (page: Page) => {
+  const dialog = page.getByRole('dialog', { name: '确认操作' })
+  await expect(dialog).toBeVisible()
+  await dialog.getByRole('button', { name: '确认', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+}
+
+test('a revoked session keeps unsaved input for an explicit restore after reauthentication', async ({
   browser,
   request,
 }) => {
@@ -27,15 +34,38 @@ test('an expired session keeps unsaved input for an explicit restore after reaut
     await page.locator('textarea').fill('会话失效前已保存')
     await page.getByTestId('leave-save').click()
     await expect(page).toHaveURL(/\/leave\/requests\/[a-f0-9-]+$/)
+    await expect(page.getByTestId('leave-save')).toBeEnabled()
+    await expect(page.getByTestId('leave-detail')).toHaveAttribute(
+      'aria-busy',
+      'false'
+    )
     const savedUrl = page.url()
     await page.locator('textarea').fill('会话失效后需要恢复的输入')
+    await expect(page.getByTestId('leave-save-state')).toContainText(
+      '有未保存修改'
+    )
     const token = await page.evaluate(() => localStorage.getItem('token'))
     const response = await request.post(`${apiUrl}/api/user/logout`, {
       headers: { 'x-access-token': token || '', 'x-tenant-id': 'tenant-a' },
     })
     expect(response.status()).toBe(200)
-    await page.getByTestId('leave-save').click()
+    const reauthentication = page.waitForURL(/\/login\?redirect=/)
+    // A pending authenticated read may detect revocation before the attempted save.
+    await Promise.race([
+      reauthentication,
+      page.getByTestId('leave-save').click(),
+    ])
+    await reauthentication
     await expect(page).toHaveURL(/\/login\?redirect=/)
+    const retained = await page.evaluate(() =>
+      Object.keys(sessionStorage)
+        .filter((key) => key.startsWith('r1-leave-recovery:'))
+        .some((key) => {
+          const value = JSON.parse(sessionStorage.getItem(key) || '{}')
+          return value.fields?.reason === '会话失效后需要恢复的输入'
+        })
+    )
+    expect(retained).toBe(true)
     await login(page, 'a-employee')
     await page.goto(savedUrl)
     await expect(page.locator('textarea')).toHaveValue('会话失效前已保存')
@@ -129,6 +159,7 @@ test('new release requires an explicit draft migration, keeps old instances fixe
       .getByTestId('application-release-select')
       .inputValue()
     await admin.getByTestId('application-publish').click()
+    await confirm(admin)
     await expect(admin.getByText(/发布成功，当前为 v/)).toBeVisible()
     await employee.getByTestId('leave-submit').click()
     await expect(employee.getByTestId('leave-error')).toBeVisible()
@@ -158,6 +189,7 @@ test('new release requires an explicit draft migration, keeps old instances fixe
       .getByTestId('application-release-select')
       .selectOption(oldRelease)
     await admin.getByTestId('application-rollback').click()
+    await confirm(admin)
     await expect(admin.getByText('活动版本已切换')).toBeVisible()
     await employee.goto('/leave/requests/new')
     await expect(
@@ -195,16 +227,16 @@ test('real production frontend supports saved drafts, two reviewers, result noti
     await expect(first).toHaveURL(url)
     await expect(first.getByTestId('leave-review-panel')).toBeVisible()
     await first.getByTestId('leave-review-comment').fill('第一主管已核实')
-    first.once('dialog', (dialog) => dialog.accept())
     await first.getByTestId('leave-approve').click()
+    await confirm(first)
     await expect(first.getByTestId('leave-review-panel')).not.toBeVisible()
     await first.goto('/dashboard/workplace')
     await expect(first.locator(`a[href="${detailPath}"]`)).toHaveCount(0)
     await login(second, 'a-manager-2')
     await second.goto(url)
     await expect(second.getByTestId('leave-review-panel')).toBeVisible()
-    second.once('dialog', (dialog) => dialog.accept())
     await second.getByTestId('leave-approve').click()
+    await confirm(second)
     await expect(
       second.getByRole('heading', { name: '已通过', exact: true })
     ).toBeVisible()
@@ -263,16 +295,31 @@ test('manager can reject and employee can withdraw through actual UI', async ({
     await login(manager, 'a-manager-1')
     await manager.goto(rejected)
     await manager.getByTestId('leave-review-comment').fill('补充材料后重新申请')
-    manager.once('dialog', (dialog) => dialog.accept())
     await manager.getByTestId('leave-reject').click()
+    await confirm(manager)
     await expect(
       manager.getByRole('heading', { name: '已驳回', exact: true })
     ).toBeVisible()
     await employee.reload()
     await expect(employee.getByTestId('leave-copy')).toBeVisible()
+    await employee.getByTestId('leave-copy').click()
+    await expect(
+      employee.getByRole('heading', { name: '填写请假申请', exact: true })
+    ).toBeVisible()
+    await expect(employee.locator('textarea')).toHaveValue('浏览器驳回验收')
+    await employee.getByTestId('leave-save').click()
+    await expect(employee).toHaveURL(/\/leave\/requests\/[a-f0-9-]+$/)
+    expect(employee.url()).not.toBe(rejected)
+    await employee.goto(rejected)
+    await expect(
+      employee.getByRole('heading', { name: '已驳回', exact: true })
+    ).toBeVisible()
+    await expect(employee.getByTestId('leave-history')).toContainText(
+      '补充材料后重新申请'
+    )
     const withdrawn = await create(employee, '浏览器撤回验收')
-    employee.once('dialog', (dialog) => dialog.accept())
     await employee.getByTestId('leave-withdraw').click()
+    await confirm(employee)
     await expect(
       employee.getByRole('heading', { name: '已撤回', exact: true })
     ).toBeVisible()
@@ -291,8 +338,8 @@ test('configuration page loads actual designers and publishes a combined release
   await page.goto('/leave/application')
   await expect(page.getByTestId('leave-application')).toBeVisible()
   await expect(page.getByTestId('application-publish')).toBeEnabled()
-  page.once('dialog', (dialog) => dialog.accept())
   await page.getByTestId('application-publish').click()
+  await confirm(page)
   await expect(page.getByText(/发布成功，当前为 v/)).toBeVisible()
 })
 
@@ -343,6 +390,11 @@ test('real save conflict keeps local input and permits an explicit reload', asyn
   await page.locator('textarea').fill('原始冲突草稿')
   await page.getByTestId('leave-save').click()
   await expect(page).toHaveURL(/\/leave\/requests\/[a-f0-9-]+$/)
+  await expect(page.getByTestId('leave-save')).toBeEnabled()
+  await expect(page.getByTestId('leave-detail')).toHaveAttribute(
+    'aria-busy',
+    'false'
+  )
   const id = page.url().split('/').pop()
   const auth = await request.post(`${apiUrl}/api/user/login`, {
     data: { username: 'a-employee', password: 'a-employee' },
@@ -380,8 +432,8 @@ test('real save conflict keeps local input and permits an explicit reload', asyn
   await page.getByTestId('leave-save').click()
   await expect(page.getByTestId('leave-conflict-reload')).toBeVisible()
   await expect(page.locator('textarea')).toHaveValue('本地应保留的输入')
-  page.once('dialog', (dialog) => dialog.accept())
   await page.getByTestId('leave-conflict-reload').click()
+  await confirm(page)
   await expect(page.locator('textarea')).toHaveValue('服务器新版本')
 })
 

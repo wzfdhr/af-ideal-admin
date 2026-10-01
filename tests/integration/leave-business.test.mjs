@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
+import http from 'node:http'
+import { once } from 'node:events'
 import { before, after, test } from 'node:test'
 import db from '../../services/reference-api/dist/database.js'
 import migrations from '../../services/reference-api/dist/migrate.js'
@@ -90,6 +92,28 @@ test('submit retries return one instance, task, history and success audit', asyn
   const conflict = await call(`/leave-requests/${draft.id}/submit`, { method: 'POST', key, body: { expectedRevision: draft.revision, comment: '不同内容' } })
   assert.equal(conflict.status, 409)
   assert.equal(conflict.businessCode, 'IDEMPOTENCY_CONFLICT')
+})
+test('a real lost HTTP submit response is recovered with the original key and one committed effect', async () => {
+  const draft = await fresh(), key = randomUUID()
+  const gateway = http.createServer((request, response) => {
+    const forward = http.request(`${base}${request.url}`, { method: request.method, headers: request.headers }, (upstream) => {
+      upstream.resume()
+      upstream.on('end', () => response.destroy())
+    })
+    forward.on('error', () => response.destroy())
+    request.pipe(forward)
+  })
+  gateway.listen(0, '127.0.0.1')
+  await once(gateway, 'listening')
+  try {
+    await assert.rejects(submit(draft, key, `http://127.0.0.1:${gateway.address().port}`))
+    const recovered = success(await submit(draft, key))
+    assert.equal(recovered.status, 'running')
+    assert.equal(await count('SELECT count(*) AS total FROM workflow_instances WHERE tenant_id=$1 AND request_id=$2', ['tenant-a', draft.id]), 1)
+    assert.equal(await count('SELECT count(*) AS total FROM workflow_tasks WHERE tenant_id=$1 AND instance_id=$2', ['tenant-a', recovered.instanceId]), 1)
+    assert.equal(await count('SELECT count(*) AS total FROM workflow_history WHERE tenant_id=$1 AND instance_id=$2', ['tenant-a', recovered.instanceId]), 1)
+    assert.equal(await count("SELECT count(*) AS total FROM audit_events WHERE tenant_id=$1 AND target_id=$2 AND action='submit'", ['tenant-a', draft.id]), 1)
+  } finally { await new Promise((resolve) => gateway.close(resolve)) }
 })
 test('two independent HTTP decisions cause one state transition and one next task', async () => {
   const request = success(await submit(await fresh())); const task = await taskFor(request, 'a-manager-1')

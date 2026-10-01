@@ -1,5 +1,10 @@
 <template>
-  <main class="leave-page" data-testid="leave-detail">
+  <main
+    class="leave-page"
+    data-testid="leave-detail"
+    :aria-busy="loading || busy || !activeView"
+    :inert="loading || busy || !activeView ? '' : undefined"
+  >
     <div class="leave-header">
       <div>
         <p>请假审批 / {{ isNew ? '新建申请' : '申请详情' }}</p>
@@ -46,6 +51,7 @@
             · {{ days }} 天
           </p>
           <FormRenderer
+            v-if="!loading"
             ref="form"
             v-model="values"
             :ast="renderSchema"
@@ -220,6 +226,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import { confirmR1Action } from '@/services/r1-confirm'
 import { FormRenderer } from '@/components/form-runtime'
 import { migrateFormSchema } from '@/components/form-designer/schema'
 import type { VersionedFormSchema } from '@/components/form-designer/schema'
@@ -260,6 +267,8 @@ import type {
 } from '@af-admin/contracts'
 
 const route = useRoute()
+const initialPath = route.fullPath
+const activeView = computed(() => route.fullPath === initialPath)
 const router = useRouter()
 const user = useUserStore()
 const tenant = useTenantStore()
@@ -471,7 +480,7 @@ const submit = () =>
 const withdraw = () =>
   perform(async () => {
     const item = current.value as LeaveRequest
-    if (!window.confirm('确认撤回这份申请？')) return
+    if (!(await confirmR1Action('确认撤回这份申请？'))) return
     const operation = `withdraw:${item.instanceId}`
     await withdrawLeaveRequest(
       item.instanceId as string,
@@ -489,9 +498,9 @@ const decide = (action: 'approve' | 'reject') =>
     if (action === 'reject' && !comment.value.trim())
       throw new Error('驳回必须填写处理意见')
     if (
-      !window.confirm(
+      !(await confirmR1Action(
         action === 'approve' ? '确认通过这份申请？' : '确认驳回这份申请？'
-      )
+      ))
     )
       return
     const operation = `${action}:${task.id}`
@@ -516,7 +525,10 @@ const copy = () =>
     query: { previousId: current.value?.id },
   })
 const reload = async () => {
-  if (dirty.value && !window.confirm('重新加载将丢弃本地修改，是否继续？'))
+  if (
+    dirty.value &&
+    !(await confirmR1Action('重新加载将丢弃本地修改，是否继续？'))
+  )
     return
   conflict.value = false
   await load()
@@ -549,7 +561,7 @@ const beforeUnload = (event: BeforeUnloadEvent) => {
   }
 }
 onBeforeRouteLeave(
-  () => !dirty.value || window.confirm('当前有未保存内容，确认离开？')
+  () => !dirty.value || confirmR1Action('当前有未保存内容，确认离开？')
 )
 onMounted(() => {
   load()

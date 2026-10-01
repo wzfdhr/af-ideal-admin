@@ -14,6 +14,16 @@
       class="leave-alert"
       data-testid="application-error"
     />
+    <ul
+      v-if="Object.keys(validation).length"
+      role="alert"
+      data-testid="application-validation"
+      class="leave-field-errors"
+    >
+      <li v-for="(items, key) in validation" :key="key">
+        {{ validationLabel(String(key)) }}：{{ items.join('；') }}
+      </li>
+    </ul>
     <a-alert
       v-if="message"
       type="success"
@@ -161,6 +171,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
+import { confirmR1Action } from '@/services/r1-confirm'
 import FormDesigner from '@/components/form-designer/index.vue'
 import WorkflowDesigner from '@/components/workflow-designer/index.vue'
 import { FormRenderer } from '@/components/form-runtime'
@@ -183,7 +194,7 @@ import type {
 import { createCommandRetry } from '@/services/command-retry'
 import { registerDirtyCheck } from '@/services/tenant-context'
 import { hasPermission } from '@af-admin/workflow-core'
-import { errorMessage, stableSignature } from './shared'
+import { errorMessage, fieldErrors, stableSignature } from './shared'
 import type { Application } from '@af-admin/contracts'
 
 const user = useUserStore()
@@ -198,6 +209,14 @@ const editedForm = ref<unknown>()
 const editedWorkflow = ref<unknown>()
 const tab = ref('form')
 const error = ref('')
+const validation = ref<Record<string, string[]>>({})
+const validationLabel = (key: string) => {
+  const graph = editedWorkflow.value as
+    | { nodes?: { id: string; name: string }[] }
+    | undefined
+  const node = graph?.nodes?.find((item) => item.id === key)
+  return node ? `${node.name}（${key}）` : key
+}
 const message = ref('')
 const loading = ref(false)
 const busy = ref(false)
@@ -232,6 +251,7 @@ const selectWorkflow = () => {
   editedWorkflow.value = workflowDraft.value?.schema
 }
 const load = async () => {
+  validation.value = {}
   loading.value = true
   error.value = ''
   try {
@@ -266,11 +286,13 @@ const perform = async (action: () => Promise<void>) => {
   if (busy.value) return
   busy.value = true
   error.value = ''
+  validation.value = {}
   message.value = ''
   try {
     await action()
   } catch (failure) {
     error.value = errorMessage(failure)
+    validation.value = fieldErrors(failure)
   } finally {
     busy.value = false
   }
@@ -311,7 +333,8 @@ const publish = () =>
   perform(async () => {
     if (dirty.value || !app.value || !formDraft.value || !workflowDraft.value)
       return
-    if (!window.confirm('确认将当前已保存的表单和流程一起发布？')) return
+    if (!(await confirmR1Action('确认将当前已保存的表单和流程一起发布？')))
+      return
     const payload = {
       expectedRevision: app.value.revision,
       formDraftId: formDraft.value.id,
@@ -333,7 +356,7 @@ const activate = () =>
   perform(async () => {
     if (
       !app.value ||
-      !window.confirm('确认切换活动版本？在途申请继续使用原版本。')
+      !(await confirmR1Action('确认切换活动版本？在途申请继续使用原版本。'))
     )
       return
     const payload = {
@@ -349,12 +372,15 @@ const activate = () =>
     retry.complete('activate')
     message.value = '活动版本已切换'
   })
-const reload = () => {
-  if (!dirty.value || window.confirm('重新加载将丢弃未保存修改，是否继续？'))
+const reload = async () => {
+  if (
+    !dirty.value ||
+    (await confirmR1Action('重新加载将丢弃未保存修改，是否继续？'))
+  )
     load()
 }
 onBeforeRouteLeave(
-  () => !dirty.value || window.confirm('配置有未保存修改，确认离开？')
+  () => !dirty.value || confirmR1Action('配置有未保存修改，确认离开？')
 )
 onMounted(load)
 onBeforeUnmount(unregister)

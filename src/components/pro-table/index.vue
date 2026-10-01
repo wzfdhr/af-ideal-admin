@@ -1,5 +1,5 @@
 <template>
-  <div class="pro-table">
+  <div class="pro-table" :aria-busy="loading">
     <div v-if="errorMessage" role="alert" class="pro-table__error">
       <span>{{ errorMessage }}</span>
       <button type="button" @click="retryLoad">重试</button>
@@ -72,6 +72,7 @@ const pagination = computed(() => ({
 const showEmptyState = computed(
   () => !loading.value && !errorMessage.value && data.value.length === 0
 )
+let fetchGeneration = 0
 
 const getFetchParams = (): ProTableFetchParams => ({
   current: paginationState.current,
@@ -80,19 +81,22 @@ const getFetchParams = (): ProTableFetchParams => ({
 })
 
 const fetchTableData = async () => {
+  const generation = ++fetchGeneration
   loading.value = true
   errorMessage.value = ''
   try {
     const result = (await props.fetchData(
       getFetchParams()
     )) as ProTableFetchResult<Record<string, unknown>>
+    if (generation !== fetchGeneration) return
     data.value = result.list
     paginationState.total = result.total
   } catch (error) {
+    if (generation !== fetchGeneration) return
     errorMessage.value = error instanceof Error ? error.message : '列表加载失败'
     throw error
   } finally {
-    loading.value = false
+    if (generation === fetchGeneration) loading.value = false
   }
 }
 

@@ -23,6 +23,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { confirmR1Action } from '@/services/r1-confirm'
 import useUserStore from '@/store/modules/user'
 import useTenantStore from '@/store/modules/tenant'
 import { hasDirtyTenantPage } from '@/services/tenant-context'
@@ -35,7 +36,7 @@ const change = async (event: Event) => {
   const select = event.target as HTMLSelectElement
   if (
     hasDirtyTenantPage() &&
-    !window.confirm('当前有未保存内容，切换租户将丢弃。是否继续？')
+    !(await confirmR1Action('当前有未保存内容，切换租户将丢弃。是否继续？'))
   ) {
     select.value = user.tenantId || ''
     return

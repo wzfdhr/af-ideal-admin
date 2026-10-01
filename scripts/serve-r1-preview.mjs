@@ -9,6 +9,13 @@ const types={'.html':'text/html; charset=utf-8','.js':'application/javascript; c
 const server=http.createServer(async(req,res)=>{
   const url=new URL(req.url||'/',`http://127.0.0.1:${port}`)
   if(url.pathname.startsWith('/api/')){
+    let control = {}
+    if (process.env.R1_TRANSPORT_CONTROL_FILE) {
+      try { control = JSON.parse(await readFile(process.env.R1_TRANSPORT_CONTROL_FILE, 'utf8')) } catch { /* no transport faults configured */ }
+    }
+    if (control.block?.some((rule) => `${req.method}:${url.pathname}`.startsWith(rule))) {
+      res.writeHead(502, {'content-type':'application/json'});res.end(JSON.stringify({code:502,data:null,message:'API 连接暂时不可用'}));return
+    }
     const proxy=http.request({hostname:upstream.hostname,port:upstream.port,path:req.url,method:req.method,headers:{...req.headers,host:upstream.host}},response=>{ const deliver=()=>{if(!res.destroyed){res.writeHead(response.statusCode||502,response.headers);response.pipe(res)}}; if(req.method==='GET'&&url.pathname==='/api/leave-requests'&&Number(process.env.R1_READ_DELAY_MS)>0)setTimeout(deliver,Number(process.env.R1_READ_DELAY_MS));else deliver() })
     proxy.on('error',()=>{res.writeHead(502,{'content-type':'application/json'});res.end(JSON.stringify({code:502,data:null,message:'API 服务不可用'}))})
     req.pipe(proxy);return
@@ -22,6 +29,6 @@ const server=http.createServer(async(req,res)=>{
   try{const content=await readFile(file);res.writeHead(200,{'content-type':types[path.extname(file)]||'application/octet-stream','cache-control':'no-store'});res.end(content)}
   catch{res.writeHead(503);res.end('请先构建前端')}
 })
-server.listen(port,'127.0.0.1',()=>process.stdout.write(`R1 production preview on http://127.0.0.1:${port}\n`))
+server.listen(port,'127.0.0.1',()=>process.stdout.write(`R1 production preview on http://127.0.0.1:${server.address().port}\n`))
 process.once('SIGTERM',()=>server.close())
 process.once('SIGINT',()=>server.close())

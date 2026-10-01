@@ -80,6 +80,29 @@ const mountTable = (
     },
   })
 
+it('a late response from a previous page cannot overwrite the current page', async () => {
+  let finishOld: (value: { list: object[]; total: number }) => void = () =>
+    undefined
+  const old = new Promise<{ list: object[]; total: number }>((resolve) => {
+    finishOld = resolve
+  })
+  const fetchData = vi
+    .fn()
+    .mockReturnValueOnce(old)
+    .mockResolvedValueOnce({ list: [{ id: 'current' }], total: 2 })
+  const wrapper = mountTable(fetchData)
+  await settle()
+  await wrapper.get('[data-testid="page-2"]').trigger('click')
+  await settle()
+  expect(wrapper.get('[data-testid="total"]').text()).toBe('2')
+  finishOld({ list: [{ id: 'old' }], total: 1 })
+  await settle()
+  expect(wrapper.get('[data-testid="total"]').text()).toBe('2')
+  expect(
+    wrapper.findComponent({ name: 'MockAdminTable' }).props('data')
+  ).toEqual([{ id: 'current' }])
+})
+
 describe('ProTable', () => {
   it('calls fetchData on mount', async () => {
     const fetchData = vi.fn().mockResolvedValue({ list: [], total: 0 })

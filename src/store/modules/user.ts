@@ -70,6 +70,8 @@ const useUserStore = defineStore('user', {
       resetTenantContext()
       try {
         const res = await doLogin(data)
+        this.resetInfo()
+        useMenuStore().clearAsyncMenu()
         setToken(res.data.token)
         recordAuditEvent({
           module: 'auth',

@@ -35,6 +35,27 @@ describe('user store auth lifecycle', () => {
     vi.clearAllMocks()
   })
 
+  it('a successful new login removes the previous actor capabilities before profile loading', async () => {
+    const userStore = useUserStore()
+    userStore.setInfo({
+      id: 'previous-actor',
+      tenantId: 'tenant-a',
+      role: 'operator',
+      permissions: ['workflow:approve'],
+    })
+    vi.mocked(login).mockResolvedValue({
+      data: { token: 'new-session-fixture' },
+    } as never)
+    await userStore.login({
+      username: 'new-actor',
+      password: 'synthetic-login',
+    })
+    expect(userStore.role).toBe('')
+    expect(userStore.id).toBeUndefined()
+    expect(userStore.tenantId).toBeUndefined()
+    expect(userStore.permissions).toEqual([])
+  })
+
   it('stores token through auth service after login succeeds', async () => {
     vi.mocked(login).mockResolvedValue({
       data: {
