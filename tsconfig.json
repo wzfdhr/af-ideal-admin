@@ -20,6 +20,7 @@
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue", "vite.config.ts", "generator/**/*.ts"],
+  "exclude": ["**/._*"],
   "references": [{ "path": "./tsconfig.node.json" }],
   "ts-node": {
     // It is faster to skip typechecking.

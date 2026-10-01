@@ -5,6 +5,8 @@
 ## 快速入口
 
 - [产品定位与版本分层](product-positioning.md)：对应 `T-601`，说明目标客户、产品定位、版本能力矩阵和商业化边界。
+- [请假审批应用闭环技术方案](../architecture/leave-approval-delivery-design.md)：从首个业务闭环到应用模板和 AI 辅助配置的分期方案，当前待实施。
+- [开发任务与验收用例](../quality/leave-approval-delivery-tasks.md)：任务依赖、交付物及阶段退出标准。
 
 ## 产品化原则
 

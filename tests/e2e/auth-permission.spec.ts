@@ -43,10 +43,17 @@ const mockAuthApi = async (page: Page, role: 'admin' | 'user') => {
 }
 
 const loginAs = async (page: Page, username: 'admin' | 'user') => {
+  const startupErrors: string[] = []
+  page.on('pageerror', (error) => startupErrors.push(error.message))
   await mockAuthApi(page, username)
   await page.goto('/login')
 
   const loginForm = page.locator('form').first()
+  await expect(loginForm).toBeVisible()
+  expect(
+    startupErrors,
+    'application startup must not fail before login'
+  ).toEqual([])
   await loginForm.locator('input').nth(0).fill(username)
   await loginForm.locator('input[type="password"]').fill(username)
   await loginForm.locator('button[type="submit"]').click()

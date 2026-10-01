@@ -17,8 +17,10 @@ import type { SystemDictionaryRecord } from '@/api/system/dictionary'
 import type { SystemMenuRecord } from '@/api/system/menu'
 import type { SystemRoleRecord } from '@/api/system/role'
 import type { SystemUserRecord } from '@/api/system/user'
+import { demoIdentities } from '@af-admin/contracts'
+import type { UserRole } from '@af-admin/contracts'
 
-export type MockRole = 'admin' | 'user' | 'operator' | 'restricted'
+export type MockRole = Exclude<UserRole, '' | '*'>
 
 export interface MockUserSeed {
   id: string
@@ -112,6 +114,19 @@ export const mockUsers: MockUserSeed[] = [
     job: '访客',
     dept: '外部协作',
   },
+  ...demoIdentities.map((identity) => ({
+    id: identity.id,
+    username: identity.username,
+    password: identity.username,
+    role: identity.role as MockRole,
+    permissions: identity.permissions,
+    tenantId: identity.tenantIds[0],
+    name: identity.name,
+    email: `${identity.username}@example.com`,
+    dept: '业务部',
+    job: identity.kind,
+    avatar: avatarExample,
+  })),
 ]
 
 export const mockMenus: Record<MockRole, MockMenuNode[]> = {

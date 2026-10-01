@@ -11,7 +11,6 @@ import { installObservability } from '@/plugins/observability'
 import { setAuditContextProvider } from '@/services/audit'
 import useUserStore from '@/store/modules/user'
 
-import './mock'
 import './api/request'
 
 import '@/styles/tailwindcss.scss'
@@ -20,42 +19,51 @@ import '@/styles/index.scss'
 
 import SIcon from '@/components/s-icon.vue'
 import SNavs from '@/components/s-navs.vue'
+import { dataMode } from '../config/data-mode'
 import pkg from '../package.json'
 
-const app = createApp(App)
-// app.component('Chart', ECharts)
+const bootstrap = () => {
+  const app = createApp(App)
+  // app.component('Chart', ECharts)
 
-app.use(Arco)
-app.use(router)
-app.use(store)
-app.use(ArcoIcon)
-app.use(i18n)
+  app.use(Arco)
+  app.use(router)
+  app.use(store)
+  app.use(ArcoIcon)
+  app.use(i18n)
 
-app.use(directives)
+  app.use(directives)
 
-installObservability(app, {
-  router,
-  getUser: () => {
-    const userStore = useUserStore()
-    return {
-      name: userStore.name,
-      role: userStore.role,
-    }
-  },
-  getVersion: () => pkg.version,
-})
+  installObservability(app, {
+    router,
+    getUser: () => {
+      const userStore = useUserStore()
+      return {
+        name: userStore.name,
+        role: userStore.role,
+      }
+    },
+    getVersion: () => pkg.version,
+  })
 
-setAuditContextProvider({
-  getOperator: () => {
-    const userStore = useUserStore()
-    return {
-      name: userStore.name,
-      role: userStore.role,
-    }
-  },
-})
+  setAuditContextProvider({
+    getOperator: () => {
+      const userStore = useUserStore()
+      return {
+        name: userStore.name,
+        role: userStore.role,
+      }
+    },
+  })
 
-app.component('SIcon', SIcon)
-app.component('SNavs', SNavs)
+  app.component('SIcon', SIcon)
+  app.component('SNavs', SNavs)
 
-app.mount('#app')
+  app.mount('#app')
+}
+
+if (import.meta.env.DEV && dataMode === 'mock') {
+  import('./mock').then(bootstrap)
+} else {
+  bootstrap()
+}

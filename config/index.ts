@@ -5,7 +5,7 @@ import { FileEditFill, MailFill, ClipboardFill } from '@salmon-ui/icons'
 import { runtimeConfig } from './runtime'
 
 // 用户角色权限组，其中 * 表示通配符
-export type UserRole = '' | '*' | 'admin' | 'user'
+export type { UserRole } from '@af-admin/contracts'
 
 // HTTP 请求的公共路径前缀
 export const requestBaseUrl = runtimeConfig.API_BASE_URL

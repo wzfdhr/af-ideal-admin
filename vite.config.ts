@@ -5,6 +5,10 @@ import vueJsx from '@vitejs/plugin-vue-jsx'
 import eslint from 'vite-plugin-eslint'
 
 const createManualChunks = (id: string) => {
+  if (id.includes('commonjsHelpers')) {
+    return 'interop-vendor'
+  }
+
   if (!id.includes('node_modules')) {
     return undefined
   }
@@ -27,6 +31,9 @@ const createManualChunks = (id: string) => {
 
   if (
     id.includes('/vue/') ||
+    id.includes('/@vue/') ||
+    id.includes('/@intlify/') ||
+    id.includes('/vue-demi/') ||
     id.includes('vue-router') ||
     id.includes('vue-i18n') ||
     id.includes('pinia') ||

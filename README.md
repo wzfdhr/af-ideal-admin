@@ -37,7 +37,7 @@ AF-Ideal-Admin 是一套面向企业私有化交付、集团型管理系统、�
 
 环境建议：
 
-- Node.js 20，建议通过 `.nvmrc` 固定本地版本
+- Node.js 24.17.0 LTS 和 npm 11.13.0，通过 `.nvmrc` 与 `packageManager` 固定本地版本
 - 使用 npm，因为仓库已包含 `package-lock.json`
 - 推荐编辑器：VS Code + Volar + ESLint + Tailwind CSS IntelliSense
 
@@ -45,6 +45,7 @@ AF-Ideal-Admin 是一套面向企业私有化交付、集团型管理系统、�
 
 ```bash
 npm ci
+npm run build:shared
 ```
 
 启动开发服务：
@@ -82,6 +83,10 @@ npm run preview
 ```bash
 npm run lint
 ```
+
+## R1 开发模式
+
+默认开发环境沿用 Mock。连接参考 API 时设置 `VITE_DATA_MODE=reference`，API 不可用会显示真实错误，不能回退 Mock。生产构建始终连接 API，不加载浏览器 Mock。共享包分别输出浏览器 ESM、服务端 CommonJS 和类型声明；首次安装后执行 `npm run build:shared`。
 
 ## 本地登录账号
 

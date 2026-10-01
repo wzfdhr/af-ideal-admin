@@ -1,11 +1,19 @@
-FROM node:18-alpine AS builder
+FROM node:24.17.0-alpine AS builder
 
 WORKDIR /app
 
+ENV HUSKY=0
+
+RUN npm install --global npm@11.13.0
+
 COPY package*.json ./
+COPY packages/contracts/package.json ./packages/contracts/package.json
+COPY packages/workflow-core/package.json ./packages/workflow-core/package.json
+COPY services/reference-api/package.json ./services/reference-api/package.json
 RUN npm ci
 
 COPY . .
+RUN npm run build:shared
 RUN npm run build:prd
 
 FROM nginx:1.27-alpine

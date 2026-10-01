@@ -3,15 +3,19 @@ import setupMock, { failedResponseWrap, responseWrap } from '@/utils/mock'
 import {
   clearAuth,
   getRole,
+  getUserId,
   isAuthed,
   setRole,
   setToken,
+  setUserId,
 } from '@/services/auth'
 import { mockUsers } from '../seed'
 import type { MockParams } from '../types'
 
-const findUserByRole = (role: string | null) =>
-  mockUsers.find((item) => item.role === role) || mockUsers[0]
+export const findCurrentMockUser = () =>
+  mockUsers.find((item) => item.id === getUserId()) ||
+  mockUsers.find((item) => item.role === getRole()) ||
+  mockUsers[0]
 
 const setupAuthMock = () => {
   setupMock({
@@ -34,10 +38,14 @@ const setupAuthMock = () => {
         }
 
         setRole(user.role)
-        setToken(`${user.role}12345`)
+        setUserId(user.id)
+        const token = /^\d+$/.test(user.id)
+          ? `${user.role}12345`
+          : `mock-${user.id}`
+        setToken(token)
 
         return responseWrap({
-          token: `${user.role}12345`,
+          token,
         })
       })
 
@@ -46,9 +54,11 @@ const setupAuthMock = () => {
           return failedResponseWrap(null, '未登录', 50008)
         }
 
-        const user = findUserByRole(getRole())
+        const user = findCurrentMockUser()
 
         return responseWrap({
+          id: user.id,
+          tenantId: user.tenantId,
           name: user.name,
           avatar: user.avatar,
           email: user.email,

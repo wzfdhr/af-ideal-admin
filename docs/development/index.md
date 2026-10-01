@@ -15,6 +15,8 @@
 
 ## 架构参考
 
+- [请假审批应用闭环技术方案](../architecture/leave-approval-delivery-design.md)：首个可持久化业务应用的架构、接口、状态机和交付边界。
+- [请假审批开发任务与验收用例](../quality/leave-approval-delivery-tasks.md)：分阶段任务、依赖、负责人角色和验收证据。
 - [认证与权限架构](../architecture/auth-permission.md)
 - [部署说明](../deployment.md)
 - [系统 CRUD 页面标准](../quality/system-crud-page-standard.md)

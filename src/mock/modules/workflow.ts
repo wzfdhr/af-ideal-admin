@@ -4,7 +4,7 @@ import requestSetupMock, {
   failedResponseWrap,
   responseWrap,
 } from '@/utils/mock'
-import { getRole, isAuthed } from '@/services/auth'
+import { getRole, getUserId, isAuthed } from '@/services/auth'
 import {
   validateWorkflowSchema,
   type WorkflowNode,
@@ -174,12 +174,18 @@ const toQueryText = (value: unknown) => {
 
 const getCurrentMockUserId = () => {
   const role = getRole()
-  return mockUsers.find((user) => user.role === role)?.id || '1'
+  return (
+    mockUsers.find((user) => user.id === getUserId())?.id ||
+    mockUsers.find((user) => user.role === role)?.id ||
+    '1'
+  )
 }
 
 const canCurrentUserPublish = () => {
   const role = getRole()
-  const user = mockUsers.find((item) => item.role === role)
+  const user =
+    mockUsers.find((item) => item.id === getUserId()) ||
+    mockUsers.find((item) => item.role === role)
   return Boolean(
     user?.permissions.includes('*') ||
       user?.permissions.includes('workflow:publish')

@@ -1,6 +1,7 @@
 import { mockFail, mockOk } from '@/mock/response'
+import { dataMode } from '../../config/data-mode'
 
-const debug = import.meta.env.DEV
+const debug = import.meta.env.DEV && dataMode === 'mock'
 
 export default ({ mock, setup }: { mock?: boolean; setup: () => void }) => {
   if (mock !== false && debug) setup()
