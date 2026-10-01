@@ -26,6 +26,7 @@ const redirectToLogin = () => {
 
 const redirectToNoPermission = () => {
   retainLeaveDrafts()
+  if (window.location.pathname === '/login') return
   if (window.location.pathname !== '/not-allowed') {
     window.location.assign('/not-allowed')
   }

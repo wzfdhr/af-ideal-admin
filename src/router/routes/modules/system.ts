@@ -4,6 +4,7 @@ import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
 import { SYSTEM_MENU_PERMISSIONS } from '@/constants/system-menu'
 import { SYSTEM_ROLE_PERMISSIONS } from '@/constants/system-role'
 import { SYSTEM_USER_PERMISSIONS } from '@/constants/system-user'
+import { dataMode } from '../../../../config/data-mode'
 import { AppRouteRecordRaw } from '../../types'
 
 const aboutRoutes: AppRouteRecordRaw = {
@@ -33,7 +34,10 @@ const aboutRoutes: AppRouteRecordRaw = {
     {
       path: 'userSystem',
       name: 'userSystem',
-      component: () => import('@/views/system/userSystem/index.vue'),
+      component:
+        dataMode === 'reference'
+          ? () => import('@/views/system/userSystem/reference.vue')
+          : () => import('@/views/system/userSystem/index.vue'),
       meta: {
         locale: 'menu.system.user',
         requireAuth: true,

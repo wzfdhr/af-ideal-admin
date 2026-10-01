@@ -1,6 +1,7 @@
 import {
   DEPARTMENT_PERMISSIONS,
   POSITION_PERMISSIONS,
+  USER_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -28,6 +29,9 @@ export const initializePlatformDemo = async (pool: Pool) => {
         JSON.stringify([
           ...Object.values(DEPARTMENT_PERMISSIONS),
           ...Object.values(POSITION_PERMISSIONS),
+          ...Object.values(USER_PERMISSIONS).filter(
+            (permission) => permission !== USER_PERMISSIONS.readContacts
+          ),
         ]),
       ]
     )
