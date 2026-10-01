@@ -48,3 +48,9 @@ npm run build:prd
 ```bash
 npm run test:e2e
 ```
+
+## R1 请假试点交付
+
+- [部署、初始化及恢复](../deployment/leave-approval-r1.md)
+- [逐 AC 验收报告与能力边界](../quality/leave-approval-r1-delivery-report.md)
+- [执行任务清单](../quality/leave-approval-delivery-tasks.md)

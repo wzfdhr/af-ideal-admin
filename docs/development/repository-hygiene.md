@@ -49,3 +49,7 @@ rg -n "Authorization: Bearer|x-access-token|personal access token|access token" 
 - 已跟踪文本文件中没有常见真实访问凭证。
 
 代码评审时如发现上述问题，必须暂缓合并。修复方式优先使用普通提交或 revert，不允许用覆盖历史的方式处理协作分支，除非团队明确批准。
+
+## R1 本地交付产物
+
+scripts/package-r1-pilot.mjs 将源码/镜像压缩包、摘要和交付说明写入已忽略的 test-results/r1-delivery/，不得跟踪进 Git。报告只提交命令结果和摘要引用；演练 dump、私有 env、bootstrap JSON 不属于可分享的证据或交付包。

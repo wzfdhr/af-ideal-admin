@@ -102,3 +102,17 @@ R1_RECOVERY_CONFIRM=isolated-compose-demo node scripts/verify-r1-recovery.mjs
 本地运行 lint、全部 workspace typecheck、前端单测、共享契约/领域测试、真实数据库 integration、生产 build、旧登录权限 smoke、真实多账号 E2E。CI 新增独立 PostgreSQL service 和真实业务 job，归档 `test-results/` 中的非敏感报告；私有备份及 env 不能上传 CI artifact。当前仓库内配置完成不等于远端 CI 已执行成功。
 
 readiness 检查已应用迁移及其校验和；`/health` 仅代表进程存活。Nginx 使用 Docker DNS 动态解析，API 容器地址变化后能重新连接。运行日志只包含 traceId、路由模板、HTTP 状态和时间，不输出请求体、token、数据库 URL 或完整请假事由。
+
+
+## 版本化本地试点包
+
+候选产品版本为 0.1.0-alpha.1。打包前提交所有源文件、完成验收报告，再从干净提交构建镜像。镜像记录 org.opencontainers.image.revision 和产品 version；打包脚本拒绝修订或版本不匹配，拒绝覆盖已有同版本同提交包。
+
+```sh
+node scripts/build-r1-images.mjs
+node scripts/package-r1-pilot.mjs
+```
+
+产物位于忽略的 test-results/r1-delivery/<version>-<commit>/：source.tar.gz、images.tar.gz、DEPLOYMENT.md、ACCEPTANCE.md、manifest.json。manifest 记录精确源码提交、镜像 ID、linux/arm64 平台及文件 SHA256。源码归档包含已提交的部署与验收文档，不携带私有 env、数据库备份、token 或个人浏览器配置。包是本地试点产物，没有公开发布、推送、合并或正式 Git tag。
+
+在新环境核对 manifest 摘要后解压 source.tar.gz，使用 docker load < images.tar.gz 导入 API/web 镜像，再按本文创建独立私有配置、执行迁移和一次性初始化。PostgreSQL 使用 Compose 中的固定官方摘要，离线环境需要另行准备该镜像。业务版本、入口 HTTPS、数据及凭据归组织部署环境管理。
