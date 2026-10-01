@@ -341,6 +341,7 @@ const resetPassword = async () => {
       retry.key(operation, {
         initialPassword: value,
         expectedRevision: member.revision,
+        expectedCredentialRevision: member.credentialRevision,
       })
     )
     retry.complete(operation)

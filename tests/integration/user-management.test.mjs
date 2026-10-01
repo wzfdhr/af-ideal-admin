@@ -53,7 +53,7 @@ test('tenant profile edits do not change a shared identity in another tenant and
   assert.ok(afterA.name.startsWith('A范围姓名'))
   assert.equal(afterB.name,prior)
   assert.equal((await pool.query('SELECT name FROM users WHERE id=$1',[shared.id])).rows[0].name,prior)
-  assert.equal((await call(`/system/users/${shared.id}/reset-password`,{method:'POST',body:{initialPassword:'Different-private-fixture-2026',expectedRevision:profile.revision+1}})).status,409)
+  assert.equal((await call(`/system/users/${shared.id}/reset-password`,{method:'POST',body:{initialPassword:'Different-private-fixture-2026',expectedRevision:profile.revision+1,expectedCredentialRevision:profile.credentialRevision}})).status,409)
 })
 test('disabled membership cannot use its old session and the last effective user administrator remains enabled',async()=>{
   const body=input(),created=ok(await call('/system/users',{method:'POST',body}))
@@ -86,7 +86,7 @@ test('owned identity password reset revokes old sessions; member deletion is ver
   const body=input(),created=ok(await call('/system/users',{method:'POST',body}))
   passwords.set(body.username,body.initialPassword)
   ok(await call('/user/info',{user:body.username}))
-  const updated=ok(await call(`/system/users/${created.id}/reset-password`,{method:'POST',body:{initialPassword:'Rotated-private-fixture-2026',expectedRevision:created.revision}}))
+  const updated=ok(await call(`/system/users/${created.id}/reset-password`,{method:'POST',body:{initialPassword:'Rotated-private-fixture-2026',expectedRevision:created.revision,expectedCredentialRevision:created.credentialRevision}}))
   assert.equal((await call('/user/info',{user:body.username})).status,401)
   passwords.set(body.username,'Rotated-private-fixture-2026')
   tokens.delete(body.username)

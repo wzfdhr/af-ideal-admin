@@ -184,6 +184,28 @@ export const createR1Menu = (permissions: string[]) => {
         children: [page],
       })
   }
+  if (
+    permissions.includes('account:password:update') ||
+    permissions.includes('*')
+  )
+    entries.push({
+      path: '/user',
+      name: 'user',
+      componentKey: 'DefaultLayout',
+      meta: { requireAuth: true, locale: 'menu.user', order: 2 },
+      children: [
+        {
+          path: 'password',
+          name: 'accountPassword',
+          componentKey: 'AccountPassword',
+          meta: {
+            requireAuth: true,
+            locale: 'menu.user.password',
+            access: { permissions: ['account:password:update'] },
+          },
+        },
+      ],
+    })
   return entries
 }
 

@@ -13,6 +13,16 @@ const userRoutes: AppRouteRecordRaw = {
   },
   children: [
     {
+      path: 'password',
+      name: 'accountPassword',
+      component: () => import('@/views/user/password/index.vue'),
+      meta: {
+        locale: 'menu.user.password',
+        requireAuth: true,
+        access: { permissions: ['account:password:update'] },
+      },
+    },
+    {
       path: 'info',
       name: 'info',
       component: () => import('@/views/user/info/index.vue'),

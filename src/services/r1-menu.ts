@@ -3,6 +3,7 @@ import type { MenuLikeNode } from './access'
 
 const pagePermissions: Record<string, string[]> = {
   workplace: [],
+  accountPassword: ['account:password:update'],
   leaveRequests: ['leave:read:self'],
   leaveDetail: ['leave:read:self', 'workflow:todo'],
   leaveApplication: ['application:configure'],

@@ -62,8 +62,8 @@ const refreshActor = async (
       name: string
     }>(
       client,
-      "SELECT m.permissions,COALESCE(d.department_name,m.department_name) AS department_name,m.role,COALESCE(m.display_name,u.name) AS name FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND m.session_epoch=$3 AND u.status='enabled' AND t.status='enabled' FOR SHARE OF m,u,t",
-      [actor.tenantId, actor.userId, actor.sessionEpoch]
+      "SELECT m.permissions,COALESCE(d.department_name,m.department_name) AS department_name,m.role,COALESCE(m.display_name,u.name) AS name FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND m.session_epoch=$3 AND u.status='enabled' AND t.status='enabled' AND EXISTS (SELECT 1 FROM sessions s WHERE s.token_hash=$4 AND s.user_id=m.user_id AND s.revoked_at IS NULL AND s.expires_at>now()) FOR SHARE OF m,u,t",
+      [actor.tenantId, actor.userId, actor.sessionEpoch, actor.sessionHash]
     )
   )
   return {
@@ -79,9 +79,15 @@ export const authorizedTransaction = <T>(
   actor: Actor,
   permission: string,
   run: (client: PoolClient, current: Actor) => Promise<T>,
-  exclusiveTenant = false
+  exclusiveTenant = false,
+  identityGate = ''
 ) =>
   transaction(pool, async (client) => {
+    if (identityGate)
+      await client.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1,0))',
+        [identityGate]
+      )
     one(
       await rows<{ id: string }>(
         client,
@@ -118,7 +124,8 @@ export const idempotent = <T>(
   key: string | undefined,
   payload: unknown,
   run: (client: PoolClient, current: Actor) => Promise<T>,
-  exclusiveTenant = false
+  exclusiveTenant = false,
+  identityGate = ''
 ): Promise<T> => {
   if (!key || key.length < 8 || key.length > 200)
     invalid('Idempotency-Key', '写命令必须提供有效的 Idempotency-Key')
@@ -170,7 +177,8 @@ export const idempotent = <T>(
       )
       return result
     },
-    exclusiveTenant
+    exclusiveTenant,
+    identityGate
   )
 }
 export const audit = async (

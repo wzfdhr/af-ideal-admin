@@ -1,4 +1,7 @@
 <template>
+  <a-alert v-if="route.query.passwordChanged === '1'" type="success">
+    密码已修改，请使用新密码重新登录
+  </a-alert>
   <a-alert v-if="errorMessage" type="error">{{ errorMessage }}</a-alert>
   <a-form
     ref="loginForm"
@@ -60,7 +63,7 @@ import { ref, reactive } from 'vue'
 import { UserFill, LockFill } from '@salmon-ui/icons'
 import { FieldRule, Message, ValidatedError } from '@arco-design/web-vue'
 import { useStorage } from '@vueuse/core'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '@/store'
 import useLoading from '@/hooks/use-loading'
 import { LoginData } from '@/api/user'
@@ -69,6 +72,7 @@ const { isLoading, setLoading } = useLoading()
 const errorMessage = ref('')
 const userStore = useUserStore()
 const router = useRouter()
+const route = useRoute()
 const loginForm = ref()
 
 const loginInfo = reactive({

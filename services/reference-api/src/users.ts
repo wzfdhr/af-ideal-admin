@@ -41,12 +41,13 @@ interface UserRow {
   status: string
   role: string
   revision: number
+  credential_revision: number
   created_at: Date
   updated_at: Date
   owner_tenant_id: string | null
 }
 const projection =
-  'm.user_id AS id,u.username,COALESCE(m.display_name,u.name) AS name,m.phone,m.email,COALESCE(d.department_name,m.department_name) AS dept,m.status,m.role,m.revision,m.created_at,m.updated_at,u.owner_tenant_id'
+  'm.user_id AS id,u.username,COALESCE(m.display_name,u.name) AS name,m.phone,m.email,COALESCE(d.department_name,m.department_name) AS dept,m.status,m.role,m.revision,m.created_at,m.updated_at,u.owner_tenant_id,u.credential_revision'
 const sources =
   'FROM memberships m JOIN users u ON u.id=m.user_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL'
 const dto = (value: UserRow, actor: Actor, forceMask = false) => ({
@@ -70,6 +71,7 @@ const dto = (value: UserRow, actor: Actor, forceMask = false) => ({
   status: value.status,
   role: value.role,
   revision: value.revision,
+  credentialRevision: value.credential_revision,
   createdAt: value.created_at.toISOString(),
   updatedAt: value.updated_at.toISOString(),
 })
@@ -348,11 +350,18 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
     const actor = await authenticate(pool, request)
     const id = text(record(request.params).id, 'id', 100)
     const body = record(request.body)
-    onlyKeys(body, ['initialPassword', 'expectedRevision'])
+    onlyKeys(body, [
+      'initialPassword',
+      'expectedRevision',
+      'expectedCredentialRevision',
+    ])
     requirePermission(actor.permissions, USER_PERMISSIONS.resetPassword)
     const input = {
       initialPassword: privatePassword(body.initialPassword),
       expectedRevision: positiveInteger(body.expectedRevision),
+      expectedCredentialRevision: positiveInteger(
+        body.expectedCredentialRevision
+      ),
     }
     const passwordHash = await hashPassword(input.initialPassword)
     return ok(
@@ -372,9 +381,17 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
               'EXTERNAL_IDENTITY',
               '该身份由外部管理，请使用本人修改密码路径'
             )
-          await client.query('SELECT id FROM users WHERE id=$1 FOR UPDATE', [
-            id,
-          ])
+          const credential = one(
+            await rows<{ credential_revision: number }>(
+              client,
+              'SELECT credential_revision FROM users WHERE id=$1 FOR UPDATE',
+              [id]
+            )
+          )
+          assertRevision(
+            credential.credential_revision,
+            input.expectedCredentialRevision
+          )
           const shared = one(
             await rows<{ total: string }>(
               client,
@@ -389,7 +406,7 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
               '该身份由外部管理，请使用本人修改密码路径'
             )
           await client.query(
-            'UPDATE users SET password_hash=$2,updated_at=now() WHERE id=$1',
+            'UPDATE users SET password_hash=$2,credential_revision=credential_revision+1,updated_at=now() WHERE id=$1',
             [id, passwordHash]
           )
           await client.query(
@@ -408,9 +425,14 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
             'membership',
             id
           )
-          return { id, revision: member.revision + 1 }
+          return {
+            id,
+            revision: member.revision + 1,
+            credentialRevision: credential.credential_revision + 1,
+          }
         },
-        true
+        true,
+        `credential:${id}`
       ),
       request.id
     )

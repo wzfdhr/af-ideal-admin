@@ -12,6 +12,7 @@ export interface MemberRecord {
   role: string
   status: 'enabled' | 'disabled'
   revision: number
+  credentialRevision: number
   createdAt: string
   updatedAt: string
 }
@@ -52,6 +53,10 @@ export const resetMemberPassword = async (
 ) =>
   request.post(
     `/system/users/${value.id}/reset-password`,
-    { initialPassword, expectedRevision: value.revision },
+    {
+      initialPassword,
+      expectedRevision: value.revision,
+      expectedCredentialRevision: value.credentialRevision,
+    },
     { headers: { 'Idempotency-Key': key } }
   )

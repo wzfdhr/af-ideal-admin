@@ -510,6 +510,7 @@ export const validateLeaveForm = (schema: FormSchema) => {
     invalid('widgetsConfig', 'R1 请假表单只支持约定业务字段')
 }
 export const SELF_SERVICE_PERMISSIONS = [
+  'account:password:update',
   'message:list',
   'message:read',
   'message:batch-read',

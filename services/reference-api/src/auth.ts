@@ -22,6 +22,7 @@ export interface Actor {
   permissions: string[]
   traceId: string
   sessionEpoch: number
+  sessionHash: string
 }
 const authenticatedActors = new WeakMap<FastifyRequest, Actor>()
 export const getAuthenticatedActor = (request: FastifyRequest) =>
@@ -82,6 +83,7 @@ export const authenticate = async (
     permissions: withSelfServicePermissions(info.permissions),
     traceId: request.id,
     sessionEpoch: info.session_epoch,
+    sessionHash: digest(token),
   }
   authenticatedActors.set(request, actor)
   return actor
@@ -164,8 +166,29 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
     const token = newToken()
     await transaction(pool, async (client) => {
       await client.query(
+        'SELECT pg_advisory_xact_lock(hashtextextended($1,0))',
+        [`credential:${user.id}`]
+      )
+      const locked = await client.query<{
+        password_hash: string
+        status: string
+      }>('SELECT password_hash,status FROM users WHERE id=$1 FOR SHARE', [
+        user.id,
+      ])
+      if (
+        locked.rows[0]?.status !== 'enabled' ||
+        locked.rows[0]?.password_hash !== user.password_hash
+      )
+        throw new DomainError(401, 'LOGIN_FAILED', '用户名或密码错误')
+      const available = await client.query<{ tenant_id: string }>(
+        "SELECT m.tenant_id FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=$1 AND m.status='enabled' AND m.deleted_at IS NULL AND t.status='enabled' ORDER BY m.tenant_id FOR SHARE OF m,t",
+        [user.id]
+      )
+      if (!available.rowCount)
+        throw new DomainError(403, 'FORBIDDEN', '没有可访问的租户')
+      await client.query(
         "INSERT INTO sessions (token_hash,user_id,default_tenant_id,expires_at) VALUES ($1,$2,$3,now()+interval '8 hours')",
-        [digest(token), user.id, tenants[0].tenantId]
+        [digest(token), user.id, available.rows[0].tenant_id]
       )
       await client.query(
         "INSERT INTO session_scopes (token_hash,tenant_id,user_id,epoch) SELECT $1,m.tenant_id,m.user_id,m.session_epoch FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND t.status='enabled'",
@@ -173,7 +196,7 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
       )
       await client.query(
         "INSERT INTO audit_events (tenant_id,id,actor_id,actor_name,module,action,result,target_type,target_id,trace_id) SELECT $1,$2,id,name,'auth','login','success','session',$3,$4 FROM users WHERE id=$3",
-        [tenants[0].tenantId, newToken(), user.id, request.id]
+        [available.rows[0].tenant_id, newToken(), user.id, request.id]
       )
     })
     return { code: 20000, data: { token }, traceId: request.id }

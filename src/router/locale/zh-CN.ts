@@ -8,6 +8,7 @@ export default {
   'menu.dashboard.workplace': '工作台',
   'menu.user': '用户中心',
   'menu.user.info': '信息维护',
+  'menu.user.password': '修改本人密码',
   'menu.salmon-icons': 'Salmon Icons',
   'menu.github': '我的 Github',
   'menu.permissions': '权限管理',

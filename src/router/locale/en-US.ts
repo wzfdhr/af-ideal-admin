@@ -8,6 +8,7 @@ export default {
   'menu.dashboard.workplace': 'Workplace',
   'menu.user': 'User Center',
   'menu.user.info': 'Information Maintenance',
+  'menu.user.password': 'Change My Password',
   'menu.salmon-icons': 'Salmon Icons',
   'menu.github': 'My GitHub',
   'menu.permissions': 'Permission Management',

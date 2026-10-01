@@ -126,3 +126,12 @@
 - 真实参考页面、菜单/路由/按钮授权已接入；只在显式专属演示初始化中给两名合成管理员用户治理权限，未授联系资料原值读取和通配权限。原私有R1初始化权限不自动升级。
 - 此增量仍需其自己的CI、本人修改密码、真实角色/权限、更新Mock闭环、部署/备份/回退和完整模块验收。FP-004保持进行中，不标为全部完成。
 - c88035cd03df80f4b70fc2ae3bcde7402408b002的实际CI36892910191已通过，verify/real-business均success；源提交和状态保存users-ui-remote-ci.json，artifact归档ci-36892910191。这轮实际运行包含427单测、55数据库/HTTP、20真实浏览器及独立Mock/旧smoke；不是整体发布成功。
+
+### FP-004 本人密码增量（2026-10-02）
+
+- 执行者Codex。self-credentials-red.log保留真实缺失接口失败；006全局凭据版本、本人接口/页面、全局凭据锁、会话有效性重查、登录发放前二次校验与管理员双版本比较已实施。
+- self-password-race-http.log：60项真实数据库/HTTP回归通过，含5项新增凭据安全测试。确定性登录交错使用实际阻塞在凭据锁上的请求，未替换成功响应。
+- self-password-domain-fixed.log：11契约与11领域/Mock通过；self-password-unit.log仍427前端单测通过；types/lint无错误。
+- self-password-real-browser.log本人修改及管理员重置2条真实页面通过，包含错误输入保持、1280键盘路径、新密码重新登录、两份旧浏览器会话拒绝；self-password-mock-browser.log独立2条开发Mock通过。原公共演示身份密码未改，新增测试只改变自己创建的合成身份。
+- 私有密码仅用于当前输入，退出或成功即清理，不写草稿/本地存储；新页、菜单和接口按account:password:update统一授权，只作用于当前身份。完整Mock用户生命周期、部署/备份/回退与FP-005动态角色仍须继续，FP-004保持进行中。
+- self-password-all-browser.log的21条真实路径、self-password-smoke.log的原3条smoke全部通过，包含原R1、组织、用户和本人密码；新增提交还须实际远端CI，不复用c88035c结果。
