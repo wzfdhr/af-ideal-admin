@@ -96,3 +96,7 @@ Docker 容器交付证据仍缺：原 Docker 配置为本机 7892 的手工 HTTP
 原始证据在 test-results/r1-m1：business-red.log 记录抄送缺失的失败回归，form-validation-red.log 记录不可用选项仍可发布的失败回归，final-http.log 记录最终 HTTP 与 worker 结果。更新后的全量构建及前端兼容结果在本目录单独归档。
 
 当前进入 M1 后端实现验收与 M2 页面接入准备。M0 的完整 Mock 契约对齐和容器环境证明仍待完成；未宣称 M0 或 R1 全部完成。LA-011 至 LA-021 已有实现及相应后端证据，暂列待完整阶段验收。LA-022 至 LA-031、LA-033 至 LA-036 的页面、部署与恢复工作仍须继续。
+
+后端业务实现提交为 bad6c0b。全量 lint、全部 workspace 类型检查与构建通过，前端既有 418 项单测及 3 项登录权限 smoke 通过；契约 8 项及领域 5 项通过，真实 HTTP/数据库/worker 集成 31 项通过。API 与 worker 在核实原进程后使用当前构建重新启动，日志位于 test-results/r1-m1/api-runtime.log 和 worker-runtime.log。
+
+尚待补齐：R1 无后端 Mock 契约、页面编辑与多账号点击、租户切换旧响应隔离、容器构建部署、数据库卷重启、备份恢复及最终验收报告。当前没有勾选新的完整阶段，也未声明任何 AC 场景整体通过。
