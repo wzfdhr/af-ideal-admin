@@ -19,7 +19,7 @@
 | FP-001 | 全量差距、原任务证据分级和 R1 包/回归核对 | 无 | 全部 | 进行中 |
 | FP-002 | 部门/组织树真实 CRUD；版本、幂等、跨租户/环/引用删除拒绝及现有页面接入 | FP-001 | T-204/T-608 | 进行中 |
 | FP-003 | 岗位及组织成员绑定、启停、合法关联和旧快照保留 | FP-002 | T-204/T-608 | 进行中 |
-| FP-004 | 用户/成员生命周期、私有凭据、脱敏、停用及会话撤销 | FP-002 | T-204/T-607 | 未开始 |
+| FP-004 | 用户/成员生命周期、私有凭据、脱敏、停用及会话撤销 | FP-002 | T-204/T-607 | 进行中 |
 | FP-005 | 动态角色、权限绑定、即时撤权、最后管理员保护及授权审计 | FP-004 | T-104/T-204 | 未开始 |
 | FP-006 | 后端数据范围、字段投影/脱敏；all 只表示本租户 | FP-003/005 | T-608 | 未开始 |
 | FP-007 | 菜单资源持久化、安全 componentKey、路由/按钮权限一致 | FP-005 | T-106/T-204 | 未开始 |
@@ -85,7 +85,7 @@
 - organization-restart-http.log：47项真实数据库/HTTP测试通过，新增进程替换恢复；organization-mock-domain.log：8契约+10领域/Mock通过；organization-with-mock-unit.log：425前端单测通过。
 - organization-positions-browser-green.log：3条真实页面路径通过，含关闭重开、双租户、引用删除和父级循环选项；organization-mock-browser-fixed.log：显式Mock开发页面独立通过，未作为真实实现验收。
 - 原R1全量真实页面新增用例后触发登录限流，随后发现失败登录的诊断401会重载登录页、清空输入；失败证据 organization-final-real-browser.log、organization-real-browser-throttle-fixed.log 保留。修复登录页上的401跳转、返回真实Retry-After后，organization-login-recovery-real-browser.log 的19项全部通过；不更改原安全阈值，不删除失败用例。新增登录错误/输入保留/正确重试用例为真实401及429链路。
-- 最终前端425单测、47数据库/HTTP、8契约+10领域/Mock、3旧smoke、1独立Mock页面通过；lint无错误、全部workspace类型和构建通过。完整树/岗位增量的实际GitHub CI仍须针对本轮新提交执行，未沿用4821701结果。
+- 最终前端425单测、47数据库/HTTP、8契约+10领域/Mock、3旧smoke、1独立Mock页面通过；lint无错误、全部workspace类型和构建通过。完整树/岗位增量的实际GitHub CI针对50b36df执行并通过，未沿用4821701结果。
 - organization-keyboard-browser-fixed.log：新增树的键盘折叠/展开、岗位弹窗Escape取消与焦点返回后，3条组织页面再次通过。关闭Arco下拉后Escape曾被吞掉，保留失败 organization-keyboard-browser.log；修复为下拉打开时先由下拉处理，关闭时允许弹窗退出，提交期间禁止误取消。organization-mock-final-browser.log 的独立Mock页面再验通过，旧无租户部门Mock处理器已由共享受控适配器替换。
 - 本阶段仍缺模块部署/备份/兼容回退和最终全产品验收，FP-002/003不勾完成。限制、固定枚举、Mock内存边界和回滚见 full-product-organization-design.md。
 
@@ -98,3 +98,19 @@
 - 实际页面编辑丢失revision因ProForm仅提交schema字段，department-e2e.log复现，独立editingRevision修复后真实重开/编辑/删除及双租户通过。
 - 部门状态是固定枚举，非完整字典持久化；树可视交互、岗位/成员关联、真实角色授权和完整组织验收未完，所以FP-002保持进行中。
 - 使用独立随机数据库、API10890、网关4189；私有env放APFS临时目录，未写入源码或报告。原R1服务/卷和交付包保留。回滚与兼容边界见 full-product-organization-design.md。
+
+### 实际远端 CI 增量记录
+
+- 源码提交50b36df8ad95480a959dd9c8aacbd74d89ed6adf，分支codex/full-product-completion，实际运行36879157316；verify和real-business均success。
+- 证据链接 https://github.com/wzfdhr/af-ideal-admin/actions/runs/36879157316 ，artifact已下载到test-results/full-product/ci-36879157316，状态及SHA另存organization-remote-ci.json。
+- 执行共享契约/领域、425前端单测、47真实数据库/HTTP、19真实浏览器、3旧smoke和显式开发Mock页面；包含真实进程替换、双租户、输入恢复与键盘场景。没有合并默认分支或宣告全产品发布。
+- 后续用户生命周期增量不包含在该CI提交中，需要新的验证记录。FP-042最终全产品门禁仍未完成。
+
+### FP-004 用户生命周期首批后端
+
+- 实施者Codex，2026-10-01，当前增量尚未成为完整模块交付。users-lifecycle-red.log保留真实路由404失败。
+- 005迁移、严格共享用户输入、真实创建/资料维护/停用/删除/受限密码重置、租户内姓名/联系资料、服务端脱敏、幂等版本与事实审计已实施。共享身份的全局资料/凭据不能被一个租户管理员改写。
+- 按租户会话epoch保存登录授权范围；停用/删除推进epoch，重新启用不会使旧会话复活，其他租户的授权继续有效。旧有效会话按迁移时已授权成员建立兼容范围，不引入默认通配权限。
+- users-member-protection-http.log：54项真实回归通过，包括双管理员同时自停用保留治理者、共享身份资料隔离、另一租户继续访问、旧会话拒绝、实际密码重置和历史保留、真实待办成员停用/删除拒绝。原R1和组织恢复用例保留。lint无错误和workspace类型检查通过。
+- 用户页面、本人修改密码、完整角色授权、独立Mock、浏览器及部署/备份/回退仍须继续。此次数据库结果不替代这些门禁，FP-004不勾完成。
+- 005已实际迁移到独立开发库，users-backend-r1-browser.log 的19项原有真实页面回归通过，users-staged-unit.log 的425项前端单测通过。这是原有路径在新鉴权后的回归，不是尚未接入用户页面的验收。新增用户共享输入/脱敏契约用例独立执行。

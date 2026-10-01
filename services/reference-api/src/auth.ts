@@ -21,6 +21,7 @@ export interface Actor {
   role: UserRole
   permissions: string[]
   traceId: string
+  sessionEpoch: number
 }
 const authenticatedActors = new WeakMap<FastifyRequest, Actor>()
 export const getAuthenticatedActor = (request: FastifyRequest) =>
@@ -50,24 +51,37 @@ export const authenticate = async (
   const tenantId =
     scalarHeader(request, 'x-tenant-id') || user.default_tenant_id
   const membership = await pool.query<{
+    name: string
+    session_epoch: number
     department_name: string
     role: UserRole
     permissions: string[]
   }>(
-    "SELECT COALESCE(d.department_name,m.department_name) AS department_name,m.role,m.permissions FROM memberships m JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND t.status='enabled'",
+    "SELECT m.session_epoch,COALESCE(m.display_name,u.name) AS name,COALESCE(d.department_name,m.department_name) AS department_name,m.role,m.permissions FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND t.status='enabled' AND u.status='enabled'",
     [tenantId, user.user_id]
   )
   if (!membership.rowCount)
     throw new DomainError(404, 'NOT_FOUND', '资源不存在')
   const info = membership.rows[0]
+  const scope = await pool.query<{ epoch: number }>(
+    'SELECT epoch FROM session_scopes WHERE token_hash=$1 AND tenant_id=$2 AND user_id=$3',
+    [digest(token), tenantId, user.user_id]
+  )
+  if (scope.rows[0]?.epoch !== info.session_epoch)
+    throw new DomainError(
+      401,
+      'SESSION_SCOPE_REVOKED',
+      '当前租户会话已失效，请重新登录'
+    )
   const actor: Actor = {
     userId: user.user_id,
-    name: user.name,
+    name: info.name,
     tenantId,
     department: info.department_name,
     role: info.role,
     permissions: withSelfServicePermissions(info.permissions),
     traceId: request.id,
+    sessionEpoch: info.session_epoch,
   }
   authenticatedActors.set(request, actor)
   return actor
@@ -152,6 +166,10 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
       await client.query(
         "INSERT INTO sessions (token_hash,user_id,default_tenant_id,expires_at) VALUES ($1,$2,$3,now()+interval '8 hours')",
         [digest(token), user.id, tenants[0].tenantId]
+      )
+      await client.query(
+        "INSERT INTO session_scopes (token_hash,tenant_id,user_id,epoch) SELECT $1,m.tenant_id,m.user_id,m.session_epoch FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND t.status='enabled'",
+        [digest(token), user.id]
       )
       await client.query(
         "INSERT INTO audit_events (tenant_id,id,actor_id,actor_name,module,action,result,target_type,target_id,trace_id) SELECT $1,$2,id,name,'auth','login','success','session',$3,$4 FROM users WHERE id=$3",
@@ -245,7 +263,7 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
       name: string
       permissions: string[]
     }>(
-      "SELECT m.user_id AS id,u.name,m.permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.status='enabled' AND u.status='enabled' ORDER BY u.name",
+      "SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,m.permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.status='enabled' AND m.deleted_at IS NULL AND u.status='enabled' ORDER BY COALESCE(m.display_name,u.name),m.user_id",
       [tenantId]
     )
     return {

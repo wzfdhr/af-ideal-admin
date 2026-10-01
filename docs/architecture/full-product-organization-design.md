@@ -36,7 +36,7 @@ GET /system/positions 支持分页和 departmentId 过滤。POST/PUT/DELETE 延�
 
 test-results/full-product/organization-red.log 是真实404失败；department-http-green.log 记录41项数据库/HTTP回归，其中部门正负向4项。department-e2e.log 暴露编辑版本丢失，department-e2e-revision-fixed.log 使用独立管理员浏览器连接真实 API 后通过新增、重开、编辑、删除及租户隔离。department-ui-unit.log 六项、department-unit-full.log 425项前端单测通过；lint/typecheck/build 证据独立保存。
 
-新开发环境为独立随机 *_demo 库，API 10890、前端真实网关4189；私有环境文件存入 APFS 临时目录，不写报告或 Git。旧 R1 Compose 和数据卷保留。原 GitHub 旧失败日志已410过期，不能虚构原因。首轮实际远端 CI 36864845224 已通过，验证4821701；本轮树/岗位增量还须新一轮实际 CI，不复用旧提交结果。
+新开发环境为独立随机 *_demo 库，API 10890、前端真实网关4189；私有环境文件存入 APFS 临时目录，不写报告或 Git。旧 R1 Compose 和数据卷保留。原 GitHub 旧失败日志已410过期，不能虚构原因。首轮实际远端 CI 36864845224 已通过，验证4821701；本轮树/岗位增量的36879157316也已通过，验证50b36df；后续用户生命周期增量仍需自己的CI，不复用旧提交结果。
 
 当前增量数据库/HTTP回归47项通过，包含真实 API 子进程退出和替换后对组织树、岗位、成员版本及会话的完整对比。共享契约8项、领域/Mock10项通过；前端425单测仍通过。真实页面含R1共19项通过。新增浏览器用例触发既有登录防刷规则，保留原阈值并返回 Retry-After；脚本只按实际429响应等待一次真实窗口，不能注入登录成功或提高阈值。新增测试预算包含最长60秒窗口，所有原业务/键盘断言保持。进一步复现失败登录诊断401会再次跳转登录页，修复为在登录页清除无效认证而保留当前输入；真实错误密码及诊断401之后的正确登录已通过。
 

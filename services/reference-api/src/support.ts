@@ -62,8 +62,8 @@ const refreshActor = async (
       name: string
     }>(
       client,
-      "SELECT m.permissions,COALESCE(d.department_name,m.department_name) AS department_name,m.role,u.name FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND u.status='enabled' AND t.status='enabled' FOR SHARE OF m,u,t",
-      [actor.tenantId, actor.userId]
+      "SELECT m.permissions,COALESCE(d.department_name,m.department_name) AS department_name,m.role,COALESCE(m.display_name,u.name) AS name FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND m.session_epoch=$3 AND u.status='enabled' AND t.status='enabled' FOR SHARE OF m,u,t",
+      [actor.tenantId, actor.userId, actor.sessionEpoch]
     )
   )
   return {

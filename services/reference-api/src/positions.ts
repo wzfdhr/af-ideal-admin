@@ -249,13 +249,13 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
       status: string
     }>(
       pool,
-      'SELECT m.user_id AS id,u.name,m.department_id AS "departmentId",m.position_id AS "positionId",p.position_name AS "positionName",m.revision,m.status FROM memberships m JOIN users u ON m.user_id=u.id LEFT JOIN positions p ON p.tenant_id=m.tenant_id AND p.id=m.position_id WHERE m.tenant_id=$1 ORDER BY m.user_id LIMIT $2 OFFSET $3',
+      'SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,m.department_id AS "departmentId",m.position_id AS "positionId",p.position_name AS "positionName",m.revision,m.status FROM memberships m JOIN users u ON m.user_id=u.id LEFT JOIN positions p ON p.tenant_id=m.tenant_id AND p.id=m.position_id WHERE m.tenant_id=$1 AND m.deleted_at IS NULL ORDER BY m.user_id LIMIT $2 OFFSET $3',
       [actor.tenantId, page.pageSize, page.offset]
     )
     const count = one(
       await rows<{ total: string }>(
         pool,
-        'SELECT count(*) AS total FROM memberships WHERE tenant_id=$1',
+        'SELECT count(*) AS total FROM memberships WHERE tenant_id=$1 AND deleted_at IS NULL',
         [actor.tenantId]
       )
     )
@@ -288,7 +288,7 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
             const member = one(
               await rows<{ revision: number; status: string }>(
                 client,
-                'SELECT revision,status FROM memberships WHERE tenant_id=$1 AND user_id=$2 FOR UPDATE',
+                'SELECT revision,status FROM memberships WHERE tenant_id=$1 AND user_id=$2 AND deleted_at IS NULL FOR UPDATE',
                 [current.tenantId, id]
               )
             )
@@ -317,7 +317,7 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
                 throw new DomainError(409, 'POSITION_UNAVAILABLE', '岗位已停用')
             }
             await client.query(
-              'UPDATE memberships SET department_id=$3,position_id=$4,department_name=$5,revision=revision+1 WHERE tenant_id=$1 AND user_id=$2',
+              'UPDATE memberships SET department_id=$3,position_id=$4,department_name=$5,revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND user_id=$2',
               [
                 current.tenantId,
                 id,
