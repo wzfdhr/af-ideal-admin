@@ -19,7 +19,14 @@ import {
 } from '@af-admin/workflow-core'
 import { authenticate, scalarHeader } from './auth'
 import { hashPassword } from './security'
-import { audit, idempotent, one, rows, pageQuery } from './support'
+import {
+  audit,
+  idempotent,
+  one,
+  rows,
+  pageQuery,
+  authorizedTransaction,
+} from './support'
 import type { Actor } from './auth'
 import type { FastifyInstance } from 'fastify'
 import type { Pool, PoolClient } from 'pg'
@@ -42,20 +49,23 @@ const projection =
   'm.user_id AS id,u.username,COALESCE(m.display_name,u.name) AS name,m.phone,m.email,COALESCE(d.department_name,m.department_name) AS dept,m.status,m.role,m.revision,m.created_at,m.updated_at,u.owner_tenant_id'
 const sources =
   'FROM memberships m JOIN users u ON u.id=m.user_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL'
-const dto = (value: UserRow, actor: Actor) => ({
+const dto = (value: UserRow, actor: Actor, forceMask = false) => ({
   id: value.id,
   username: value.username,
   name: value.name,
-  phone: hasPermission(actor.permissions, USER_PERMISSIONS.readContacts)
-    ? value.phone
-    : maskPhone(value.phone),
-  email: hasPermission(actor.permissions, USER_PERMISSIONS.readContacts)
-    ? value.email
-    : maskEmail(value.email),
-  contactsMasked: !hasPermission(
-    actor.permissions,
-    USER_PERMISSIONS.readContacts
-  ),
+  phone:
+    !forceMask &&
+    hasPermission(actor.permissions, USER_PERMISSIONS.readContacts)
+      ? value.phone
+      : maskPhone(value.phone),
+  email:
+    !forceMask &&
+    hasPermission(actor.permissions, USER_PERMISSIONS.readContacts)
+      ? value.email
+      : maskEmail(value.email),
+  contactsMasked:
+    forceMask ||
+    !hasPermission(actor.permissions, USER_PERMISSIONS.readContacts),
   dept: value.dept,
   status: value.status,
   role: value.role,
@@ -130,57 +140,69 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
   })
   server.get('/api/system/users', async (request) => {
     const actor = await authenticate(pool, request)
-    requirePermission(actor.permissions, USER_PERMISSIONS.list)
-    const query = record(request.query)
-    const page = pageQuery(query)
-    const username =
-      typeof query.username === 'string' ? query.username.slice(0, 64) : ''
-    const status = typeof query.status === 'string' ? query.status : ''
-    if (status && !['enabled', 'disabled'].includes(status))
-      throw new DomainError(422, 'VALIDATION_ERROR', '成员状态筛选无效')
-    if (
-      query.phone &&
-      !hasPermission(actor.permissions, USER_PERMISSIONS.readContacts)
-    )
-      throw new DomainError(403, 'FORBIDDEN', '没有查询联系资料的权限')
-    const phone =
-      typeof query.phone === 'string' ? query.phone.slice(0, 30) : ''
-    const params = [actor.tenantId, `%${username}%`, status, `%${phone}%`]
-    const filter =
-      "WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND u.username ILIKE $2 AND ($3='' OR m.status=$3) AND m.phone LIKE $4"
-    const count = one(
-      await rows<{ total: string }>(
-        pool,
-        `SELECT count(*) AS total ${sources} ${filter}`,
-        params
-      )
-    )
-    const values = await rows<UserRow>(
+    return authorizedTransaction(
       pool,
-      `SELECT ${projection} ${sources} ${filter} ORDER BY m.user_id LIMIT $5 OFFSET $6`,
-      [...params, page.pageSize, page.offset]
-    )
-    return ok(
-      {
-        list: values.map((value) => dto(value, actor)),
-        total: Number(count.total),
-      },
-      request.id
+      actor,
+      USER_PERMISSIONS.list,
+      async (client, current) => {
+        const query = record(request.query)
+        const page = pageQuery(query)
+        const username =
+          typeof query.username === 'string' ? query.username.slice(0, 64) : ''
+        const status = typeof query.status === 'string' ? query.status : ''
+        if (status && !['enabled', 'disabled'].includes(status))
+          throw new DomainError(422, 'VALIDATION_ERROR', '成员状态筛选无效')
+        if (
+          query.phone &&
+          !hasPermission(current.permissions, USER_PERMISSIONS.readContacts)
+        )
+          throw new DomainError(403, 'FORBIDDEN', '没有查询联系资料的权限')
+        const phone =
+          typeof query.phone === 'string' ? query.phone.slice(0, 30) : ''
+        const params = [current.tenantId, `%${username}%`, status, `%${phone}%`]
+        const filter =
+          "WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND u.username ILIKE $2 AND ($3='' OR m.status=$3) AND m.phone LIKE $4"
+        const count = one(
+          await rows<{ total: string }>(
+            client,
+            `SELECT count(*) AS total ${sources} ${filter}`,
+            params
+          )
+        )
+        const values = await rows<UserRow>(
+          client,
+          `SELECT ${projection} ${sources} ${filter} ORDER BY m.user_id LIMIT $5 OFFSET $6`,
+          [...params, page.pageSize, page.offset]
+        )
+        return ok(
+          {
+            list: values.map((value) => dto(value, current)),
+            total: Number(count.total),
+          },
+          request.id
+        )
+      }
     )
   })
   server.get('/api/system/users/:id', async (request) => {
     const actor = await authenticate(pool, request)
-    requirePermission(actor.permissions, USER_PERMISSIONS.detail)
-    return ok(
-      dto(
-        await read(
-          pool,
-          actor.tenantId,
-          text(record(request.params).id, 'id', 100)
-        ),
-        actor
-      ),
-      request.id
+    return authorizedTransaction(
+      pool,
+      actor,
+      USER_PERMISSIONS.detail,
+      async (client, current) => {
+        return ok(
+          dto(
+            await read(
+              client,
+              current.tenantId,
+              text(record(request.params).id, 'id', 100)
+            ),
+            current
+          ),
+          request.id
+        )
+      }
     )
   })
   server.post('/api/system/users', async (request) => {
@@ -230,7 +252,7 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
               'membership',
               id
             )
-            return dto(await read(client, current.tenantId, id), current)
+            return dto(await read(client, current.tenantId, id), current, true)
           },
           true
         ),
@@ -278,7 +300,7 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
             'membership',
             id
           )
-          return dto(await read(client, current.tenantId, id), current)
+          return dto(await read(client, current.tenantId, id), current, true)
         },
         true
       ),
