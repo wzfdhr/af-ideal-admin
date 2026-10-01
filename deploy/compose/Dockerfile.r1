@@ -17,11 +17,11 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=10888 APP_MODE=pilot
 CMD ["node", "services/reference-api/dist/index.js"]
 
 FROM ${NODE_IMAGE} AS web
-ARG R1_SOURCE_COMMIT=unverified
-LABEL org.opencontainers.image.revision=${R1_SOURCE_COMMIT}
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends nginx=1.18.0-6ubuntu14.21 gettext-base && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY deploy/compose/nginx.conf.template /etc/nginx/r1-default.conf.template
+ARG R1_SOURCE_COMMIT=unverified
+LABEL org.opencontainers.image.revision=${R1_SOURCE_COMMIT}
 ENV API_PROXY_PASS=http://api:10888
 EXPOSE 80
 CMD ["sh", "-c", "envsubst '${API_PROXY_PASS}' < /etc/nginx/r1-default.conf.template > /etc/nginx/sites-enabled/default && nginx -g 'daemon off;'"]
