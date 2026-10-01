@@ -23,16 +23,32 @@
         <div class="m-4">
           <div class="font-bold">操作</div>
           <a-space direction="vertical" class="mt-4 w-full">
-            <a-button long :loading="loading" @click="loadDraft()">
+            <a-button
+              v-if="!embedded"
+              long
+              :loading="loading"
+              @click="loadDraft()"
+            >
               加载示例表单
             </a-button>
-            <a-button long :loading="creating" @click="createDraft()">
+            <a-button
+              v-if="!embedded"
+              long
+              :loading="creating"
+              @click="createDraft()"
+            >
               创建草稿
             </a-button>
-            <a-button long :loading="saving" @click="saveDraft">
+            <a-button
+              v-if="!embedded"
+              long
+              :loading="saving"
+              @click="saveDraft"
+            >
               保存草稿
             </a-button>
             <a-button
+              v-if="!embedded"
               type="primary"
               long
               :loading="publishing"
@@ -46,7 +62,12 @@
             <a-button type="outline" long @click="showImportSchema">
               导入 schema JSON
             </a-button>
-            <a-button type="outline" long @click="showDataSourceEditor">
+            <a-button
+              v-if="!embedded"
+              type="outline"
+              long
+              @click="showDataSourceEditor"
+            >
               编辑数据源
             </a-button>
             <a-button
@@ -113,6 +134,7 @@
         <a-space>
           <a-button @click="previewVisible = false">关闭</a-button>
           <a-button
+            v-if="!embedded"
             type="primary"
             :loading="submittingPreview"
             data-testid="form-designer-preview-submit"
@@ -147,7 +169,7 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import Draggable from 'vuedraggable'
 import { FormRenderer } from '@/components/form-runtime'
 import { fields, useWidgetActions } from './use-widgets'
@@ -158,7 +180,17 @@ import DataSrcEditor from './data-source-editor.vue'
 import { useFormDesigner, useFormDesignerActions } from './use-form-designer'
 // imported type used in template incorrectly throws warning
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { migrateFormSchema } from './schema'
 import type { WidgetsConfig } from './types'
+import type { VersionedFormSchema } from './schema'
+
+const props = withDefaults(
+  defineProps<{ embedded?: boolean; initialSchema?: object }>(),
+  { embedded: false, initialSchema: undefined }
+)
+const emit = defineEmits<{
+  (event: 'update:schema', schema: VersionedFormSchema): void
+}>()
 
 const activeTab = ref(1)
 const { ast, formId } = useFormDesigner()
@@ -192,8 +224,19 @@ const {
 const { selectedWidget, cloneWidgetConfigFromRaw } = useWidgetActions(ast)
 
 onMounted(() => {
-  loadDraft()
+  if (props.embedded)
+    ast.value = migrateFormSchema(
+      JSON.parse(JSON.stringify(props.initialSchema || {}))
+    )
+  else loadDraft()
 })
+watch(
+  ast,
+  (value) => {
+    if (props.embedded) emit('update:schema', value)
+  },
+  { deep: true }
+)
 // watch(ast.value, () => {
 //   window.localStorage.setItem('ast', ast.value as any)
 // })

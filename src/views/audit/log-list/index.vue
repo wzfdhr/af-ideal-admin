@@ -1,5 +1,10 @@
 <template>
   <main class="audit-log-page" data-testid="audit-log-page">
+    <p v-if="error" role="alert">
+      {{ error }}
+      <button type="button" @click="loadLogs">重试</button>
+    </p>
+    <p v-if="route?.query?.targetId">当前仅显示关联业务对象的服务端事件</p>
     <div class="audit-log-page__header">
       <div>
         <p class="audit-log-page__breadcrumb">审计中心 / 审计日志</p>
@@ -139,14 +144,20 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   fetchAuditEvents,
   type AuditEventQuery,
   type AuditEventRecord,
 } from '@/api/audit'
 
+const route = useRoute()
+const error = ref('')
 const moduleOptions = [
+  { label: '请假业务', value: 'leave' },
+  { label: '应用配置', value: 'application' },
+  { label: '拒绝请求', value: 'request' },
   { label: '认证', value: 'auth' },
   { label: '系统', value: 'system' },
   { label: '流程', value: 'workflow' },
@@ -186,15 +197,22 @@ const buildQuery = (): AuditEventQuery => ({
   result: filters.result,
   eventType: filters.eventType,
   dateRange: buildDateRange(),
+  targetId:
+    typeof route?.query?.targetId === 'string'
+      ? route?.query?.targetId
+      : undefined,
 })
 
 const loadLogs = async () => {
   loading.value = true
+  error.value = ''
 
   try {
     const result = await fetchAuditEvents(buildQuery())
     records.value = result.list
     total.value = result.total
+  } catch (failure) {
+    error.value = failure instanceof Error ? failure.message : '审计加载失败'
   } finally {
     loading.value = false
   }
@@ -274,6 +292,7 @@ const formatDetail = (detail?: Record<string, unknown>) => {
 }
 
 onMounted(loadLogs)
+watch(() => route?.query?.targetId, loadLogs)
 </script>
 
 <style scoped lang="scss">

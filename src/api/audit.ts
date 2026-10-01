@@ -34,6 +34,7 @@ export interface AuditEventRecord extends AuditEventPayload {
 }
 
 export interface AuditEventQuery {
+  targetId?: string
   current: number
   pageSize: number
   operatorName?: string

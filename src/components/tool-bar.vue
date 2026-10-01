@@ -11,7 +11,8 @@
       </h1>
     </div>
     <ul class="right-sec">
-      <li>
+      <li><tenant-switcher /></li>
+      <li v-if="!userStore.tenants.length">
         <a-popover
           position="br"
           trigger="click"
@@ -48,7 +49,8 @@
       <li>
         <a-dropdown trigger="click">
           <a-avatar :size="32" class="cursor-pointer mr-2">
-            <img :src="avatar" />
+            <img v-if="avatar" :src="avatar" />
+            <span v-else>{{ userStore.name?.slice(0, 1) }}</span>
           </a-avatar>
           <template #content>
             <a-doption @click="handUserInfo">
@@ -85,6 +87,7 @@ import { useUserStore } from '@/store'
 import useLogout from '@/hooks/use-logout'
 import useLocale from '@/hooks/use-locale'
 import MessageBox from './message-box/index.vue'
+import TenantSwitcher from './tenant-switcher.vue'
 
 defineProps({
   title: {

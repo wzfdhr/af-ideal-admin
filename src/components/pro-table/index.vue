@@ -1,5 +1,9 @@
 <template>
   <div class="pro-table">
+    <div v-if="errorMessage" role="alert" class="pro-table__error">
+      <span>{{ errorMessage }}</span>
+      <button type="button" @click="retryLoad">重试</button>
+    </div>
     <component
       :is="Table"
       :columns="columns"
@@ -48,6 +52,7 @@ const props = withDefaults(defineProps<ProTableComponentProps>(), {
 })
 
 const loading = ref(false)
+const errorMessage = ref('')
 const data = ref<Record<string, unknown>[]>([])
 const filters = ref<Record<string, unknown>>({})
 const paginationState = reactive({
@@ -64,7 +69,9 @@ const pagination = computed(() => ({
   showPageSize: true,
 }))
 
-const showEmptyState = computed(() => !loading.value && data.value.length === 0)
+const showEmptyState = computed(
+  () => !loading.value && !errorMessage.value && data.value.length === 0
+)
 
 const getFetchParams = (): ProTableFetchParams => ({
   current: paginationState.current,
@@ -74,18 +81,23 @@ const getFetchParams = (): ProTableFetchParams => ({
 
 const fetchTableData = async () => {
   loading.value = true
+  errorMessage.value = ''
   try {
     const result = (await props.fetchData(
       getFetchParams()
     )) as ProTableFetchResult<Record<string, unknown>>
     data.value = result.list
     paginationState.total = result.total
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : '列表加载失败'
+    throw error
   } finally {
     loading.value = false
   }
 }
 
 const reload = () => fetchTableData()
+const retryLoad = () => reload().catch(() => undefined)
 const refresh = reload
 
 const reset = (nextFilters: Record<string, unknown> = {}) => {
@@ -108,7 +120,7 @@ const handlePageSizeChange = (pageSize: number) => {
 }
 
 onMounted(() => {
-  fetchTableData()
+  fetchTableData().catch(() => undefined)
 })
 
 defineExpose<ProTableExpose>({
@@ -120,6 +132,18 @@ defineExpose<ProTableExpose>({
 </script>
 
 <style scoped>
+.pro-table__error {
+  padding: 12px;
+  color: var(--color-danger-6);
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.pro-table__error button {
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 4px 10px;
+}
 .pro-table__empty {
   padding: 16px 0;
   color: #667085;

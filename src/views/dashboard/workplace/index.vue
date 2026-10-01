@@ -1,5 +1,6 @@
 <template>
-  <main class="px-6 pb-6">
+  <LeaveWorkplace v-if="user.tenants.length" />
+  <main v-else class="px-6 pb-6">
     <s-navs :navs="['menu.dashboard', 'menu.dashboard.workplace']" />
 
     <a-row :gutter="16" class="w-full">
@@ -24,10 +25,14 @@
 </template>
 
 <script lang="ts" setup>
+import LeaveWorkplace from '@/views/leave/workplace.vue'
+import useUserStore from '@/store/modules/user'
 import DataPanel from './widgets/data-panel.vue'
 import dataAvatar from './widgets/data-avatar.vue'
 import todoPanel from './widgets/todo-panel.vue'
 import actionPanel from './widgets/action-panel.vue'
 import noticePanel from './widgets/notice-panel.vue'
 import serviceChart from './widgets/service-chart.vue'
+
+const user = useUserStore()
 </script>

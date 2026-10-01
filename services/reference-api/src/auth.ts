@@ -5,6 +5,7 @@ import {
   text,
   withSelfServicePermissions,
 } from '@af-admin/contracts'
+import { requirePermission } from '@af-admin/workflow-core'
 import { digest, hashPassword, newToken, verifyPassword } from './security'
 import { transaction } from './database'
 import type { AuthUser, TenantContext, UserRole } from '@af-admin/contracts'
@@ -224,6 +225,34 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
         orgTree: [],
         dataScopes: [],
       },
+      traceId: request.id,
+    }
+  })
+  server.get('/api/tenants/:id/members', async (request) => {
+    const actor = await authenticate(pool, request)
+    const tenantId = text(record(request.params).id, 'id', 100)
+    if (tenantId !== actor.tenantId)
+      throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+    requirePermission(actor.permissions, 'application:configure')
+    const members = await pool.query<{
+      id: string
+      name: string
+      permissions: string[]
+    }>(
+      "SELECT m.user_id AS id,u.name,m.permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.status='enabled' AND u.status='enabled' ORDER BY u.name",
+      [tenantId]
+    )
+    return {
+      code: 20000,
+      data: members.rows.map((member) => ({
+        id: member.id,
+        name: member.name,
+        canApprove: ['workflow:approve', 'workflow:reject'].every(
+          (permission) =>
+            member.permissions.includes(permission) ||
+            member.permissions.includes('*')
+        ),
+      })),
       traceId: request.id,
     }
   })

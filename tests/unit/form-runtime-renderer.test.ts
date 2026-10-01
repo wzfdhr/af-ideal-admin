@@ -262,4 +262,18 @@ describe('FormRuntimeRenderer', () => {
     expect(wrapper.find('[data-testid="runtime-form"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('未授权的远程数据源')
   })
+  it('renders legacy date fields that omit an explicit picker mode', () => {
+    const schema = migrateFormSchema({
+      widgetsConfig: [
+        {
+          type: 'date-picker',
+          uid: 'startDate',
+          name: '开始日期',
+          config: { label: '开始日期', required: true },
+        },
+      ],
+    })
+    const wrapper = mountRenderer(schema)
+    expect(wrapper.find('a-date-picker-stub').exists()).toBe(true)
+  })
 })

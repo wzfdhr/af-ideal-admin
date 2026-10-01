@@ -2,6 +2,7 @@ import NProgress from 'nprogress'
 import usePermission from '@/hooks/use-permission'
 import { filterAccessibleMenus, flattenMenuNames } from '@/services/access'
 import { useUserStore, useMenuStore } from '@/store'
+import { canVisitR1Page } from '@/services/r1-menu'
 import { menuFromServer, toNoPermissionPage } from '@config'
 import { appRoutes } from '../routes'
 import { whiteList } from '../constants'
@@ -13,6 +14,15 @@ const setupPermissionGuard = (router: Router) => {
     const menuStore = useMenuStore()
     const permission = usePermission()
     const permissionAllow = permission.hasAccessToRoute(to)
+    if (
+      userStore.tenants.length &&
+      !whiteList.some((item) => item.name === to.name) &&
+      !canVisitR1Page(to.name, userStore.permissions)
+    ) {
+      next({ name: 'not-allowed' })
+      NProgress.done()
+      return
+    }
 
     if (menuFromServer) {
       if (

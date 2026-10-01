@@ -1,10 +1,13 @@
 import axios from 'axios'
 import { Message } from '@arco-design/web-vue'
+import { ContextChangedError } from '@/services/tenant-context'
+import type { RequestScope } from '@/services/tenant-context'
 import type {
   AxiosError,
   AxiosInstance,
   AxiosRequestHeaders,
   AxiosResponse,
+  AxiosRequestConfig,
 } from 'axios'
 
 export interface ApiResponse<T = unknown> {
@@ -14,6 +17,7 @@ export interface ApiResponse<T = unknown> {
   msg?: string
   traceId?: string
   errors?: Record<string, string[]>
+  businessCode?: string
 }
 
 export interface RequestClientOptions {
@@ -21,6 +25,12 @@ export interface RequestClientOptions {
   timeout: number
   authHeaderName: string
   getToken: () => string | null
+  scope?: {
+    snapshot: () => RequestScope
+    isCurrent: (scope: RequestScope) => boolean
+    track: (controller: AbortController) => () => unknown
+    isTransitioning: () => boolean
+  }
   onError?: (context: ApiErrorContext) => void | Promise<void>
   onUnauthorized?: (context: ApiErrorContext) => void | Promise<void>
   onForbidden?: (context: ApiErrorContext) => void | Promise<void>
@@ -41,6 +51,8 @@ export interface ApiErrorContext {
   code?: number
   httpStatus?: number
   traceId?: string
+  businessCode?: string
+  errors?: Record<string, string[]>
 }
 
 export class ApiRequestError extends Error {
@@ -90,6 +102,16 @@ const getPayload = (data: unknown) => {
       toSafeString(data.msg) ||
       toSafeString(data.error),
     traceId: toSafeString(data.traceId),
+    businessCode: toSafeString(data.businessCode),
+    errors: isRecord(data.errors)
+      ? (Object.fromEntries(
+          Object.entries(data.errors).filter(
+            ([, value]) =>
+              Array.isArray(value) &&
+              value.every((item) => typeof item === 'string')
+          )
+        ) as Record<string, string[]>)
+      : undefined,
   }
 }
 
@@ -140,12 +162,16 @@ const createErrorContext = ({
   hasResponse = true,
   message,
   traceId,
+  businessCode,
+  errors,
 }: {
   code?: number
   httpStatus?: number
   hasResponse?: boolean
   message?: string
   traceId?: string
+  businessCode?: string
+  errors?: Record<string, string[]>
 }): ApiErrorContext => {
   const kind = getErrorKind(code, httpStatus, hasResponse)
   const safeMessage = sanitizeMessage(message || getDefaultMessage(kind))
@@ -155,6 +181,8 @@ const createErrorContext = ({
     code,
     httpStatus,
     traceId,
+    businessCode,
+    errors,
     message: safeMessage,
     displayMessage: withTraceId(safeMessage, traceId),
   }
@@ -201,8 +229,53 @@ export const createRequestClient = (
     baseURL: options.baseURL,
     timeout: options.timeout,
   })
+  interface ScopedConfig extends AxiosRequestConfig {
+    requestScope?: RequestScope
+    releaseScope?: () => void
+  }
+  const finishScope = (config?: AxiosRequestConfig) => {
+    const scoped = config as ScopedConfig | undefined
+    scoped?.releaseScope?.()
+    if (
+      scoped?.requestScope &&
+      options.scope &&
+      !options.scope.isCurrent(scoped.requestScope)
+    )
+      throw new ContextChangedError()
+  }
 
   client.interceptors.request.use((config) => {
+    if (options.scope) {
+      const transitioning = options.scope.isTransitioning()
+      const isRead = ['get', 'head', 'options'].includes(
+        (config.method || 'get').toLowerCase()
+      )
+      if (
+        transitioning &&
+        !isRead &&
+        !/^\/(?:user\/info|user\/login|user\/logout|tenants\/switch|audit\/events)$/.test(
+          config.url || ''
+        )
+      )
+        throw new ContextChangedError()
+      const scoped = config as ScopedConfig
+      scoped.requestScope = options.scope.snapshot()
+      const controller = new AbortController()
+      const originalSignal = config.signal
+      const abort = () => controller.abort()
+      if (originalSignal?.aborted) abort()
+      originalSignal?.addEventListener?.('abort', abort)
+      const release = options.scope.track(controller)
+      scoped.releaseScope = () => {
+        release()
+        originalSignal?.removeEventListener?.('abort', abort)
+      }
+      config.signal = controller.signal
+      const headers = (config.headers || {}) as AxiosRequestHeaders
+      if (scoped.requestScope.tenantId && !headers['X-Tenant-Id'])
+        headers['X-Tenant-Id'] = scoped.requestScope.tenantId
+      config.headers = headers
+    }
     const token = options.getToken()
     if (token) {
       const headers = (config.headers || {}) as AxiosRequestHeaders
@@ -215,12 +288,15 @@ export const createRequestClient = (
 
   client.interceptors.response.use(
     async (response: AxiosResponse<ApiResponse>) => {
+      finishScope(response.config)
       const result = response.data
       if (result.code !== SUCCESS_CODE) {
         const context = createErrorContext({
           code: result.code,
           message: result.message || result.msg,
           traceId: result.traceId,
+          businessCode: result.businessCode,
+          errors: result.errors,
         })
         await handleErrorSideEffects(context, options)
 
@@ -230,6 +306,8 @@ export const createRequestClient = (
       return result as unknown as AxiosResponse
     },
     async (error: AxiosError) => {
+      if (error instanceof ContextChangedError) return Promise.reject(error)
+      finishScope(error.config)
       const payload = getPayload(error.response?.data)
       const context = createErrorContext({
         code: payload.code,
@@ -237,6 +315,8 @@ export const createRequestClient = (
         hasResponse: !!error.response,
         message: payload.message,
         traceId: payload.traceId,
+        businessCode: payload.businessCode,
+        errors: payload.errors,
       })
       await handleErrorSideEffects(context, options)
 

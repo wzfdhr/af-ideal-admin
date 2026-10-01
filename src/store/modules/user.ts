@@ -9,9 +9,18 @@ import { clearAuth, clearToken, setToken } from '@/services/auth'
 import { recordAuditEvent } from '@/services/audit'
 import { removeListener } from '@/utils/route-listener'
 import useMenuStore from '@/store/modules/menu'
+import {
+  commitTenantContext,
+  resetTenantContext,
+  tenantScope,
+} from '@/services/tenant-context'
 import type { UserRole } from '@config'
+import type { TenantContext } from '@af-admin/contracts'
 
 export interface UserState {
+  id?: string
+  tenantId?: string
+  tenants: TenantContext[]
   name?: string
   dept?: string
   role: UserRole
@@ -23,6 +32,8 @@ export interface UserState {
 
 const useUserStore = defineStore('user', {
   state: (): UserState => ({
+    id: undefined,
+    tenantId: undefined,
     name: undefined,
     dept: undefined,
     role: '',
@@ -30,6 +41,7 @@ const useUserStore = defineStore('user', {
     email: undefined,
     job: undefined,
     permissions: [],
+    tenants: [],
   }),
 
   getters: {
@@ -47,9 +59,15 @@ const useUserStore = defineStore('user', {
     },
     async info() {
       const res = await getUserInfo()
+      if (
+        res.data.tenantId &&
+        tenantScope.snapshot().tenantId !== res.data.tenantId
+      )
+        commitTenantContext(res.data.tenantId)
       this.setInfo(res.data)
     },
     async login(data: LoginData) {
+      resetTenantContext()
       try {
         const res = await doLogin(data)
         setToken(res.data.token)
@@ -127,6 +145,7 @@ const useUserStore = defineStore('user', {
         const menuStore = useMenuStore()
         menuStore.clearAsyncMenu()
         clearAuth()
+        resetTenantContext()
         removeListener()
         this.resetInfo()
       }

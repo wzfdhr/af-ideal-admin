@@ -2,6 +2,7 @@ import { computed } from 'vue'
 import appClientMenus from '@/router/menu'
 import { filterAccessibleMenus, type MenuLikeNode } from '@/services/access'
 import { useMenuStore, useUserStore } from '@/store'
+import { filterR1Menus } from '@/services/r1-menu'
 import { menuFromServer } from '@config'
 import type { RouteRecordRaw } from 'vue-router'
 
@@ -14,13 +15,13 @@ const useMenuTree = () => {
   )
 
   const menuTree = computed(() => {
-    const routerClone = filterAccessibleMenus(
-      appRoute.value as MenuLikeNode[],
-      {
-        roles: userStore.role ? [userStore.role] : [],
-        permissions: userStore.permissions,
-      }
-    ) as RouteRecordRaw[]
+    const permitted = userStore.tenants.length
+      ? filterR1Menus(appRoute.value as MenuLikeNode[], userStore.permissions)
+      : appRoute.value
+    const routerClone = filterAccessibleMenus(permitted as MenuLikeNode[], {
+      roles: userStore.role ? [userStore.role] : [],
+      permissions: userStore.permissions,
+    }) as RouteRecordRaw[]
 
     routerClone.sort(
       (a, b) =>

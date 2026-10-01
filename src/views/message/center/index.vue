@@ -1,5 +1,9 @@
 <template>
   <main class="message-center" data-testid="message-center">
+    <p v-if="error" role="alert">
+      {{ error }}
+      <button type="button" @click="loadMessages">重试</button>
+    </p>
     <div class="message-center__header">
       <div>
         <p class="message-center__breadcrumb">消息中心 / 消息管理</p>
@@ -136,7 +140,11 @@
                 标为已读
               </button>
               <a
-                v-if="record.link"
+                v-if="
+                  record.link &&
+                  record.link.startsWith('/') &&
+                  !record.link.startsWith('//')
+                "
                 class="message-center__link"
                 :href="record.link"
               >
@@ -192,6 +200,7 @@ const records = ref<MessageNotificationRecord[]>([])
 const total = ref(0)
 const unreadTotal = ref(0)
 const categoryUnread = ref<MessageCategoryUnread>(createEmptyCategoryUnread())
+const error = ref('')
 const loading = ref(false)
 const current = ref(1)
 const pageSize = ref(20)
@@ -219,6 +228,7 @@ const buildQuery = (): MessageNotificationQuery => ({
 
 const loadMessages = async () => {
   loading.value = true
+  error.value = ''
 
   try {
     const result = await fetchMessageNotifications(buildQuery())
@@ -226,6 +236,8 @@ const loadMessages = async () => {
     total.value = result.total
     unreadTotal.value = result.unreadTotal
     categoryUnread.value = result.categoryUnread
+  } catch (failure) {
+    error.value = failure instanceof Error ? failure.message : '消息加载失败'
   } finally {
     loading.value = false
   }

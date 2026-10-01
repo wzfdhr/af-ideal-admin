@@ -1,4 +1,9 @@
 export default {
+  'menu.leave': 'Leave application',
+  'menu.leave.requests': 'My requests',
+  'menu.leave.detail': 'Request details',
+  'menu.leave.application': 'Configuration and releases',
+
   'menu.dashboard': 'Dashboard',
   'menu.dashboard.workplace': 'Workplace',
   'menu.user': 'User Center',

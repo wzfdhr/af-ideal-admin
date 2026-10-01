@@ -6,7 +6,7 @@
           <div class="panel-title">节点</div>
           <div class="node-palette">
             <a-button
-              v-for="node in workflowPaletteNodes"
+              v-for="node in palette"
               :key="node.type"
               class="node-palette-item"
               :data-testid="`workflow-palette-${node.type}`"
@@ -20,7 +20,7 @@
           </div>
         </div>
         <a-divider />
-        <div class="panel-section">
+        <div v-if="!embedded" class="panel-section">
           <div class="panel-title">操作</div>
           <a-space direction="vertical" class="w-full">
             <a-button long :loading="loading" @click="loadDraft()">
@@ -107,8 +107,15 @@
               v-model="selectedNodeName"
               data-testid="workflow-node-name"
             />
-            <label class="field-label" for="workflow-node-form">绑定表单</label>
+            <label
+              v-if="!embedded"
+              class="field-label"
+              for="workflow-node-form"
+            >
+              绑定表单
+            </label>
             <a-input
+              v-if="!embedded"
               id="workflow-node-form"
               v-model="selectedFormId"
               placeholder="form-leave"
@@ -117,14 +124,54 @@
               审批人
             </label>
             <a-input
+              v-if="!embedded"
               id="workflow-node-approvers"
               v-model="selectedApprovers"
               placeholder="u-1,u-2"
             />
-            <label class="field-label" for="workflow-node-condition">
+            <a-select
+              v-if="embedded && selectedNode.type === 'approval'"
+              id="workflow-node-approvers"
+              v-model="selectedApprovers"
+              data-testid="workflow-person-select"
+              class="w-full"
+            >
+              <a-option
+                v-for="person in members.filter((item) => item.canApprove)"
+                :key="person.id"
+                :value="person.id"
+              >
+                {{ person.name }}
+              </a-option>
+            </a-select>
+            <template v-if="embedded && selectedNode.type === 'copy'">
+              <label class="field-label" for="workflow-copy-people">
+                抄送人员
+              </label>
+              <a-select
+                id="workflow-copy-people"
+                v-model="selectedCopyPeople"
+                multiple
+                class="w-full"
+              >
+                <a-option
+                  v-for="person in members"
+                  :key="person.id"
+                  :value="person.id"
+                >
+                  {{ person.name }}
+                </a-option>
+              </a-select>
+            </template>
+            <label
+              v-if="!embedded"
+              class="field-label"
+              for="workflow-node-condition"
+            >
               条件表达式
             </label>
             <a-input
+              v-if="!embedded"
               id="workflow-node-condition"
               v-model="selectedCondition"
               placeholder="days > 3"
@@ -138,7 +185,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, watch } from 'vue'
 import WorkflowCanvas from './workflow-canvas.vue'
 import {
   getWorkflowNodeTypeLabel,
@@ -146,7 +193,26 @@ import {
   useWorkflowDesignerActions,
   workflowPaletteNodes,
 } from './use-workflow-designer'
-import type { WorkflowNodeType } from './schema'
+import type { WorkflowNodeType, WorkflowSchema } from './schema'
+
+const props = withDefaults(
+  defineProps<{
+    embedded?: boolean
+    initialSchema?: object
+    members?: { id: string; name: string; canApprove: boolean }[]
+  }>(),
+  { embedded: false, initialSchema: undefined, members: () => [] }
+)
+const emit = defineEmits<{
+  (event: 'update:schema', schema: WorkflowSchema): void
+}>()
+const palette = computed(() => {
+  if (props.embedded)
+    return workflowPaletteNodes.filter(
+      (item) => item.type === 'approval' || item.type === 'copy'
+    )
+  return workflowPaletteNodes
+})
 
 const {
   addNode,
@@ -158,7 +224,7 @@ const {
   updateSelectedNode,
   updateSelectedNodeConfig,
   workflowId,
-} = useWorkflowDesigner()
+} = useWorkflowDesigner(props.initialSchema)
 
 const {
   actionError,
@@ -178,8 +244,15 @@ const {
 } = useWorkflowDesignerActions(schema, workflowId)
 
 onMounted(() => {
-  loadDraft()
+  if (!props.embedded) loadDraft()
 })
+watch(
+  schema,
+  (value) => {
+    if (props.embedded) emit('update:schema', value)
+  },
+  { deep: true }
+)
 
 const selectedNodeName = computed({
   get: () => selectedNode.value?.name || '',
@@ -195,6 +268,10 @@ const selectedApprovers = computed({
   get: () => selectedNode.value?.config.approvers?.join(',') || '',
   set: (value: string) =>
     updateSelectedNodeConfig('approvers', splitUserIds(value)),
+})
+const selectedCopyPeople = computed({
+  get: () => selectedNode.value?.config.ccUsers || [],
+  set: (value: string[]) => updateSelectedNodeConfig('ccUsers', value),
 })
 
 const selectedCondition = computed({

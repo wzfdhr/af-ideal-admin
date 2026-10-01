@@ -26,7 +26,7 @@ import {
 } from './support'
 import type { Actor } from './auth'
 import type { Database, FaultInjector } from './support'
-import type { Pool } from 'pg'
+import type { Pool, PoolClient } from 'pg'
 import type {
   LeaveFields,
   LeaveRequest,
@@ -289,48 +289,59 @@ const activeRelease = async (db: Database, actor: Actor, releaseId: string) => {
     )
   return release
 }
-export const createLeave = (pool: Pool, actor: Actor, input: unknown) => {
+export const createLeave = (
+  pool: Pool,
+  actor: Actor,
+  input: unknown,
+  key?: string
+) => {
   const payload = parseCreateLeave(input)
-  return authorizedTransaction(
-    pool,
-    actor,
-    'leave:create',
-    async (client, current) => {
-      await activeRelease(client, current, payload.applicationReleaseId)
-      if (payload.previousRequestId) {
-        const previous = await readLeaveRow(
-          client,
-          current,
-          payload.previousRequestId
-        )
-        if (previous.applicant_id !== current.userId)
-          throw new DomainError(404, 'NOT_FOUND', '资源不存在')
-        if (!['rejected', 'withdrawn'].includes(previous.status))
-          throw new DomainError(
-            409,
-            'STATE_CONFLICT',
-            '只能复制已驳回或已撤回的申请'
-          )
-      }
-      const id = randomUUID()
-      await client.query(
-        'INSERT INTO leave_requests (tenant_id,id,application_release_id,applicant_id,applicant_name,department_snapshot,fields,half_day_units,previous_request_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
-        [
-          current.tenantId,
-          id,
-          payload.applicationReleaseId,
-          current.userId,
-          current.name,
-          current.department,
-          JSON.stringify(payload.fields),
-          calculateHalfDayUnits(payload.fields),
-          payload.previousRequestId || null,
-        ]
+  const run = async (client: PoolClient, current: Actor) => {
+    await activeRelease(client, current, payload.applicationReleaseId)
+    if (payload.previousRequestId) {
+      const previous = await readLeaveRow(
+        client,
+        current,
+        payload.previousRequestId
       )
-      await audit(client, current, 'leave', 'create-draft', 'leave-request', id)
-      return leaveDto(await readLeaveRow(client, current, id), current)
+      if (previous.applicant_id !== current.userId)
+        throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+      if (!['rejected', 'withdrawn'].includes(previous.status))
+        throw new DomainError(
+          409,
+          'STATE_CONFLICT',
+          '只能复制已驳回或已撤回的申请'
+        )
     }
-  )
+    const id = randomUUID()
+    await client.query(
+      'INSERT INTO leave_requests (tenant_id,id,application_release_id,applicant_id,applicant_name,department_snapshot,fields,half_day_units,previous_request_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [
+        current.tenantId,
+        id,
+        payload.applicationReleaseId,
+        current.userId,
+        current.name,
+        current.department,
+        JSON.stringify(payload.fields),
+        calculateHalfDayUnits(payload.fields),
+        payload.previousRequestId || null,
+      ]
+    )
+    await audit(client, current, 'leave', 'create-draft', 'leave-request', id)
+    return leaveDto(await readLeaveRow(client, current, id), current)
+  }
+  if (key)
+    return idempotent(
+      pool,
+      actor,
+      'leave:create',
+      'create-draft',
+      key,
+      payload,
+      run
+    )
+  return authorizedTransaction(pool, actor, 'leave:create', run)
 }
 export const updateLeave = (
   pool: Pool,

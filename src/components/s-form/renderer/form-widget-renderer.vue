@@ -141,7 +141,9 @@
     </template>
     <template v-if="widget.type === 'date-picker'">
       <a-date-picker
-        v-if="widget.config.modeSelection === 'date'"
+        v-if="
+          !widget.config.modeSelection || widget.config.modeSelection === 'date'
+        "
         v-model="ctx[widget.uid]"
         :allow-clear="widget.config.allowClear"
         :readonly="widget.config.readonly"

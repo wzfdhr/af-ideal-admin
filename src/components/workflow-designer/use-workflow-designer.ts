@@ -111,8 +111,12 @@ const splitUserIds = (value: string) =>
     .map((item) => item.trim())
     .filter(Boolean)
 
-export const useWorkflowDesigner = () => {
-  const schema = ref<WorkflowSchema>(createInitialWorkflowSchema())
+export const useWorkflowDesigner = (initialSchema?: unknown) => {
+  const schema = ref<WorkflowSchema>(
+    initialSchema
+      ? validateWorkflowSchema(initialSchema)
+      : createInitialWorkflowSchema()
+  )
   const workflowId = ref('workflow-leave-approval')
   const selectedNodeId = ref('start')
   let nodeSequence = schema.value.nodes.length + 1
@@ -143,7 +147,12 @@ export const useWorkflowDesigner = () => {
       }
     }
 
-    const node = createWorkflowNode(type, nodeSequence, position)
+    let node = createWorkflowNode(type, nodeSequence, position)
+    const usedIds = new Set(schema.value.nodes.map((item) => item.id))
+    while (usedIds.has(node.id)) {
+      nodeSequence += 1
+      node = createWorkflowNode(type, nodeSequence, position)
+    }
     nodeSequence += 1
 
     const endNode = schema.value.nodes.find((item) => item.type === 'end')

@@ -109,7 +109,7 @@
 </template>
 
 <script lang="ts" setup>
-import { PropType, ref, inject } from 'vue'
+import { PropType, ref, inject, watch } from 'vue'
 import Draggable from 'vuedraggable'
 import { DeleteBinFill, DragMove } from '@salmon-ui/icons'
 import NestedDraggable from './nested-draggable.vue'
@@ -138,6 +138,12 @@ const data = ref({})
 const context = inject<FormDesignerContext>(contextSymbol)
 
 const widgetsList = ref<WidgetsConfig[]>(props.ast.widgetsConfig)
+watch(
+  () => props.ast.widgetsConfig,
+  (widgets) => {
+    widgetsList.value = widgets
+  }
+)
 
 const onNestedWidgetWrapperClick = (
   index: number,

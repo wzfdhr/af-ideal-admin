@@ -1,4 +1,9 @@
 export default {
+  'menu.leave': '请假应用',
+  'menu.leave.requests': '我的申请',
+  'menu.leave.detail': '申请详情',
+  'menu.leave.application': '配置与发布',
+
   'menu.dashboard': '仪表盘',
   'menu.dashboard.workplace': '工作台',
   'menu.user': '用户中心',

@@ -373,4 +373,60 @@ describe('createRequestClient', () => {
       duration: 5000,
     })
   })
+  it('keeps field errors and conflict codes available for page recovery', async () => {
+    createRequestClient({
+      baseURL: '/api',
+      timeout: 1000,
+      authHeaderName: 'X-Access-Token',
+      getToken: () => null,
+    })
+    await expect(
+      axiosMock.responseErrorHandler?.({
+        response: {
+          status: 422,
+          data: {
+            code: 422,
+            message: '字段校验失败',
+            businessCode: 'VALIDATION_ERROR',
+            errors: { reason: ['必填'] },
+          },
+        },
+      } as AxiosError)
+    ).rejects.toMatchObject({
+      context: {
+        businessCode: 'VALIDATION_ERROR',
+        errors: { reason: ['必填'] },
+      },
+    })
+  })
+  it('rejects late responses without displaying errors or logging out the new context', async () => {
+    let generation = 1
+    const unauthorized = vi.fn()
+    createRequestClient({
+      baseURL: '/api',
+      timeout: 1000,
+      authHeaderName: 'X-Access-Token',
+      getToken: () => null,
+      onUnauthorized: unauthorized,
+      scope: {
+        snapshot: () => ({ tenantId: 'tenant-a', generation }),
+        isCurrent: (scope) => scope.generation === generation,
+        track: () => () => undefined,
+        isTransitioning: () => false,
+      },
+    })
+    const config = await axiosMock.requestSuccessHandler?.({
+      method: 'get',
+      headers: {},
+    })
+    generation = 2
+    await expect(
+      axiosMock.responseErrorHandler?.({
+        config,
+        response: { status: 401, data: { code: 401, message: 'old failure' } },
+      } as AxiosError)
+    ).rejects.toThrow('上下文')
+    expect(unauthorized).not.toHaveBeenCalled()
+    expect(Message.error).not.toHaveBeenCalled()
+  })
 })

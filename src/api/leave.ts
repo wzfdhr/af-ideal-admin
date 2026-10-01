@@ -32,11 +32,26 @@ export const getLeaveRequest = async (id: string) =>
   (await request.get<LeaveRequest>(`/leave-requests/${encodeURIComponent(id)}`))
     .data
 
-export const createLeaveRequest = async (payload: CreateLeaveInput) =>
+export const createLeaveRequest = async (
+  payload: CreateLeaveInput,
+  key?: string
+) =>
   (
     await request.post<LeaveRequest>(
       '/leave-requests',
-      parseCreateLeave(payload)
+      parseCreateLeave(payload),
+      key ? { headers: { 'Idempotency-Key': key } } : undefined
+    )
+  ).data
+
+export const fetchLeaveTasks = async (
+  params: { current: number; pageSize: number; keyword?: string },
+  done = false
+) =>
+  (
+    await request.get<PageResult<WorkflowTask>>(
+      done ? '/workflow-done' : '/workflow-todos',
+      { params }
     )
   ).data
 

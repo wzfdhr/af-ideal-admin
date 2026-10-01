@@ -378,6 +378,7 @@ export const parseForm = (input: unknown): FormSchema => {
     widgetIds.add(uid)
     const config = record(widget.config || {}, 'config')
     onlyKeys(config, [
+      'id',
       'label',
       'required',
       'disabled',
@@ -395,8 +396,11 @@ export const parseForm = (input: unknown): FormSchema => {
       'format',
       'size',
       'showTime',
+      'modeSelection',
       'error',
     ])
+    if (config.id !== undefined && config.id !== uid)
+      invalid(uid, 'R1 业务字段标识不能改变')
     if (config.optionsType !== undefined && config.optionsType !== 'fixed')
       return invalid('optionsType', 'R1 仅支持固定选项')
     return {
@@ -457,6 +461,14 @@ export const validateLeaveForm = (schema: FormSchema) => {
       field.config.readonly === true
     )
       invalid(key, `请假表单缺少可填写的必填字段 ${key}`)
+    if (
+      field &&
+      ['startDate', 'endDate'].includes(key) &&
+      ((field.config.modeSelection !== undefined &&
+        field.config.modeSelection !== 'date') ||
+        field.config.showTime === true)
+    )
+      invalid(key, '请假日期字段必须按日选择')
     if (field && choices[key]) {
       const list = field.config.options
       if (

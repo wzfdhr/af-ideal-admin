@@ -139,7 +139,10 @@ export const registerBusiness = (
     )
   )
   server.post('/api/leave-requests', async (request) =>
-    ok(request, await createLeave(pool, await auth(request), request.body))
+    ok(
+      request,
+      await createLeave(pool, await auth(request), request.body, key(request))
+    )
   )
   server.patch('/api/leave-requests/:id', async (request) =>
     ok(

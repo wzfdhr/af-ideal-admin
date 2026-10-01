@@ -25,7 +25,8 @@
     "test:integration": "npm run build:shared && npm run build -w @af-admin/reference-api && node --env-file-if-exists=.env.r1.local --test --test-concurrency=1 tests/integration/*.test.mjs",
     "api:seed": "node --env-file-if-exists=.env.r1.local services/reference-api/dist/seed.js",
     "api:start": "node --env-file-if-exists=.env.r1.local services/reference-api/dist/index.js",
-    "worker:start": "node --env-file-if-exists=.env.r1.local services/reference-api/dist/worker.js"
+    "worker:start": "node --env-file-if-exists=.env.r1.local services/reference-api/dist/worker.js",
+    "test:e2e:real": "playwright test --config playwright.real.config.ts"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,vue}": [

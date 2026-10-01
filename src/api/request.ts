@@ -1,5 +1,6 @@
 import { clearAuth, getToken } from '@/services/auth'
 import { reportRequestError } from '@/services/observability'
+import { tenantScope, resetTenantContext } from '@/services/tenant-context'
 import { requestBaseUrl } from '@config'
 import { createRequestClient } from './request-client'
 
@@ -14,6 +15,7 @@ const getCurrentRedirect = () => {
 
 const redirectToLogin = () => {
   clearAuth()
+  resetTenantContext()
   const redirect = getCurrentRedirect()
   const search = redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''
   window.location.assign(`/login${search}`)
@@ -30,6 +32,7 @@ const request = createRequestClient({
   timeout: 15000,
   authHeaderName: 'X-Access-Token',
   getToken,
+  scope: tenantScope,
   onError: (context) => {
     reportRequestError(context)
   },

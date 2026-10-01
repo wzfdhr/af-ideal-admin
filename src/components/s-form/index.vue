@@ -73,21 +73,39 @@ const props = defineProps({
     type: Object as PropType<VersionedFormSchema>,
     required: true,
   },
+  modelValue: { type: Object as PropType<FormRuntimeData>, default: undefined },
 })
 
 const emit = defineEmits<{
   (event: 'submit', values: FormRuntimeData): void
+  (event: 'update:modelValue', values: FormRuntimeData): void
 }>()
 
 const formRef = ref<FormInstanceLike>()
-const data = ref<FormRuntimeData>(
-  createInitialFormData(props.ast.widgetsConfig)
-)
+const data = ref<FormRuntimeData>({
+  ...createInitialFormData(props.ast.widgetsConfig),
+  ...props.modelValue,
+})
 
 watch(
   () => props.ast.widgetsConfig,
   (widgets) => {
-    data.value = createInitialFormData(widgets)
+    data.value = { ...createInitialFormData(widgets), ...props.modelValue }
+  },
+  { deep: true }
+)
+watch(
+  () => props.modelValue,
+  (values) => {
+    if (values && JSON.stringify(values) !== JSON.stringify(data.value))
+      data.value = { ...values }
+  },
+  { deep: true }
+)
+watch(
+  data,
+  (values) => {
+    emit('update:modelValue', { ...values })
   },
   { deep: true }
 )
@@ -99,6 +117,9 @@ provide(
 )
 
 const getValues = () => ({ ...data.value })
+const setValues = (values: FormRuntimeData) => {
+  data.value = { ...values }
+}
 
 const validate = async () => {
   const result = await formRef.value?.validate?.()
@@ -118,6 +139,7 @@ const submit = async () => {
 defineExpose({
   data,
   getValues,
+  setValues,
   submit,
   validate,
 })

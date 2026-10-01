@@ -306,3 +306,12 @@ test('audit filters apply operator, event type, target and local calendar bounds
   const empty = success(await call(`/audit/events?targetId=${request.id}&dateRange[]=1900-01-01&dateRange[]=1900-01-01`, { user: 'a-auditor' }))
   assert.equal(empty.total, 0)
 })
+
+test('optional draft creation key recovers a lost response without creating a duplicate draft', async () => {
+  const app = await application(), key = randomUUID()
+  const body = { applicationReleaseId: app.activeReleaseId, fields }
+  const first = success(await call('/leave-requests', { method: 'POST', key, body }))
+  const replay = success(await call('/leave-requests', { method: 'POST', key, body }))
+  assert.equal(first.id, replay.id)
+  assert.equal((await call('/leave-requests', { method: 'POST', key, body: { ...body, fields: { ...fields, reason: 'different body' } } })).status, 409)
+})
