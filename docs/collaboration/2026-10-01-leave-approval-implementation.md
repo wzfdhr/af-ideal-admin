@@ -114,3 +114,37 @@ Docker 容器交付证据仍缺：原 Docker 配置为本机 7892 的手工 HTTP
 当前前端 421 项单测、32 项真实 HTTP/数据库/worker 集成及旧 3 项权限 smoke 通过；全 workspace 类型检查、生产构建和 lint 通过，lint 保留用于产品确认操作的 no-alert 提醒。原始证据在 test-results/r1-m2，approved-flow.png 与 compact-form.png 已作为界面检查来源。
 
 尚未关闭：完整 R1 Mock 契约、容器镜像及 Compose 真实部署、数据库卷重启及备份恢复、剩余发布版本与错误恢复 UI 场景、最终逐任务逐 AC 审查。LA-022 至 LA-031 有页面实现与上述证据，保持待完整验收；不由 7 条 UI 用例推定 AC-01 至 AC-20 全部完成。
+
+
+## M3 部署及验收进展（2026-10-01 更新）
+
+旧记录中的 Docker 下载阻塞已解除：使用官方固定摘要的 Playwright 基底，实际 Node 24.17.0/npm 11.13.0，与本地一致；源码专用临时上下文排除 ExFAT metadata 和私有环境文件。没有修改用户 Docker 配置。构建期间使用仅允许 Ubuntu、npm、官方镜像等域名的临时本机代理，TLS 及包签名校验保留。
+
+新增 R1 内存 Mock 与 Axios adapter，复用 contracts、流程领域和同一权限菜单。相同公共场景分别通过开发内存和真实 HTTP/PostgreSQL，包括字段拒绝、冲突、幂等、串行审批、跨租户、预览及关联审计。Mock 不宣称持久化或数据库并发。
+
+部署包括 Compose 专属卷、迁移、API、worker、Nginx、demo seed 和 pilot initialize profiles。试点使用一次性空库初始化与独立随机凭据，管理员核对后显式组合发布；演示 seed 拒绝非演示库名。重置改为离线明确确认命令，先私有备份再清理仅 A/B 合成环境，所有 API 模式无公开 reset 路由。新部署指南见 ../deployment/leave-approval-r1.md。
+
+实际发现并修复：
+- Nginx 固定解析 API 地址，容器重启后登录 502；R1 改用 Docker DNS 动态解析。
+- R1 无权访问配置 URL 后反复重定向 not-allowed；白名单补齐错误页。
+- 审计按申请 ID 查询遗漏关联审批；同时匹配事实审计的 requestId/instanceId。
+- 401/403 全局跳转丢失未保存输入；标签页内按用户、租户、申请保留有效输入，重新鉴权后显式恢复，不自动写入。
+- 集成测试与运行 worker 共用库造成 SIGKILL 竞争；每次测试创建独立临时演示库并在结束后只清理该库。
+- 通知异步发送的 UI 时序；E2E 等待当前申请的真实通知链接再跳转，不依赖已有同标题消息。
+
+依赖治理提交 d086a0a：修复 Babel/form-data/lodash/lodash-es/vue-i18n，Axios 1.20.0、Vitest 3.2.6，npm registry URL 统一到官方并保留完整性。升级后的 423 个前端测试（148 文件）、全部 workspace 类型检查通过；lint 无错误，仍有 native confirm 和类型引用等警告。生产依赖 audit 剩 4 项 moderate，涉及旧 query-string/decode-uri-component 和 ECharts/vue-echarts，无 high/critical；完整开发工具依赖仍有待后续治理项，不据此称全站依赖全部安全。
+
+本轮真实数据库集成 35 项通过，契约 8 项及领域/Mock 7 项通过；旧登录权限 smoke 3 项通过。生产容器 E2E 10 项通过，实际包括服务端登出撤销会话后的重新鉴权与恢复（并非用时钟模拟过期）、关闭标签页重开、版本迁移/回滚、两级审批、驳回/撤回、工作台/消息授权跳转、切租户及标签页、保存冲突和 1280×720 键盘/布局。
+
+独立试点 Compose 新库使用随机凭据初始化，重复初始化与误执行 demo seed 被拒绝，reset 路由 404，显式发布后员工及两位独立主管完成 approved，审计包含关联审批且不含事由。报告 test-results/r1-pilot/report.json；私有 bootstrap/env 不进入 Git。
+
+原始证据在 test-results/r1-mock、test-results/r1-pilot、test-results/r1-recovery；Playwright 截图分别来自实际生产构建的 1440×900 与 1280×720，测试不用 route.fulfill 或录制含 token 的 trace。CI 已增 PostgreSQL 与真实业务 job，排除 dump/private env 的 artifact 归档；尚无远端 CI 运行链接，不把配置完成描述成远端通过。
+
+Goal 保持 active。任务勾选须以实现提交及完整对应证据为准；后续仍需最终逐 LA/AC 审核、完整界面/键盘检查与交付版本/能力矩阵报告，不据通过数量直接宣称全站生产化。
+
+
+本轮实现提交 47f5242，补充验证提交 9038036；文档单独提交。最新真实数据库回归 36 项通过，新增实际 SIGKILL 在通知及 Outbox 同一事务提交之后：通知与 sent 状态均已持久化，重启 worker 仍只有一条消息。此前两个插入阶段 SIGKILL 则验证事务回滚及过期租约重领。相关失败/通过日志为 worker-after-commit-red.log 和 integration-thirty-six.log。不要将其描述为“通知与标记 sent 分属两个提交”：当前实现原子提交两者。
+
+最终生产容器的 10 项 E2E 全部通过，日志 e2e-ten-final.log；423 前端单测、8 契约与7领域/Mock、3旧 smoke、所有 workspace 类型检查、生产构建及镜像干净安装通过。lint 最后无错误，11 个警告。恢复兼容复验 recovery-compatible-final.log 通过，report.json 记录 19 表一致、已有会话及草稿/在途记录保留、Nginx 重连、前一 API 镜像 179ef0d7… 完成恢复库中的审批；源申请仍 running，未被恢复库操作覆盖。
+
+M0 与 M1 按既有实现提交及上述完整后端证据完成阶段自检，LA-032 同步完成。M2 页面异常态及弹窗/键盘完整体验核验、最终镜像与交付版本冻结、逐 AC 报告及能力矩阵仍须继续。Goal 不能据本阶段自检标 complete。CI 只有仓库配置及本地等效证据，未产生远端绿色运行记录。
