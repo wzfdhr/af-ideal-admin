@@ -10,7 +10,7 @@ import { requirePermission } from '@af-admin/workflow-core'
 import { digest, hashPassword, newToken, verifyPassword } from './security'
 import { transaction } from './database'
 import type { AuthUser, TenantContext, UserRole } from '@af-admin/contracts'
-import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import type { Pool } from 'pg'
 
 export interface Actor {
@@ -54,7 +54,7 @@ export const authenticate = async (
     role: UserRole
     permissions: string[]
   }>(
-    "SELECT m.department_name,m.role,m.permissions FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND t.status='enabled'",
+    "SELECT COALESCE(d.department_name,m.department_name) AS department_name,m.role,m.permissions FROM memberships m JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND t.status='enabled'",
     [tenantId, user.user_id]
   )
   if (!membership.rowCount)
@@ -92,7 +92,7 @@ export const tenantContexts = async (
 }
 export const registerAuth = (server: FastifyInstance, pool: Pool) => {
   const attempts = new Map<string, { count: number; until: number }>()
-  const throttle = (key: string, maximum: number) => {
+  const throttle = (key: string, maximum: number, reply: FastifyReply) => {
     const now = Date.now()
     const current = attempts.get(key)
     const value =
@@ -108,12 +108,17 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
       if (attempts.size > 5000)
         attempts.delete(attempts.keys().next().value as string)
     }
-    if (value.count > maximum)
+    if (value.count > maximum) {
+      reply.header(
+        'Retry-After',
+        Math.max(1, Math.ceil((value.until - now) / 1000))
+      )
       throw new DomainError(429, 'RATE_LIMITED', '登录尝试过于频繁，请稍后再试')
+    }
   }
   const dummyPassword = hashPassword(newToken())
-  server.post('/api/user/login', async (request) => {
-    throttle(`ip:${request.ip}`, 30)
+  server.post('/api/user/login', async (request, reply) => {
+    throttle(`ip:${request.ip}`, 30, reply)
     const body = record(request.body)
     onlyKeys(body, ['username', 'password'])
     const username = text(body.username, 'username', 100)
@@ -124,7 +129,7 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
     )
       throw new DomainError(422, 'VALIDATION_ERROR', '密码输入无效')
     const { password } = body
-    throttle(`account:${username}`, 10)
+    throttle(`account:${username}`, 10, reply)
     const users = await pool.query<{
       id: string
       password_hash: string

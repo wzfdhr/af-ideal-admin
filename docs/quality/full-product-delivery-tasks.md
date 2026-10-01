@@ -6,7 +6,7 @@
 
 ## 当前差距
 
-已核实参考 API 覆盖认证、成员、请假配置及事务、通知和审计；system/users、roles、departments、menus、dictionaries 等现有前端 API 尚无真实路由。其他平台模块以 Mock/前端为主，须逐项接入真实持久化和执行。原清单已完成的演示或文档项不会改成虚假的真实完成。
+已核实参考 API 覆盖认证、成员、请假配置及事务、通知和审计；本轮补了部门/岗位/组织绑定的真实路由。system/users、roles、menus、dictionaries 等仍须接入，其他平台模块以 Mock/前端为主。原清单已完成的演示或文档项不会改成虚假的真实完成。
 
 技术栈继续 Vue/Arco、Fastify/PostgreSQL、共享 contracts/workflow-core。新增领域按各自语义分表，不以一张通用 JSON 表伪装全产品实现。AI 是独立可替换服务，业务授权保留在服务端。
 
@@ -18,7 +18,7 @@
 | --- | --- | --- | --- | --- |
 | FP-001 | 全量差距、原任务证据分级和 R1 包/回归核对 | 无 | 全部 | 进行中 |
 | FP-002 | 部门/组织树真实 CRUD；版本、幂等、跨租户/环/引用删除拒绝及现有页面接入 | FP-001 | T-204/T-608 | 进行中 |
-| FP-003 | 岗位及组织成员绑定、启停、合法关联和旧快照保留 | FP-002 | T-204/T-608 | 未开始 |
+| FP-003 | 岗位及组织成员绑定、启停、合法关联和旧快照保留 | FP-002 | T-204/T-608 | 进行中 |
 | FP-004 | 用户/成员生命周期、私有凭据、脱敏、停用及会话撤销 | FP-002 | T-204/T-607 | 未开始 |
 | FP-005 | 动态角色、权限绑定、即时撤权、最后管理员保护及授权审计 | FP-004 | T-104/T-204 | 未开始 |
 | FP-006 | 后端数据范围、字段投影/脱敏；all 只表示本租户 | FP-003/005 | T-608 | 未开始 |
@@ -77,6 +77,17 @@
 ## 完成记录要求
 
 新的证据放 test-results/full-product/。每项完成追加：实际提交、模块与迁移、自动化/真实用户/恢复证据、环境、限制、回滚、自检执行者及日期。全产品最终报告不能沿用 R1 可试点结论。现阶段 R1 包/镜像/服务存在性已核实，完整回归仍须实际执行。
+
+### FP-002/003 树和岗位增量
+
+- 实际执行/阶段自检者 Codex，2026-10-01；本轮提交记录在后续验收结果中追加。
+- 部门树与父级编辑、完整父级选项、岗位CRUD、成员部门/岗位绑定、名称显示、严格组合FK、004迁移、租户锁顺序、事务审计和明确冲突恢复已实施。
+- organization-restart-http.log：47项真实数据库/HTTP测试通过，新增进程替换恢复；organization-mock-domain.log：8契约+10领域/Mock通过；organization-with-mock-unit.log：425前端单测通过。
+- organization-positions-browser-green.log：3条真实页面路径通过，含关闭重开、双租户、引用删除和父级循环选项；organization-mock-browser-fixed.log：显式Mock开发页面独立通过，未作为真实实现验收。
+- 原R1全量真实页面新增用例后触发登录限流，随后发现失败登录的诊断401会重载登录页、清空输入；失败证据 organization-final-real-browser.log、organization-real-browser-throttle-fixed.log 保留。修复登录页上的401跳转、返回真实Retry-After后，organization-login-recovery-real-browser.log 的19项全部通过；不更改原安全阈值，不删除失败用例。新增登录错误/输入保留/正确重试用例为真实401及429链路。
+- 最终前端425单测、47数据库/HTTP、8契约+10领域/Mock、3旧smoke、1独立Mock页面通过；lint无错误、全部workspace类型和构建通过。完整树/岗位增量的实际GitHub CI仍须针对本轮新提交执行，未沿用4821701结果。
+- organization-keyboard-browser-fixed.log：新增树的键盘折叠/展开、岗位弹窗Escape取消与焦点返回后，3条组织页面再次通过。关闭Arco下拉后Escape曾被吞掉，保留失败 organization-keyboard-browser.log；修复为下拉打开时先由下拉处理，关闭时允许弹窗退出，提交期间禁止误取消。organization-mock-final-browser.log 的独立Mock页面再验通过，旧无租户部门Mock处理器已由共享受控适配器替换。
+- 本阶段仍缺模块部署/备份/兼容回退和最终全产品验收，FP-002/003不勾完成。限制、固定枚举、Mock内存边界和回滚见 full-product-organization-design.md。
 
 ### FP-001/002 首轮实现记录
 

@@ -18,6 +18,19 @@ const aboutRoutes: AppRouteRecordRaw = {
   },
   children: [
     {
+      path: 'positionSystem',
+      name: 'positionSystem',
+      component: () => import('@/views/system/positionSystem/index.vue'),
+      meta: {
+        locale: 'menu.system.position',
+        requireAuth: true,
+        access: {
+          permissions: ['system:position:list', 'system:organization:assign'],
+          mode: 'any',
+        },
+      },
+    },
+    {
       path: 'userSystem',
       name: 'userSystem',
       component: () => import('@/views/system/userSystem/index.vue'),

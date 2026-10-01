@@ -1,5 +1,6 @@
 import request from '@/api/request'
 import { SYSTEM_DEPARTMENT_PERMISSIONS } from '@/constants/system-department'
+import type { DepartmentNode } from '@af-admin/contracts'
 
 export type SystemDepartmentStatus = 'enabled' | 'disabled'
 
@@ -38,6 +39,8 @@ export interface SystemDepartmentPageResult {
 }
 
 export { SYSTEM_DEPARTMENT_PERMISSIONS }
+export const fetchDepartmentTree = async () =>
+  (await request.get<DepartmentNode[]>('/system/departments/tree')).data
 
 export const fetchSystemDepartments = async (params: SystemDepartmentQuery) => {
   const response = await request.get<SystemDepartmentPageResult>(

@@ -11,6 +11,7 @@ import type {
 export const r1Demo = new R1DemoStore()
 export const installR1MockAdapter = (client: AxiosInstance) => {
   client.interceptors.request.use((config) => {
+    if (typeof config.adapter === 'function') return config
     const userId = getUserId()
     if (!r1Demo.isIdentity(userId) || config.url === '/user/login')
       return config

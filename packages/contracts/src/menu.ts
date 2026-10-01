@@ -132,6 +132,36 @@ export const createR1Menu = (permissions: string[]) => {
         },
       ],
     })
+  if (
+    ['system:position:list', 'system:organization:assign'].some((permission) =>
+      permissions.includes(permission)
+    ) ||
+    permissions.includes('*')
+  ) {
+    const system = entries.find((entry) => entry.name === 'system')
+    const page = {
+      path: 'positionSystem',
+      name: 'positionSystem',
+      componentKey: 'SystemPositionPage',
+      meta: {
+        requireAuth: true,
+        locale: 'menu.system.position',
+        access: {
+          permissions: ['system:position:list', 'system:organization:assign'],
+          mode: 'any' as const,
+        },
+      },
+    }
+    if (system) system.children.push(page)
+    else
+      entries.push({
+        path: '/system',
+        name: 'system',
+        componentKey: 'DefaultLayout',
+        meta: { requireAuth: true, locale: 'menu.system', order: 6 },
+        children: [page],
+      })
+  }
   return entries
 }
 

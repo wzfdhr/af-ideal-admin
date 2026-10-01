@@ -8,6 +8,7 @@ import type { PropType } from 'vue'
 
 const apiMocks = vi.hoisted(() => ({
   fetchSystemDepartments: vi.fn(),
+  fetchDepartmentTree: vi.fn().mockResolvedValue([]),
   getSystemDepartmentDetail: vi.fn(),
   createSystemDepartment: vi.fn(),
   updateSystemDepartment: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock('@/api/system/department', () => ({
     detail: 'system:department:detail',
   },
   fetchSystemDepartments: apiMocks.fetchSystemDepartments,
+  fetchDepartmentTree: apiMocks.fetchDepartmentTree,
   getSystemDepartmentDetail: apiMocks.getSystemDepartmentDetail,
   createSystemDepartment: apiMocks.createSystemDepartment,
   updateSystemDepartment: apiMocks.updateSystemDepartment,

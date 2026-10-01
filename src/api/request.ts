@@ -18,6 +18,7 @@ const redirectToLogin = () => {
   retainLeaveDrafts()
   clearAuth()
   resetTenantContext()
+  if (window.location.pathname === '/login') return
   const redirect = getCurrentRedirect()
   const search = redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''
   window.location.assign(`/login${search}`)

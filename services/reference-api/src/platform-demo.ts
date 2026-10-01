@@ -1,4 +1,7 @@
-import { DEPARTMENT_PERMISSIONS } from '@af-admin/contracts'
+import {
+  DEPARTMENT_PERMISSIONS,
+  POSITION_PERMISSIONS,
+} from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
 import type { Pool } from 'pg'
@@ -21,7 +24,12 @@ export const initializePlatformDemo = async (pool: Pool) => {
     )
     await client.query(
       "UPDATE memberships m SET permissions=(SELECT jsonb_agg(DISTINCT capability) FROM jsonb_array_elements(m.permissions || $1::jsonb) AS capability),revision=revision+1 WHERE m.user_id IN ('a-admin','b-admin') AND m.role='admin' AND m.status='enabled' AND NOT m.permissions @> $1::jsonb",
-      [JSON.stringify(Object.values(DEPARTMENT_PERMISSIONS))]
+      [
+        JSON.stringify([
+          ...Object.values(DEPARTMENT_PERMISSIONS),
+          ...Object.values(POSITION_PERMISSIONS),
+        ]),
+      ]
     )
   })
 }

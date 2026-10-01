@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import {
   DEPARTMENT_PERMISSIONS,
+  POSITION_PERMISSIONS,
   DomainError,
   parseDepartment,
   positiveInteger,
@@ -8,7 +9,12 @@ import {
   onlyKeys,
   text,
 } from '@af-admin/contracts'
-import { assertRevision, requirePermission } from '@af-admin/workflow-core'
+import {
+  assertRevision,
+  requirePermission,
+  departmentTree,
+  hasPermission,
+} from '@af-admin/workflow-core'
 import { authenticate, scalarHeader } from './auth'
 import { audit, idempotent, one, pageQuery, rows } from './support'
 import type { Department, DepartmentInput } from '@af-admin/contracts'
@@ -63,9 +69,9 @@ const validateParent = async (
   const parent = await read(client, tenantId, parentId)
   if (parent.status !== 'enabled')
     throw new DomainError(409, 'PARENT_UNAVAILABLE', '父部门已停用')
-  const ancestors = await rows<{ id: string }>(
+  const ancestors = await rows<{ id: string; status: string }>(
     client,
-    'WITH RECURSIVE parents AS (SELECT id,parent_id FROM departments WHERE tenant_id=$1 AND id=$2 AND deleted_at IS NULL UNION SELECT d.id,d.parent_id FROM departments d JOIN parents p ON d.id=p.parent_id WHERE d.tenant_id=$1 AND d.deleted_at IS NULL) SELECT id FROM parents',
+    'WITH RECURSIVE parents AS (SELECT id,parent_id,status FROM departments WHERE tenant_id=$1 AND id=$2 AND deleted_at IS NULL UNION SELECT d.id,d.parent_id,d.status FROM departments d JOIN parents p ON d.id=p.parent_id WHERE d.tenant_id=$1 AND d.deleted_at IS NULL) SELECT id,status FROM parents',
     [tenantId, parentId]
   )
   if (ancestors.some((item) => item.id === id))
@@ -74,6 +80,8 @@ const validateParent = async (
       'DEPARTMENT_CYCLE',
       '父部门不能是自身或自己的子部门'
     )
+  if (ancestors.some((item) => item.status !== 'enabled'))
+    throw new DomainError(409, 'PARENT_UNAVAILABLE', '上级部门已停用')
 }
 const write = (
   pool: Pool,
@@ -194,6 +202,27 @@ export const registerOrganization = (server: FastifyInstance, pool: Pool) => {
     )
     return ok({ list: result.map(dto), total: Number(count.total) }, request.id)
   })
+  server.get('/api/system/departments/tree', async (request) => {
+    const actor = await authenticate(pool, request)
+    const lookupPermissions = [
+      POSITION_PERMISSIONS.list,
+      POSITION_PERMISSIONS.assign,
+      POSITION_PERMISSIONS.create,
+      POSITION_PERMISSIONS.update,
+    ]
+    if (
+      !lookupPermissions.some((permission) =>
+        hasPermission(actor.permissions, permission)
+      )
+    )
+      requirePermission(actor.permissions, DEPARTMENT_PERMISSIONS.list)
+    const departments = await rows<DepartmentRow>(
+      pool,
+      'SELECT * FROM departments WHERE tenant_id=$1 AND deleted_at IS NULL ORDER BY sort,id',
+      [actor.tenantId]
+    )
+    return ok(departmentTree(departments.map(dto)), request.id)
+  })
   server.get('/api/system/departments/:id', async (request) => {
     const actor = await authenticate(pool, request)
     requirePermission(actor.permissions, DEPARTMENT_PERMISSIONS.detail)
@@ -253,7 +282,7 @@ export const registerOrganization = (server: FastifyInstance, pool: Pool) => {
           const referenced = one(
             await rows<{ total: string }>(
               client,
-              'SELECT (SELECT count(*) FROM departments WHERE tenant_id=$1 AND parent_id=$2 AND deleted_at IS NULL)+(SELECT count(*) FROM memberships WHERE tenant_id=$1 AND department_id=$2) AS total',
+              'SELECT (SELECT count(*) FROM departments WHERE tenant_id=$1 AND parent_id=$2 AND deleted_at IS NULL)+(SELECT count(*) FROM memberships WHERE tenant_id=$1 AND department_id=$2)+(SELECT count(*) FROM positions WHERE tenant_id=$1 AND department_id=$2 AND deleted_at IS NULL) AS total',
               [current.tenantId, id]
             )
           )
@@ -261,7 +290,7 @@ export const registerOrganization = (server: FastifyInstance, pool: Pool) => {
             throw new DomainError(
               409,
               'DEPARTMENT_REFERENCED',
-              '部门仍有关联成员或子部门，不能删除'
+              '部门有关联成员、子部门或岗位，不能删除'
             )
           await client.query(
             'UPDATE departments SET deleted_at=now(),revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2',

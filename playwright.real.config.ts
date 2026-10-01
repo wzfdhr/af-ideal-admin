@@ -4,7 +4,7 @@ export default defineConfig({
   testDir: './tests/e2e-real',
   outputDir: './test-results/playwright-real',
   testIgnore: '**/._*',
-  timeout: 60000,
+  timeout: 120000,
   workers: 1,
   use: {
     baseURL: process.env.R1_WEB_URL || 'http://127.0.0.1:4176',

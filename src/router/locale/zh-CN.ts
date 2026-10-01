@@ -26,6 +26,7 @@ export default {
   'menu.system.user': '用户配置',
   'menu.system.role': '角色配置',
   'menu.system.department': '部门配置',
+  'menu.system.position': '岗位与组织成员',
   'menu.system.dict': '字典配置',
   'menu.system.menu': '菜单配置',
   'menu.message': '消息中心',

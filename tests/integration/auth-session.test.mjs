@@ -65,6 +65,7 @@ test('login throttling is bounded and invalid inputs do not reveal credentials',
   let last
   for(let i=0;i<11;i++) last=await server.inject({method:'POST',url:'/api/user/login',payload:{username:'nonexistent-fixture',password:'invalid-fixture'}})
   assert.equal(last.statusCode,429)
+  assert.ok(Number(last.headers['retry-after'])>0 && Number(last.headers['retry-after'])<=60)
   assert.ok(!last.body.includes('invalid-fixture'))
   assert.ok(!last.body.includes('token'))
 })

@@ -26,6 +26,7 @@ export default {
   'menu.system.user': 'User Configuration',
   'menu.system.role': 'Role Configuration',
   'menu.system.department': 'Department Configuration',
+  'menu.system.position': 'Positions and Organization Members',
   'menu.system.dict': 'Dict Configuration',
   'menu.system.menu': 'Menu Configuration',
   'menu.message': 'Message center',

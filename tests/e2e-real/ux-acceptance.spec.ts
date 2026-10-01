@@ -3,6 +3,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises'
 import os from 'node:os'
 import fsPath from 'node:path'
 import { test, expect } from '@playwright/test'
+import submitLogin from './helpers/login'
 import type { Page, APIRequestContext } from '@playwright/test'
 
 const apiUrl = process.env.R1_API_URL || 'http://127.0.0.1:10888'
@@ -113,8 +114,7 @@ const login = async (page: Page, username: string) => {
     .getByRole('textbox', { name: '用户名', exact: true })
     .fill(username)
   await page.getByRole('textbox', { name: '密码', exact: true }).fill(username)
-  await page.getByRole('button', { name: '登录', exact: true }).first().click()
-  await expect(page.getByTestId('leave-workplace')).toBeVisible()
+  await submitLogin(page)
 }
 const authenticated = async (
   page: Page,

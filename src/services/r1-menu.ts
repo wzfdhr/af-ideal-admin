@@ -12,6 +12,7 @@ const pagePermissions: Record<string, string[]> = {
   formDesign: ['application:configure'],
   workflowDesign: ['application:configure'],
   departmentSystem: ['system:department:list'],
+  positionSystem: ['system:position:list', 'system:organization:assign'],
 }
 export const canVisitR1Page = (
   name: string | symbol | null | undefined,

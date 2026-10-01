@@ -20,6 +20,20 @@
       </PermissionButton>
     </section>
 
+    <section
+      class="s-section"
+      data-testid="department-tree-panel"
+      :aria-busy="treeLoading"
+    >
+      <h2>组织树</h2>
+      <p v-if="treeError" role="alert">
+        {{ treeError }}
+        <button type="button" @click="refreshTree">重试</button>
+      </p>
+      <DepartmentTree v-if="tree.length" :nodes="tree" />
+      <p v-else-if="!treeLoading && !treeError">暂无部门</p>
+    </section>
+
     <section class="s-section">
       <ProTable
         ref="tableRef"
@@ -33,6 +47,7 @@
       v-model:visible="editorVisible"
       data-testid="department-editor-modal"
       :title="editorTitle"
+      unmount-on-close
       @before-ok="submitEditor"
     >
       <ProForm
@@ -78,7 +93,7 @@
       <p>
         确认删除部门
         <strong>{{ pendingDeleteRecord?.departmentName }}</strong>
-        吗？删除后不可直接恢复；有关联成员或子部门时不能删除。
+        吗？删除后不可直接恢复；有关联成员、子部门或岗位时不能删除。
       </p>
     </a-modal>
   </main>
@@ -96,6 +111,7 @@ import {
   createSystemDepartment,
   deleteSystemDepartment,
   fetchSystemDepartments,
+  fetchDepartmentTree,
   getSystemDepartmentDetail,
   SYSTEM_DEPARTMENT_PERMISSIONS,
   updateSystemDepartment,
@@ -111,6 +127,9 @@ import type {
   ProTableExpose,
   ProTableFetchParams,
 } from '@/components/pro-table/types'
+import { departmentChoices } from '@af-admin/workflow-core'
+import DepartmentTree from './department-tree.vue'
+import type { DepartmentNode } from '@af-admin/contracts'
 import type { TableColumnData } from '@arco-design/web-vue'
 
 const { Message } = adminUi
@@ -128,6 +147,28 @@ const editingRevision = ref<number>()
 const detailRecord = ref<SystemDepartmentRecord>()
 const pendingDeleteRecord = ref<SystemDepartmentRecord>()
 const editorModel = ref<Record<string, unknown>>({})
+const tree = ref<DepartmentNode[]>([])
+const treeError = ref('')
+const treeLoading = ref(false)
+const refreshTree = async () => {
+  treeLoading.value = true
+  treeError.value = ''
+  try {
+    tree.value = await fetchDepartmentTree()
+  } catch (error) {
+    treeError.value = error instanceof Error ? error.message : '组织树加载失败'
+  } finally {
+    treeLoading.value = false
+  }
+}
+const loadParents = async () => {
+  const result = await fetchDepartmentTree()
+  tree.value = result
+  return [
+    { label: '无（根部门）', value: '' },
+    ...departmentChoices(result, editingId.value),
+  ]
+}
 const retry = createCommandRetry()
 
 const editorTitle = computed(() =>
@@ -162,6 +203,14 @@ const querySchema: ProFormField[] = [
 ]
 
 const editorSchema: ProFormField[] = [
+  {
+    field: 'parentId',
+    label: '父部门',
+    type: 'select',
+    placeholder: '请选择父部门',
+    defaultValue: '',
+    loadOptions: loadParents,
+  },
   {
     field: 'departmentName',
     label: '部门名称',
@@ -225,7 +274,10 @@ const toPayload = (
   if (editorMode.value === 'update' && editingRevision.value !== undefined)
     result.expectedRevision = editingRevision.value
   if (values.parentId !== undefined)
-    result.parentId = values.parentId === null ? null : String(values.parentId)
+    result.parentId =
+      values.parentId === null || values.parentId === ''
+        ? null
+        : String(values.parentId)
   return result
 }
 
@@ -255,6 +307,7 @@ const openCreate = () => {
   editingRevision.value = undefined
   editorModel.value = {
     departmentName: '',
+    parentId: '',
     leader: '',
     sort: 1,
     status: 'enabled',
@@ -269,7 +322,7 @@ const openEdit = async (record: SystemDepartmentRecord) => {
     retry.clear()
     editingId.value = detail.id
     editingRevision.value = detail.revision
-    editorModel.value = { ...detail }
+    editorModel.value = { ...detail, parentId: detail.parentId || '' }
     editorVisible.value = true
   } catch {
     Message.error('部门详情加载失败')
@@ -307,6 +360,7 @@ const saveDepartment = async (values: Record<string, unknown>) => {
   }
 
   editorVisible.value = false
+  await refreshTree()
   await tableRef.value?.reload()
 }
 
@@ -337,6 +391,7 @@ const confirmDelete = async () => {
     Message.success('删除成功')
     deleteVisible.value = false
     pendingDeleteRecord.value = undefined
+    await refreshTree()
     await tableRef.value?.reload()
     return true
   } catch {
@@ -425,6 +480,7 @@ const columns: TableColumnData[] = [
 ]
 
 onMounted(() => {
+  refreshTree()
   loadStatusOptions().catch(() => {
     Message.error('部门状态加载失败')
   })

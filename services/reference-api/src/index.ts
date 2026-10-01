@@ -8,6 +8,7 @@ import { audit, noFault } from './support'
 import { alertConfigurationAdmins } from './alerts'
 import { verifyMigrationReadiness } from './migrate'
 import { registerOrganization } from './organization'
+import { registerPositions } from './positions'
 import type { FaultInjector } from './support'
 import type { Pool } from 'pg'
 
@@ -98,6 +99,7 @@ export const createServer = (
   registerAuth(server, pool)
   registerBusiness(server, pool, fault)
   registerOrganization(server, pool)
+  registerPositions(server, pool)
   if (!database)
     server.addHook('onClose', async () => {
       await pool.end()

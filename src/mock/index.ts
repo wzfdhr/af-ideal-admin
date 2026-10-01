@@ -1,6 +1,7 @@
 import Mock from 'mockjs'
 import request from '@/api/request'
-import { installR1MockAdapter } from './r1-adapter'
+import { installR1MockAdapter, r1Demo } from './r1-adapter'
+import installOrganizationMockAdapter from './organization-adapter'
 import setupAuditMock from './modules/audit'
 import setupAuthMock from './modules/auth'
 import setupBusinessMock from './modules/business'
@@ -18,7 +19,6 @@ import setupPermissionMock from './modules/permission'
 import setupPluginMock from './modules/plugin'
 import setupReportMock from './modules/report'
 import setupReportScheduleMock from './modules/report-schedule'
-import setupSystemDepartmentMock from './modules/system-department'
 import setupSystemDictionaryMock from './modules/system-dictionary'
 import setupSystemMenuMock from './modules/system-menu'
 import setupSystemRoleMock from './modules/system-role'
@@ -49,7 +49,6 @@ setupMessageMock()
 setupMessageSubscriptionMock()
 setupMessageTemplateMock()
 setupPluginMock()
-setupSystemDepartmentMock()
 setupSystemDictionaryMock()
 setupSystemMenuMock()
 setupSystemRoleMock()
@@ -59,3 +58,4 @@ setupTenantMock()
 setupThemeMock()
 setupUiAdapterLabMock()
 installR1MockAdapter(request)
+installOrganizationMockAdapter(request, r1Demo)
