@@ -184,6 +184,7 @@ export const processOutbox = async (
           [event.tenant_id, event.id]
         )
       })
+      fault('outbox:after-commit')
     } catch {
       await pool.query(
         "UPDATE outbox SET status=CASE WHEN attempts>=5 THEN 'failed' ELSE 'pending' END,next_attempt_at=now()+make_interval(secs=>LEAST(300,power(2,attempts)::int)),lease_until=NULL,claimed_by=NULL WHERE tenant_id=$1 AND id=$2 AND claimed_by=$3 AND status='processing'",

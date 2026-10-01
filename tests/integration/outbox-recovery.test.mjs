@@ -49,6 +49,18 @@ for (const point of ['outbox:before-insert', 'outbox:after-insert']) {
     assert.equal(after.rows[0].total, 1)
   })
 }
+test('actual worker SIGKILL after its delivery transaction commits preserves one sent notification', async () => {
+  const eventId = await fixture()
+  const crashed = await runChild('outbox:after-commit')
+  assert.equal(crashed.signal, 'SIGKILL')
+  const result = await pool.query("SELECT status,attempts FROM outbox WHERE tenant_id='tenant-a' AND id=$1", [eventId])
+  assert.equal(result.rows[0].status, 'sent')
+  assert.equal(result.rows[0].attempts, 1)
+  assert.equal((await pool.query("SELECT count(*)::int AS total FROM notifications WHERE tenant_id='tenant-a' AND event_id=$1", [eventId])).rows[0].total, 1)
+  assert.equal((await runChild()).code, 0)
+  await notification.processOutbox(pool)
+  assert.equal((await pool.query("SELECT count(*)::int AS total FROM notifications WHERE tenant_id='tenant-a' AND event_id=$1", [eventId])).rows[0].total, 1)
+})
 test('expired lease on a final crashed attempt becomes an inspectable failed event', async () => {
   const eventId = await fixture()
   await pool.query("UPDATE outbox SET status='processing',attempts=5,lease_until=now()-interval '1 second',claimed_by='expired-fixture' WHERE tenant_id='tenant-a' AND id=$1", [eventId])

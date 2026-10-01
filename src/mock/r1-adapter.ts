@@ -39,9 +39,11 @@ export const installR1MockAdapter = (client: AxiosInstance) => {
         headers: {},
         data: null,
       }
+      const traceId = crypto.randomUUID()
       try {
         response.data = {
           code: 20000,
+          traceId,
           data: r1Demo.request(
             request.method || 'get',
             url.pathname + url.search,
@@ -66,6 +68,7 @@ export const installR1MockAdapter = (client: AxiosInstance) => {
           message: failure.message,
           businessCode: failure.businessCode,
           errors: failure.errors,
+          traceId,
         }
         return Promise.reject(
           Object.assign(new Error(failure.message), {
