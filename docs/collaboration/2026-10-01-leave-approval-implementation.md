@@ -163,3 +163,12 @@ M0 与 M1 按既有实现提交及上述完整后端证据完成阶段自检，L
 实际截图在 test-results/r1-ux，页面截图等待加载完成后取证；取消按钮焦点可见，循环和返回焦点由真实键盘断言。该核验不等于全面无障碍合规。M2 自检证据齐备，LA-022 至 LA-031、LA-033 在实现提交后可记录完成。M3 仍需冻结版本、从干净提交构建带修订标签的最终镜像、版本化试点包、逐 AC 报告和最终恢复复核；Goal 仍 active。
 
 本轮 M2 提交为 ce299d6。37 项数据库回归见 lost-response-integration.log，425 项单测见 transition-unit.log，15 项真实页面回归见 m2-completion-browser.log。LA-022 至 LA-031、LA-033 自检完成。图像已按页面加载完成后重新取证，实际检查了双分辨率确认焦点、工作台、待办、消息、配置、审计等画面；保留 loading 场景作为单独状态，未用它替代最终数据画面。
+
+
+## R1 完成交付自检
+
+0.1.0-alpha.1 的全部候选门禁通过：lint 无错误、全部 workspace 类型、425 单测、8 契约＋7领域/Mock、37 独立真实数据库集成、15 真实页面 E2E、3 旧 smoke、干净镜像安装/构建。证据 test-results/r1-candidate。独立新试点 Compose、reset/误种子拒绝、两级审批以及候选重启/19表恢复/旧兼容镜像继续审批均复验通过。
+
+包源码 c5d7051b89df5e1580e0d08846c5948fcecc299c，镜像源码标签和产品版本吻合；源代码与已验证2402209相比 src/packages/services/package.json/lockfile 无差异。本地 source.tar.gz、images.tar.gz、部署说明、验收说明和 manifest 已生成，包文件摘要及实际 docker load 通过。完整逐 AC 报告与能力矩阵已写入 docs/quality/leave-approval-r1-delivery-report.md；包内报告在导出后补写实测结果并重算摘要，不改源码档及运行镜像。
+
+LA-001 至 LA-036 和 AC-01 至 AC-20 自检通过，结论只限 R1 请假路径在已记载参考环境可试点交付。没有推送、合并、公开 release、远端 CI 链接或人类批准记录。已知限制和回滚说明已明确。R2/R3 保持未完成。
