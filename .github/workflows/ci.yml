@@ -54,3 +54,72 @@ jobs:
 
       - name: E2E smoke tests
         run: npm run test:e2e
+
+      - name: Archive frontend evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-evidence
+          path: |
+            test-results/
+            !test-results/**/*.dump
+            !test-results/**/*.local
+            !test-results/**/*.env
+
+  real-business:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_USER: af_admin
+          POSTGRES_DB: af_admin_ci_demo
+          POSTGRES_PASSWORD: ci-only-isolated-database
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U af_admin -d af_admin_ci_demo"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: postgresql://af_admin:ci-only-isolated-database@127.0.0.1:5432/af_admin_ci_demo
+      APP_MODE: demo
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install and build all workspaces
+        run: |
+          npm install --global npm@11.13.0
+          npm ci
+          npm run build:all
+          npm run playwright:install
+      - name: Real database integration and common contracts
+        run: |
+          mkdir -p test-results/r1-ci
+          npm run test:integration > test-results/r1-ci/integration.log 2>&1
+      - name: Real API and worker
+        run: |
+          npm run api:migrate
+          npm run api:seed
+          npm run api:start > test-results/r1-ci/api.log 2>&1 &
+          npm run worker:start > test-results/r1-ci/worker.log 2>&1 &
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:10888/ready; then exit 0; fi
+            sleep 1
+          done
+          exit 1
+      - name: Multi-account production frontend E2E
+        run: npm run test:e2e:real > test-results/r1-ci/browser.log 2>&1
+      - name: Archive real business evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: real-business-evidence
+          path: |
+            test-results/
+            !test-results/**/*.dump
+            !test-results/**/*.local
+            !test-results/**/*.env

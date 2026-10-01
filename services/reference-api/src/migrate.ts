@@ -4,6 +4,26 @@ import path from 'node:path'
 import { createPool, transaction } from './database'
 import type { Pool } from 'pg'
 
+export const verifyMigrationReadiness = async (pool: Pool) => {
+  const directory = path.resolve(__dirname, '../migrations')
+  const files = (await readdir(directory)).filter((name) =>
+    /^\d+_[\w-]+\.sql$/.test(name)
+  )
+  const applied = await pool.query<{ name: string; checksum: string }>(
+    'SELECT name,checksum FROM schema_migrations'
+  )
+  const checksums = new Map(applied.rows.map((row) => [row.name, row.checksum]))
+  await Promise.all(
+    files.map(async (name) => {
+      const checksum = createHash('sha256')
+        .update(await readFile(path.join(directory, name), 'utf8'))
+        .digest('hex')
+      if (checksums.get(name) !== checksum)
+        throw new Error('Database migration readiness check failed')
+    })
+  )
+}
+
 export const migrate = async (pool: Pool) => {
   await transaction(pool, async (client) => {
     await client.query(

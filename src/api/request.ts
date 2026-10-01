@@ -1,6 +1,7 @@
 import { clearAuth, getToken } from '@/services/auth'
 import { reportRequestError } from '@/services/observability'
 import { tenantScope, resetTenantContext } from '@/services/tenant-context'
+import { retainLeaveDrafts } from '@/services/leave-draft-recovery'
 import { requestBaseUrl } from '@config'
 import { createRequestClient } from './request-client'
 
@@ -14,6 +15,7 @@ const getCurrentRedirect = () => {
 }
 
 const redirectToLogin = () => {
+  retainLeaveDrafts()
   clearAuth()
   resetTenantContext()
   const redirect = getCurrentRedirect()
@@ -22,6 +24,7 @@ const redirectToLogin = () => {
 }
 
 const redirectToNoPermission = () => {
+  retainLeaveDrafts()
   if (window.location.pathname !== '/not-allowed') {
     window.location.assign('/not-allowed')
   }

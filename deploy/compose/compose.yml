@@ -1,0 +1,97 @@
+name: ${R1_PROJECT_NAME:-af-admin-r1}
+services:
+  database:
+    image: postgres:16-bookworm@sha256:92620daddcd947f8d5ab5ba66e848702fe443d87fed30c4cea8e389fd78dfc55
+    environment:
+      POSTGRES_USER: ${R1_DB_USER:-af_admin}
+      POSTGRES_DB: ${R1_DB_NAME:-af_admin_r1_demo}
+      POSTGRES_PASSWORD: ${R1_DB_PASSWORD:?Configure a private R1_DB_PASSWORD}
+    volumes:
+      - data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [CMD-SHELL, 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+  migrate:
+    image: af-admin-r1-api:local
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.r1
+      target: api
+    environment: &api-environment
+      DATABASE_URL: postgresql://${R1_DB_USER:-af_admin}:${R1_DB_PASSWORD}@database:5432/${R1_DB_NAME:-af_admin_r1_demo}
+      APP_MODE: ${R1_APP_MODE:-pilot}
+    command: [node, services/reference-api/dist/migrate.js]
+    depends_on:
+      database:
+        condition: service_healthy
+  api:
+    image: af-admin-r1-api:local
+    environment: *api-environment
+    ports:
+      - '127.0.0.1:${R1_API_PORT:-11888}:10888'
+    command: [node, services/reference-api/dist/index.js]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:10888/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+  worker:
+    image: af-admin-r1-api:local
+    environment: *api-environment
+    command: [node, services/reference-api/dist/worker.js]
+    depends_on:
+      api:
+        condition: service_healthy
+  web:
+    image: af-admin-r1-web:local
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.r1
+      target: web
+    ports:
+      - '127.0.0.1:${R1_WEB_PORT:-4185}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+  seed:
+    image: af-admin-r1-api:local
+    environment:
+      <<: *api-environment
+      APP_MODE: demo
+    command: [node, services/reference-api/dist/seed.js]
+    profiles: [demo]
+    depends_on:
+      api:
+        condition: service_healthy
+  initialize:
+    image: af-admin-r1-api:local
+    environment:
+      <<: *api-environment
+      APP_MODE: pilot
+      R1_BOOTSTRAP_FILE: /run/bootstrap.json
+    command: [node, services/reference-api/dist/initialize-pilot.js]
+    profiles: [pilot]
+    volumes:
+      - type: bind
+        source: ${R1_BOOTSTRAP_FILE:-./pilot-bootstrap.json.local}
+        target: /run/bootstrap.json
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      api:
+        condition: service_healthy
+volumes:
+  data:

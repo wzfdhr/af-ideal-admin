@@ -6,6 +6,7 @@ import { registerAuth, getAuthenticatedActor } from './auth'
 import { registerBusiness } from './routes'
 import { audit, noFault } from './support'
 import { alertConfigurationAdmins } from './alerts'
+import { verifyMigrationReadiness } from './migrate'
 import type { FaultInjector } from './support'
 import type { Pool } from 'pg'
 
@@ -85,8 +86,12 @@ export const createServer = (
     throw new DomainError(404, 'NOT_FOUND', '资源不存在')
   })
   server.get('/health', async () => ({ status: 'ready' }))
+  server.get('/api/runtime-context', async () => ({
+    code: 20000,
+    data: { mode: process.env.APP_MODE === 'demo' ? 'demo' : 'pilot' },
+  }))
   server.get('/ready', async () => {
-    await pool.query('SELECT name FROM schema_migrations LIMIT 1')
+    await verifyMigrationReadiness(pool)
     return { status: 'ready' }
   })
   registerAuth(server, pool)

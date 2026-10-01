@@ -1,4 +1,6 @@
 import Mock from 'mockjs'
+import request from '@/api/request'
+import { installR1MockAdapter } from './r1-adapter'
 import setupAuditMock from './modules/audit'
 import setupAuthMock from './modules/auth'
 import setupBusinessMock from './modules/business'
@@ -56,3 +58,4 @@ setupBusinessMock()
 setupTenantMock()
 setupThemeMock()
 setupUiAdapterLabMock()
+installR1MockAdapter(request)

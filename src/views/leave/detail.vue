@@ -27,6 +27,17 @@
     <a-spin :loading="loading" class="w-full">
       <div v-if="schema" class="leave-grid">
         <section class="leave-panel">
+          <a-alert
+            v-if="recoveredInput && editable"
+            type="warning"
+            title="此标签页保留了上次会话未保存的内容，恢复后请确认再保存。"
+          >
+            <template #action>
+              <a-button data-testid="leave-restore-input" @click="restoreInput">
+                恢复未保存内容
+              </a-button>
+            </template>
+          </a-alert>
           <h2>{{ editable ? '申请内容' : '申请快照' }}</h2>
           <p class="leave-muted">
             申请人：{{ current?.applicantName || user.name }} · 部门：{{
@@ -217,6 +228,12 @@ import useTenantStore from '@/store/modules/tenant'
 import { registerDirtyCheck } from '@/services/tenant-context'
 import { createCommandRetry } from '@/services/command-retry'
 import {
+  registerLeaveRecovery,
+  saveLeaveRecovery,
+  readLeaveRecovery,
+  clearLeaveRecovery,
+} from '@/services/leave-draft-recovery'
+import {
   createLeaveRequest,
   getLeaveApplication,
   getLeaveRequest,
@@ -239,6 +256,7 @@ import type {
   CreateLeaveInput,
   LeaveRequest,
   Release,
+  LeaveFields,
 } from '@af-admin/contracts'
 
 const route = useRoute()
@@ -259,6 +277,13 @@ const comment = ref('')
 const errors = ref<Record<string, string[]>>({})
 const conflict = ref(false)
 const releaseChanged = ref(false)
+const recoveredInput = ref<LeaveFields>()
+const recoveryId = () => String(route.params.id || 'new')
+const restoreInput = () => {
+  if (!recoveredInput.value) return
+  values.value = { ...recoveredInput.value }
+  recoveredInput.value = undefined
+}
 const today = new Date().toLocaleDateString('en-CA', {
   timeZone: 'Asia/Shanghai',
 })
@@ -285,6 +310,10 @@ const dirty = computed(
   () => editable.value && JSON.stringify(values.value) !== saved.value
 )
 const unregister = registerDirtyCheck(() => dirty.value || busy.value)
+const unregisterRecovery = registerLeaveRecovery(() => {
+  if (editable.value && dirty.value)
+    saveLeaveRecovery(user.id, user.tenantId, recoveryId(), values.value)
+})
 const readonlySchema = (ast: VersionedFormSchema) =>
   migrateFormSchema({
     ...ast,
@@ -356,6 +385,11 @@ const load = async () => {
       values.value = pickValues(current.value)
     }
     saved.value = JSON.stringify(values.value)
+    recoveredInput.value = readLeaveRecovery(
+      user.id,
+      user.tenantId,
+      recoveryId()
+    )
   } catch (failure) {
     showFailure(failure)
   } finally {
@@ -363,6 +397,7 @@ const load = async () => {
   }
 }
 const persist = async (targetRelease?: string) => {
+  const originalRecoveryId = recoveryId()
   const fields = parseLeaveFields(values.value, true)
   if (!current.value) {
     if (!creation) {
@@ -390,6 +425,8 @@ const persist = async (targetRelease?: string) => {
   }
   values.value = pickValues(current.value)
   saved.value = JSON.stringify(values.value)
+  clearLeaveRecovery(user.id, user.tenantId, originalRecoveryId)
+  recoveredInput.value = undefined
 }
 const perform = async (action: () => Promise<void>) => {
   if (busy.value || tenant.switching) return
@@ -520,6 +557,7 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   unregister()
+  unregisterRecovery()
   window.removeEventListener('beforeunload', beforeUnload)
 })
 </script>

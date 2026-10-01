@@ -7,6 +7,14 @@ import type { Pool } from 'pg'
 export const seedDemo = async (pool: Pool) => {
   if (process.env.APP_MODE !== 'demo')
     throw new Error('Demo seeds require explicit APP_MODE=demo')
+  const database = await pool.query<{ name: string }>(
+    'SELECT current_database() AS name'
+  )
+  if (
+    !database.rows[0].name.endsWith('_demo') &&
+    database.rows[0].name !== 'af_admin_r1'
+  )
+    throw new Error('Demo seeds require an isolated demo database name')
   const identities = demoIdentities
   const hashes = await Promise.all(
     identities.map((identity) => hashPassword(identity.username))
