@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim()
 const dirty = Boolean(execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8' }).trim())
+const { version } = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))
 // Avoid ExFAT AppleDouble/xattr metadata and never send local credentials to Docker.
 const context = await mkdtemp(path.join(os.tmpdir(), 'af-admin-r1-source-'))
 const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: root, encoding: 'utf8' }).split('\0').filter(Boolean)
@@ -22,7 +23,7 @@ try {
     await writeFile(target, await readFile(source))
   }
   const build = (target) => new Promise((resolve, reject) => {
-    const child = spawn('docker', ['build', '--build-arg', `R1_SOURCE_COMMIT=${revision}${dirty ? '-dirty' : ''}`, '-f', path.join(context, 'deploy/compose/Dockerfile.r1'), '--target', target, '-t', `af-admin-r1-${target}:local`, context], { stdio: 'inherit' })
+    const child = spawn('docker', ['build', '--build-arg', `R1_SOURCE_COMMIT=${revision}${dirty ? '-dirty' : ''}`, '--build-arg', `R1_VERSION=${version}`, '-f', path.join(context, 'deploy/compose/Dockerfile.r1'), '--target', target, '-t', `af-admin-r1-${target}:local`, context], { stdio: 'inherit' })
     child.on('error', reject)
     child.on('exit', (code) => code === 0 ? resolve() : reject(new Error(`R1 ${target} image build failed`)))
   })
