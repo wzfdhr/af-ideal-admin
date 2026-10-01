@@ -164,8 +164,9 @@ export const useFormDesignerActions = (
         return
       }
 
-      await submitFormRuntime(formId.value, renderer.getValues())
-      actionMessage.value = '提交成功'
+      const result = await submitFormRuntime(formId.value, renderer.getValues())
+      actionMessage.value =
+        result?.mode === 'preview' ? '试提交校验通过（未创建申请）' : '提交成功'
     } catch (error) {
       actionError.value = getErrorMessage(error, '提交失败')
     } finally {

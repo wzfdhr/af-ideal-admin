@@ -58,3 +58,16 @@ test('stable demo identities have distinct IDs and two approvers in both tenants
     assert.ok(users.some((u) => u.kind === 'auditor'))
   }
 })
+
+test('published leave form requires real business options and usable input configuration', () => {
+  contracts.validateLeaveForm(parseForm(LEAVE_FORM))
+  const emptyOptions = structuredClone(LEAVE_FORM)
+  emptyOptions.widgetsConfig[0].config.options = []
+  assert.throws(() => contracts.validateLeaveForm(parseForm(emptyOptions)), /选项/)
+  const badOptions = structuredClone(LEAVE_FORM)
+  badOptions.widgetsConfig[0].config.options.push({ label: '任意类型', value: 'arbitrary' })
+  assert.throws(() => contracts.validateLeaveForm(parseForm(badOptions)), /选项/)
+  const unusable = structuredClone(LEAVE_FORM)
+  unusable.widgetsConfig.find((item) => item.uid === 'reason').config.maxLength = 0
+  assert.throws(() => contracts.validateLeaveForm(parseForm(unusable)), /长度/)
+})

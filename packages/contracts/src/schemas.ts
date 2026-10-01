@@ -434,6 +434,11 @@ export const parseForm = (input: unknown): FormSchema => {
   }
 }
 export const validateLeaveForm = (schema: FormSchema) => {
+  const choices: Record<string, string[]> = {
+    leaveType: ['personal', 'sick', 'annual'],
+    startSlot: ['am', 'pm'],
+    endSlot: ['am', 'pm'],
+  }
   const types: Record<string, string[]> = {
     leaveType: ['select', 'radio'],
     startDate: ['date-picker'],
@@ -452,10 +457,54 @@ export const validateLeaveForm = (schema: FormSchema) => {
       field.config.readonly === true
     )
       invalid(key, `请假表单缺少可填写的必填字段 ${key}`)
+    if (field && choices[key]) {
+      const list = field.config.options
+      if (
+        !Array.isArray(list) ||
+        field.config.optionsType !== 'fixed' ||
+        list.length !== choices[key].length
+      )
+        invalid(key, '表单选项必须与业务定义一致')
+      const values = (list as Json[]).map((option) => {
+        if (
+          !option ||
+          typeof option !== 'object' ||
+          Array.isArray(option) ||
+          typeof option.value !== 'string' ||
+          typeof option.label !== 'string' ||
+          !option.label.trim()
+        )
+          return invalid(key, '表单选项无效')
+        return option.value
+      })
+      if (
+        new Set(values).size !== values.length ||
+        choices[key].some((value) => !values.includes(value))
+      )
+        invalid(key, '表单选项必须与业务定义一致')
+    }
+    if (
+      field &&
+      key === 'reason' &&
+      field.config.maxLength !== undefined &&
+      (typeof field.config.maxLength !== 'number' ||
+        !Number.isInteger(field.config.maxLength) ||
+        field.config.maxLength < 1 ||
+        field.config.maxLength > 2000)
+    )
+      invalid(key, '事由长度限制必须在 1 到 2000 之间')
   })
   if (schema.widgetsConfig.length !== Object.keys(types).length)
     invalid('widgetsConfig', 'R1 请假表单只支持约定业务字段')
 }
+export const SELF_SERVICE_PERMISSIONS = [
+  'message:list',
+  'message:read',
+  'message:batch-read',
+]
+export const withSelfServicePermissions = (owned: string[]) => [
+  ...new Set([...owned, ...SELF_SERVICE_PERMISSIONS]),
+]
 export const LEAVE_PERMISSIONS = {
   read: 'leave:read:self',
   create: 'leave:create',
@@ -541,6 +590,9 @@ demoIdentities.push({
   role: 'user',
   tenantIds: ['tenant-a', 'tenant-b'],
   permissions: [...employeePermissions],
+})
+demoIdentities.forEach((identity) => {
+  identity.permissions = withSelfServicePermissions(identity.permissions)
 })
 export const serialWorkflow = (
   first: string,

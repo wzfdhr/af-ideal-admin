@@ -48,6 +48,7 @@ export interface FormRuntimeSubmitResult {
   status: 'submitted'
   values?: Record<string, unknown>
   submittedAt?: string
+  mode?: 'preview'
 }
 
 export const fetchFormSchemas = async (params: FormSchemaQuery) => {

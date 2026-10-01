@@ -22,9 +22,10 @@
     "test:contracts": "npm run build:shared && npm run test -w @af-admin/contracts && npm run test -w @af-admin/workflow-core",
     "build:all": "npm run build:shared && npm run build:prd && npm run build -w @af-admin/reference-api",
     "api:migrate": "node --env-file-if-exists=.env.r1.local services/reference-api/dist/migrate.js",
-    "test:integration": "npm run build:shared && npm run build -w @af-admin/reference-api && node --env-file-if-exists=.env.r1.local --test tests/integration/*.test.mjs",
+    "test:integration": "npm run build:shared && npm run build -w @af-admin/reference-api && node --env-file-if-exists=.env.r1.local --test --test-concurrency=1 tests/integration/*.test.mjs",
     "api:seed": "node --env-file-if-exists=.env.r1.local services/reference-api/dist/seed.js",
-    "api:start": "node --env-file-if-exists=.env.r1.local services/reference-api/dist/index.js"
+    "api:start": "node --env-file-if-exists=.env.r1.local services/reference-api/dist/index.js",
+    "worker:start": "node --env-file-if-exists=.env.r1.local services/reference-api/dist/worker.js"
   },
   "lint-staged": {
     "*.{js,ts,jsx,tsx,vue}": [

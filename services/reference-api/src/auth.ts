@@ -1,5 +1,12 @@
-import { DomainError, onlyKeys, record, text } from '@af-admin/contracts'
+import {
+  DomainError,
+  onlyKeys,
+  record,
+  text,
+  withSelfServicePermissions,
+} from '@af-admin/contracts'
 import { digest, hashPassword, newToken, verifyPassword } from './security'
+import { transaction } from './database'
 import type { AuthUser, TenantContext, UserRole } from '@af-admin/contracts'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { Pool } from 'pg'
@@ -13,6 +20,9 @@ export interface Actor {
   permissions: string[]
   traceId: string
 }
+const authenticatedActors = new WeakMap<FastifyRequest, Actor>()
+export const getAuthenticatedActor = (request: FastifyRequest) =>
+  authenticatedActors.get(request)
 export const scalarHeader = (request: FastifyRequest, name: string) => {
   const value = request.headers[name]
   return typeof value === 'string' ? value : undefined
@@ -48,15 +58,17 @@ export const authenticate = async (
   if (!membership.rowCount)
     throw new DomainError(404, 'NOT_FOUND', '资源不存在')
   const info = membership.rows[0]
-  return {
+  const actor: Actor = {
     userId: user.user_id,
     name: user.name,
     tenantId,
     department: info.department_name,
     role: info.role,
-    permissions: info.permissions,
+    permissions: withSelfServicePermissions(info.permissions),
     traceId: request.id,
   }
+  authenticatedActors.set(request, actor)
+  return actor
 }
 export const tenantContexts = async (
   pool: Pool,
@@ -71,7 +83,10 @@ export const tenantContexts = async (
     'SELECT t.id AS "tenantId",t.name,m.permissions,m.revision AS "permissionVersion" FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=$1 AND m.status=\'enabled\' AND t.status=\'enabled\' ORDER BY t.id',
     [userId]
   )
-  return result.rows
+  return result.rows.map((context) => ({
+    ...context,
+    permissions: withSelfServicePermissions(context.permissions),
+  }))
 }
 export const registerAuth = (server: FastifyInstance, pool: Pool) => {
   const attempts = new Map<string, { count: number; until: number }>()
@@ -100,7 +115,13 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
     const body = record(request.body)
     onlyKeys(body, ['username', 'password'])
     const username = text(body.username, 'username', 100)
-    const password = text(body.password, 'password', 200)
+    if (
+      typeof body.password !== 'string' ||
+      !body.password ||
+      body.password.length > 200
+    )
+      throw new DomainError(422, 'VALIDATION_ERROR', '密码输入无效')
+    const { password } = body
     throttle(`account:${username}`, 10)
     const users = await pool.query<{
       id: string
@@ -120,10 +141,16 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
     if (!tenants.length)
       throw new DomainError(403, 'FORBIDDEN', '没有可访问的租户')
     const token = newToken()
-    await pool.query(
-      "INSERT INTO sessions (token_hash,user_id,default_tenant_id,expires_at) VALUES ($1,$2,$3,now()+interval '8 hours')",
-      [digest(token), user.id, tenants[0].tenantId]
-    )
+    await transaction(pool, async (client) => {
+      await client.query(
+        "INSERT INTO sessions (token_hash,user_id,default_tenant_id,expires_at) VALUES ($1,$2,$3,now()+interval '8 hours')",
+        [digest(token), user.id, tenants[0].tenantId]
+      )
+      await client.query(
+        "INSERT INTO audit_events (tenant_id,id,actor_id,actor_name,module,action,result,target_type,target_id,trace_id) SELECT $1,$2,id,name,'auth','login','success','session',$3,$4 FROM users WHERE id=$3",
+        [tenants[0].tenantId, newToken(), user.id, request.id]
+      )
+    })
     return { code: 20000, data: { token }, traceId: request.id }
   })
   const info = async (request: FastifyRequest) => {
@@ -143,11 +170,17 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
   server.get('/api/user/info', info)
   server.post('/api/user/info', info)
   server.post('/api/user/logout', async (request) => {
-    await authenticate(pool, request)
-    await pool.query(
-      'UPDATE sessions SET revoked_at=now() WHERE token_hash=$1',
-      [digest(scalarHeader(request, 'x-access-token') || '')]
-    )
+    const actor = await authenticate(pool, request)
+    await transaction(pool, async (client) => {
+      await client.query(
+        'UPDATE sessions SET revoked_at=now() WHERE token_hash=$1',
+        [digest(scalarHeader(request, 'x-access-token') || '')]
+      )
+      await client.query(
+        "INSERT INTO audit_events (tenant_id,id,actor_id,actor_name,module,action,result,target_type,target_id,trace_id) VALUES ($1,$2,$3,$4,'auth','logout','success','session',$3,$5)",
+        [actor.tenantId, newToken(), actor.userId, actor.name, request.id]
+      )
+    })
     return { code: 20000, data: null, traceId: request.id }
   })
   server.get('/api/tenants', async (request) => {
@@ -168,15 +201,167 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
       traceId: request.id,
     }
   })
+  server.get('/api/tenants/:id/context', async (request) => {
+    const actor = await authenticate(pool, request)
+    const id = text(record(request.params).id, 'id', 100)
+    const selected = (await tenantContexts(pool, actor.userId)).find(
+      (context) => context.tenantId === id
+    )
+    if (!selected) throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+    return {
+      code: 20000,
+      data: {
+        ...selected,
+        currentTenant: {
+          id,
+          name: selected.name,
+          code: id,
+          status: 'enabled',
+          current: true,
+          brandName: selected.name,
+          themeColor: '#165dff',
+        },
+        orgTree: [],
+        dataScopes: [],
+      },
+      traceId: request.id,
+    }
+  })
   server.post('/api/tenants/switch', async (request) => {
     const actor = await authenticate(pool, request)
     const body = record(request.body)
     onlyKeys(body, ['tenantId'])
+    const target = text(body.tenantId, 'tenantId', 100)
     const selected = (await tenantContexts(pool, actor.userId)).find(
-      (context) => context.tenantId === body.tenantId
+      (context) => context.tenantId === target
     )
     if (!selected) throw new DomainError(404, 'NOT_FOUND', '资源不存在')
     // A switch validates membership but never changes another tab's session default.
     return { code: 20000, data: selected, traceId: request.id }
   })
+  const menu = async (request: FastifyRequest) => {
+    const actor = await authenticate(pool, request)
+    const pages = [
+      {
+        name: 'leaveRequests',
+        path: 'requests',
+        permission: 'leave:read:self',
+        componentKey: 'LeaveRequests',
+        locale: 'menu.leave.requests',
+      },
+      {
+        name: 'leaveApplication',
+        path: 'application',
+        permission: 'application:configure',
+        componentKey: 'LeaveApplication',
+        locale: 'menu.leave.application',
+      },
+    ].filter(
+      (page) =>
+        actor.permissions.includes(page.permission) ||
+        actor.permissions.includes('*')
+    )
+    const children = pages.map((page) => ({
+      path: page.path,
+      name: page.name,
+      componentKey: page.componentKey,
+      meta: {
+        requireAuth: true,
+        locale: page.locale,
+        access: { permissions: [page.permission] },
+      },
+    }))
+    const entries = [
+      {
+        path: '/dashboard',
+        name: 'dashboard',
+        componentKey: 'DefaultLayout',
+        meta: { requireAuth: true, locale: 'menu.dashboard', order: 0 },
+        children: [
+          {
+            path: 'workplace',
+            name: 'workplace',
+            componentKey: 'DashboardWorkplace',
+            meta: { requireAuth: true, locale: 'menu.dashboard.workplace' },
+          },
+        ],
+      },
+      ...(children.length
+        ? [
+            {
+              path: '/leave',
+              name: 'leave',
+              componentKey: 'DefaultLayout',
+              meta: { requireAuth: true, locale: 'menu.leave', order: 1 },
+              children,
+            },
+          ]
+        : []),
+      {
+        path: '/message',
+        name: 'message',
+        componentKey: 'DefaultLayout',
+        meta: { requireAuth: true, locale: 'menu.message', order: 7 },
+        children: [
+          {
+            path: 'center',
+            name: 'messageCenter',
+            componentKey: 'MessageCenter',
+            meta: {
+              requireAuth: true,
+              locale: 'menu.message.center',
+              access: { permissions: ['message:list'] },
+            },
+          },
+        ],
+      },
+    ]
+    if (
+      actor.permissions.includes('workflow:todo') ||
+      actor.permissions.includes('*')
+    )
+      entries.push({
+        path: '/Scalability',
+        name: 'Scalability',
+        componentKey: 'FullPageLayout',
+        meta: { requireAuth: true, locale: 'menu.Scalability', order: 5 },
+        children: [
+          {
+            path: 'workflowCenter',
+            name: 'workflowCenter',
+            componentKey: 'WorkflowCenter',
+            meta: {
+              requireAuth: true,
+              locale: 'menu.Scalability.workflowCenter',
+              access: { permissions: ['workflow:todo'] },
+            },
+          },
+        ],
+      })
+    if (
+      actor.permissions.includes('audit:read') ||
+      actor.permissions.includes('*')
+    )
+      entries.push({
+        path: '/audit',
+        name: 'audit',
+        componentKey: 'DefaultLayout',
+        meta: { requireAuth: true, locale: 'menu.audit', order: 8 },
+        children: [
+          {
+            path: 'logs',
+            name: 'auditLogs',
+            componentKey: 'AuditLogs',
+            meta: {
+              requireAuth: true,
+              locale: 'menu.audit.logs',
+              access: { permissions: ['audit:read'] },
+            },
+          },
+        ],
+      })
+    return { code: 20000, data: entries, traceId: request.id }
+  }
+  server.get('/api/user/menu', menu)
+  server.post('/api/user/menu', menu)
 }

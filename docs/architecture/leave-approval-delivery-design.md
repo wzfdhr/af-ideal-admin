@@ -185,10 +185,12 @@ R1 可执行节点限于开始、审批、抄送和结束。允许多个串行�
 
 | 使用身份 | 示例权限 | 数据范围 |
 | --- | --- | --- |
-| 员工 | `leave:read:self`、`leave:create`、`leave:update:self`、`leave:submit`、`leave:withdraw:self` | 本人申请及关联流程 |
+| 员工 | `leave:read:self`、`leave:create`、`leave:update:self`、`leave:submit`、`leave:withdraw:self` | 本人申请及关联流程；流程实际执行后明确抄送的只读记录 |
 | 主管 | 员工权限、`workflow:todo`、`workflow:approve`、`workflow:reject` | 当前分配的任务和审批所需申请；历史范围按参与记录 |
 | 配置管理员 | `application:configure`、`application:publish`、`application:rollback` | 当前租户的配置；不因配置权限自动获得请假事由访问权 |
 | 审计员 | `audit:read` | 当前租户脱敏事件；无审批权 |
+
+有效成员均有本人站内消息的自助能力（message:list、message:read、message:batch-read），这些能力不扩大跨用户消息范围。抄送产生明确的服务端参与记录后才允许具备业务读取能力的接收人只读查看；仅有 audit:read 的审计员跳转脱敏审计事件，不能查看申请事由。
 
 上述身份是业务权限组合，不依赖前端硬编码新增 role 字符串。当前 UserRole 与 MockRole 的类型差异先通过迁移测试统一；Mock 的 `*` 权限也不能在真实后端跳过租户边界。对象归属、处理人和当前状态逐请求校验，参考 [OWASP 授权指南](https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html)。
 
@@ -200,7 +202,7 @@ R1 可执行节点限于开始、审批、抄送和结束。允许多个串行�
 
 R1 增加“我的申请”和“审批待办”入口，复用现有工作流运行页面和表单运行时，避免再建一套状态来源。请假详情包含当前状态、申请内容、处理意见和时间线；工作台点击待办进入同一详情。列表和详情都显示 loading、空态、错误态及重试。
 
-编辑页显示保存状态和最后保存时间，离开未保存页时提醒。保存失败保留输入，冲突提示比较或重新加载；提交、发布、撤回和审批期间禁用重复动作，最终防重仍由服务端完成。驳回意见必填。消息链接只能指向白名单站内路由，详情打开时重新鉴权。
+编辑页显示保存状态和最后保存时间，离开未保存页时提醒。保存失败保留输入，冲突提示比较或重新加载；提交、发布、撤回和审批期间禁用重复动作，最终防重仍由服务端完成。驳回意见必填。消息链接只能指向白名单站内路由，详情打开时重新鉴权。撤回端点的 expectedRevision 指申请记录 revision；审批端点指当前任务 revision。
 
 R1 为请假应用提供最小发布面板：选择表单及流程草稿、显示校验结果、发布版本和回滚目标。完整应用中心、模板复制和低代码页面生成属于 R2，不能成为首个闭环的隐性前置工程。
 
