@@ -289,6 +289,11 @@ export const createRequestClient = (
   client.interceptors.response.use(
     async (response: AxiosResponse<ApiResponse>) => {
       finishScope(response.config)
+      if (
+        response.config?.responseType === 'arraybuffer' ||
+        response.config?.responseType === 'blob'
+      )
+        return response
       const result = response.data
       if (result.code !== SUCCESS_CODE) {
         const context = createErrorContext({
@@ -308,7 +313,20 @@ export const createRequestClient = (
     async (error: AxiosError) => {
       if (error instanceof ContextChangedError) return Promise.reject(error)
       finishScope(error.config)
-      const payload = getPayload(error.response?.data)
+      let errorData = error.response?.data
+      if (
+        errorData instanceof ArrayBuffer &&
+        String(error.response?.headers?.['content-type'] || '').includes(
+          'application/json'
+        )
+      ) {
+        try {
+          errorData = JSON.parse(new TextDecoder().decode(errorData))
+        } catch {
+          errorData = undefined
+        }
+      }
+      const payload = getPayload(errorData)
       const context = createErrorContext({
         code: payload.code,
         httpStatus: error.response?.status,

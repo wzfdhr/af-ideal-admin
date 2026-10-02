@@ -11,6 +11,7 @@ import {
   computeBusinessFields,
 } from '@af-admin/contracts'
 import { assertRevision, advanceWorkflow } from '@af-admin/workflow-core'
+import { assertFilesReady } from './file-policy'
 import { authenticate, scalarHeader } from './auth'
 import { readRelease, validatePeople } from './application'
 import { activeRelease, addTask, appendHistory, history } from './leave'
@@ -328,6 +329,7 @@ export const registerBusinessRecords = (
             draft.application_release_id,
             'generic'
           )
+          await assertFilesReady(client, current.tenantId, id)
           validateBusinessFields(release.formSnapshot, draft.fields)
           computeBusinessFields(release.formSnapshot, draft.fields)
           await validatePeople(

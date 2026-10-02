@@ -305,6 +305,25 @@ export const createR1Menu = (permissions: string[]) => {
         },
       ],
     })
+  if (permissions.includes('file:list') || permissions.includes('*'))
+    entries.push({
+      path: '/resource',
+      name: 'resource',
+      componentKey: 'DefaultLayout',
+      meta: { requireAuth: true, locale: 'menu.resource', order: 10 },
+      children: [
+        {
+          path: 'files',
+          name: 'fileResourceCenter',
+          componentKey: 'FileResourceCenter',
+          meta: {
+            requireAuth: true,
+            locale: 'menu.resource.files',
+            access: { permissions: ['file:list'] },
+          },
+        },
+      ],
+    })
   return entries
 }
 

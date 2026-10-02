@@ -128,6 +128,24 @@ describe('createRequestClient', () => {
     })
   })
 
+  it('preserves actual binary bytes and response headers after the shared request scope is validated', async () => {
+    createRequestClient({
+      baseURL: '/api',
+      timeout: 15000,
+      authHeaderName: 'X-Access-Token',
+      getToken: () => null,
+    })
+    const bytes = new Uint8Array([0, 255, 10, 20]).buffer
+    const response = {
+      data: bytes,
+      config: { responseType: 'arraybuffer' },
+      headers: { 'content-type': 'application/pdf' },
+      status: 200,
+    } as AxiosResponse
+    expect(await axiosMock.responseSuccessHandler?.(response)).toBe(response)
+    expect(Message.error).not.toHaveBeenCalled()
+  })
+
   it('returns successful api response data unchanged', async () => {
     createRequestClient({
       baseURL: '/api',

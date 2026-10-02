@@ -69,3 +69,16 @@ test('login throttling is bounded and invalid inputs do not reveal credentials',
   assert.ok(!last.body.includes('invalid-fixture'))
   assert.ok(!last.body.includes('token'))
 })
+test('Retry-After covers a later exhausted account window when the IP window is checked first',async()=>{
+ const isolated=api.createServer(pool);await isolated.ready()
+ const original=Date.now,epoch=original();let now=epoch;Date.now=()=>now
+ try{
+  for(let i=0;i<20;i++)assert.equal((await isolated.inject({method:'POST',url:'/api/user/login',remoteAddress:'10.11.12.13',payload:{username:`ip-fill-${i}`,password:'bad'}})).statusCode,401)
+  now=epoch+30000
+  for(let i=0;i<10;i++)assert.equal((await isolated.inject({method:'POST',url:'/api/user/login',remoteAddress:'10.11.12.13',payload:{username:'late-account-window',password:'bad'}})).statusCode,401)
+  const limited=await isolated.inject({method:'POST',url:'/api/user/login',remoteAddress:'10.11.12.13',payload:{username:'late-account-window',password:'bad'}})
+  assert.equal(limited.statusCode,429);assert.equal(Number(limited.headers['retry-after']),60)
+  now+=60000
+  assert.equal((await isolated.inject({method:'POST',url:'/api/user/login',remoteAddress:'10.11.12.13',payload:{username:'late-account-window',password:'bad'}})).statusCode,401)
+ }finally{Date.now=original;await isolated.close()}
+})

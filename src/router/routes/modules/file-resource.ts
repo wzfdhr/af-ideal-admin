@@ -1,5 +1,6 @@
 import { defaultLayout } from '@/router/constants'
 import { FILE_RESOURCE_PERMISSIONS } from '@/constants/file-resource'
+import { dataMode } from '../../../../config/data-mode'
 import { AppRouteRecordRaw } from '../../types'
 
 const fileResourceRoutes: AppRouteRecordRaw = {
@@ -16,7 +17,10 @@ const fileResourceRoutes: AppRouteRecordRaw = {
     {
       path: 'files',
       name: 'fileResourceCenter',
-      component: () => import('@/views/resource/files/index.vue'),
+      component:
+        dataMode === 'reference'
+          ? () => import('@/views/resource/files/reference.vue')
+          : () => import('@/views/resource/files/index.vue'),
       meta: {
         locale: 'menu.resource.files',
         requireAuth: true,

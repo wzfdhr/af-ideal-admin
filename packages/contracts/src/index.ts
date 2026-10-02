@@ -10,3 +10,5 @@ export * from './data-scopes'
 export * from './applications'
 
 export * from './business-records'
+
+export * from './files'

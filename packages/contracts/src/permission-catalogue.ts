@@ -4,6 +4,11 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  { code: 'file:list', title: '查看授权文件和附件', module: '文件' },
+  { code: 'file:upload', title: '上传真实文件', module: '文件' },
+  { code: 'file:download', title: '下载授权文件', module: '文件' },
+  { code: 'file:preview', title: '预览授权文件', module: '文件' },
+  { code: 'file:delete', title: '删除本人未锁定附件', module: '文件' },
   {
     code: 'business:read:self',
     title: '查看本人和参与的业务记录',

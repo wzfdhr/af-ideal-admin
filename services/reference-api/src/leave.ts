@@ -13,6 +13,7 @@ import {
   requirePermission,
   hasPermission,
 } from '@af-admin/workflow-core'
+import { assertFilesReady } from './file-policy'
 import { readRelease, validatePeople } from './application'
 import {
   rows,
@@ -457,6 +458,7 @@ export const submitLeave = (
         current,
         draft.application_release_id
       )
+      await assertFilesReady(client, current.tenantId, id)
       parseLeaveFields(draft.fields)
       await validatePeople(
         client,

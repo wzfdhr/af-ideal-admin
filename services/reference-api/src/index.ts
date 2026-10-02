@@ -12,15 +12,18 @@ import { registerPositions } from './positions'
 import { registerUsers } from './users'
 import { registerCredentials } from './credentials'
 import { registerRoles } from './roles'
+import { registerFiles } from './files'
 import { registerBusinessRecords } from './business-records'
 import { registerApplicationCenter } from './application-center'
 import { registerDataScopes } from './data-scopes'
+import type { FileRuntime } from './files'
 import type { FaultInjector } from './support'
 import type { Pool } from 'pg'
 
 export const createServer = (
   database?: Pool,
-  fault: FaultInjector = noFault
+  fault: FaultInjector = noFault,
+  files: FileRuntime = {}
 ) => {
   const pool = database || createPool()
   const server = Fastify({
@@ -112,6 +115,7 @@ export const createServer = (
   registerDataScopes(server, pool)
   registerApplicationCenter(server, pool)
   registerBusinessRecords(server, pool, fault)
+  registerFiles(server, pool, files)
   if (!database)
     server.addHook('onClose', async () => {
       await pool.end()

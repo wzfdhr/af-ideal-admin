@@ -3,6 +3,7 @@ import type { MenuLikeNode } from './access'
 
 const pagePermissions: Record<string, string[]> = {
   workplace: [],
+  fileResourceCenter: ['file:list'],
   businessRecordsList: ['business:read:self'],
   businessRecordDetail: [
     'business:read:self',

@@ -89,6 +89,7 @@
         </li>
       </ol>
     </section>
+    <StoredFiles v-if="current" :record-id="current.id" :editable="editable" />
   </main>
 </template>
 <script setup lang="ts">
@@ -99,6 +100,7 @@ import {
   onBeforeRouteLeave,
   onBeforeRouteUpdate,
 } from 'vue-router'
+import StoredFiles from '@/components/stored-files.vue'
 import { FormRenderer, migrateFormSchema } from '@/components/form-runtime'
 import type { VersionedFormSchema } from '@/components/form-designer/schema'
 import {

@@ -221,11 +221,17 @@
         <a-button @click="load">重试</a-button>
       </section>
     </a-spin>
+    <StoredFiles
+      v-if="current"
+      :record-id="current.id"
+      :editable="Boolean(current.allowedActions.includes('edit'))"
+    />
   </main>
 </template>
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import StoredFiles from '@/components/stored-files.vue'
 import { confirmR1Action } from '@/services/r1-confirm'
 import { FormRenderer } from '@/components/form-runtime'
 import { migrateFormSchema } from '@/components/form-designer/schema'

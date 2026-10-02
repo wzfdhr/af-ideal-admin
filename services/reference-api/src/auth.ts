@@ -108,7 +108,12 @@ export const tenantContexts = async (
 }
 export const registerAuth = (server: FastifyInstance, pool: Pool) => {
   const attempts = new Map<string, { count: number; until: number }>()
-  const throttle = (key: string, maximum: number, reply: FastifyReply) => {
+  const throttle = (
+    key: string,
+    maximum: number,
+    reply: FastifyReply,
+    accountKey?: string
+  ) => {
     const now = Date.now()
     const current = attempts.get(key)
     const value =
@@ -125,16 +130,28 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
         attempts.delete(attempts.keys().next().value as string)
     }
     if (value.count > maximum) {
-      reply.header(
-        'Retry-After',
-        Math.max(1, Math.ceil((value.until - now) / 1000))
-      )
+      const account = accountKey ? attempts.get(accountKey) : undefined
+      const until =
+        account && account.count >= 10 && account.until > now
+          ? Math.max(value.until, account.until)
+          : value.until
+      reply.header('Retry-After', Math.max(1, Math.ceil((until - now) / 1000)))
       throw new DomainError(429, 'RATE_LIMITED', '登录尝试过于频繁，请稍后再试')
     }
   }
   const dummyPassword = hashPassword(newToken())
   server.post('/api/user/login', async (request, reply) => {
-    throttle(`ip:${request.ip}`, 30, reply)
+    const raw = request.body as { username?: unknown } | undefined
+    const candidate =
+      raw && typeof raw.username === 'string'
+        ? raw.username.trim().slice(0, 100)
+        : undefined
+    throttle(
+      `ip:${request.ip}`,
+      30,
+      reply,
+      candidate ? `account:${candidate}` : undefined
+    )
     const body = record(request.body)
     onlyKeys(body, ['username', 'password'])
     const username = text(body.username, 'username', 100)

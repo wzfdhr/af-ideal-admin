@@ -84,10 +84,21 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U af_admin -d af_admin_ci_demo"
           --health-interval 3s --health-timeout 3s --health-retries 20
+      clamav:
+        image: clamav/clamav:1.5.4
+        env:
+          CLAMAV_NO_FRESHCLAMD: 'true'
+        ports:
+          - 3310:3310
+        options: >-
+          --health-interval 10s --health-timeout 10s --health-start-period 120s --health-retries 30
     env:
       DATABASE_URL: postgresql://af_admin:ci-only-isolated-database@127.0.0.1:5432/af_admin_ci_demo
       APP_MODE: demo
       CI: true
+      FILE_STORAGE_DIR: /tmp/af-admin-ci-files
+      CLAMAV_HOST: 127.0.0.1
+      CLAMAV_PORT: 3310
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
