@@ -50,11 +50,13 @@
       unmount-on-close
       @before-ok="submitEditor"
     >
+      <p v-if="editorError" role="alert">{{ editorError }}</p>
       <ProForm
         ref="editorFormRef"
         v-model="editorModel"
         :schema="editorSchema"
         :submitter="saveDepartment"
+        submit-error-text="保存未完成，请查看上方提示并调整后重试"
         hide-actions
       />
     </a-modal>
@@ -139,6 +141,7 @@ const queryFormRef = ref<ProFormExpose>()
 const editorFormRef = ref<ProFormExpose>()
 const statusOptions = ref<DictionaryOption[]>([])
 const editorVisible = ref(false)
+const editorError = ref('')
 const detailVisible = ref(false)
 const deleteVisible = ref(false)
 const editorMode = ref<'create' | 'update'>('create')
@@ -301,6 +304,7 @@ const handleReset = (values: Record<string, unknown>) =>
   tableRef.value?.reset(toCleanFilters(values))
 
 const openCreate = () => {
+  editorError.value = ''
   editorMode.value = 'create'
   retry.clear()
   editingId.value = ''
@@ -316,6 +320,7 @@ const openCreate = () => {
 }
 
 const openEdit = async (record: SystemDepartmentRecord) => {
+  editorError.value = ''
   try {
     const detail = await getSystemDepartmentDetail(record.id)
     editorMode.value = 'update'
@@ -344,21 +349,26 @@ const openDeleteConfirm = (record: SystemDepartmentRecord) => {
 }
 
 const saveDepartment = async (values: Record<string, unknown>) => {
+  editorError.value = ''
   const payload = toPayload(values)
-  if (editorMode.value === 'create') {
-    await createSystemDepartment(payload, retry.key('create', payload))
-    retry.complete('create')
-    Message.success('新增成功')
-  } else {
-    await updateSystemDepartment(
-      editingId.value,
-      payload,
-      retry.key(`update:${editingId.value}`, payload)
-    )
-    retry.complete(`update:${editingId.value}`)
-    Message.success('保存成功')
+  const creating = editorMode.value === 'create'
+  const operation = creating ? 'create' : `update:${editingId.value}`
+  try {
+    if (creating)
+      await createSystemDepartment(payload, retry.key(operation, payload))
+    else
+      await updateSystemDepartment(
+        editingId.value,
+        payload,
+        retry.key(operation, payload)
+      )
+  } catch (failure) {
+    editorError.value =
+      failure instanceof Error ? failure.message : '无法保存部门，请重试'
+    throw failure
   }
-
+  retry.complete(operation)
+  Message.success(creating ? '新增成功' : '保存成功')
   editorVisible.value = false
   await refreshTree()
   await tableRef.value?.reload()
@@ -402,7 +412,7 @@ const confirmDelete = async () => {
 
 const renderActionButton = (
   record: SystemDepartmentRecord,
-  permission: string,
+  permission: string | string[],
   label: string,
   onClick: () => void,
   danger = false
@@ -411,6 +421,7 @@ const renderActionButton = (
     PermissionButton,
     {
       permission,
+      mode: 'all',
       type: 'text',
       size: 'small',
       status: danger ? 'danger' : undefined,
@@ -463,7 +474,10 @@ const columns: TableColumnData[] = [
         ),
         renderActionButton(
           item,
-          SYSTEM_DEPARTMENT_PERMISSIONS.update,
+          [
+            SYSTEM_DEPARTMENT_PERMISSIONS.update,
+            SYSTEM_DEPARTMENT_PERMISSIONS.detail,
+          ],
           '编辑',
           () => openEdit(item)
         ),

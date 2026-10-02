@@ -17,6 +17,7 @@ import {
 } from '@af-admin/workflow-core'
 import { authenticate, scalarHeader } from './auth'
 import { audit, idempotent, one, pageQuery, rows } from './support'
+import { assertTreeScopeChange } from './tree-scope'
 import type { Department, DepartmentInput } from '@af-admin/contracts'
 import type { Actor } from './auth'
 import type { Database } from './support'
@@ -107,6 +108,8 @@ const write = (
       const parentId =
         input.parentId === undefined ? old?.parent_id || null : input.parentId
       await validateParent(client, current.tenantId, parentId, resourceId)
+      if (old && old.parent_id !== parentId)
+        await assertTreeScopeChange(client, current, resourceId, parentId)
       const duplicated = await rows<{ id: string }>(
         client,
         'SELECT id FROM departments WHERE tenant_id=$1 AND parent_id IS NOT DISTINCT FROM $2 AND department_name=$3 AND id<>$4 AND deleted_at IS NULL',
@@ -144,16 +147,24 @@ const write = (
             input.status,
           ]
         )
+      if (old && old.parent_id !== parentId)
+        await client.query(
+          'UPDATE tenants SET revision=revision+1,updated_at=now() WHERE id=$1',
+          [current.tenantId]
+        )
       await audit(
         client,
         current,
         'system',
         old ? 'department.update' : 'department.create',
         'department',
-        resourceId
+        resourceId,
+        'success',
+        { parentId, previousParentId: old?.parent_id || null }
       )
       return dto(await read(client, current.tenantId, resourceId))
-    }
+    },
+    true
   )
 
 export const registerOrganization = (server: FastifyInstance, pool: Pool) => {
@@ -279,6 +290,17 @@ export const registerOrganization = (server: FastifyInstance, pool: Pool) => {
           await treeLock(client, current.tenantId)
           const value = await read(client, current.tenantId, id, true)
           assertRevision(value.revision, expectedRevision)
+          const scopeReference = await rows(
+            client,
+            'SELECT sd.role_id FROM role_scope_departments sd JOIN roles r ON r.tenant_id=sd.tenant_id AND r.id=sd.role_id WHERE sd.tenant_id=$1 AND sd.department_id=$2 AND r.deleted_at IS NULL LIMIT 1',
+            [current.tenantId, id]
+          )
+          if (scopeReference.length)
+            throw new DomainError(
+              409,
+              'DEPARTMENT_SCOPE_REFERENCED',
+              '部门被角色数据范围引用，请先调整范围配置'
+            )
           const referenced = one(
             await rows<{ total: string }>(
               client,

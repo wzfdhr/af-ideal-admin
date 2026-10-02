@@ -183,7 +183,7 @@ vi.mock('@/components/permission-button.vue', () => ({
     name: 'MockPermissionButton',
     props: {
       permission: {
-        type: String,
+        type: [String, Array] as PropType<string | string[]>,
         default: '',
       },
     },
@@ -193,7 +193,9 @@ vi.mock('@/components/permission-button.vue', () => ({
           'button',
           {
             ...attrs,
-            'data-permission': props.permission,
+            'data-permission': Array.isArray(props.permission)
+              ? props.permission.join(' ')
+              : props.permission,
           },
           slots.default?.()
         )
@@ -318,9 +320,12 @@ describe('DepartmentSystemPage', () => {
     await settle()
     expect(apiMocks.getSystemDepartmentDetail).toHaveBeenCalledWith('1')
 
-    await wrapper
-      .find('[data-permission="system:department:update"]')
-      .trigger('click')
+    const edit = wrapper.find('[data-permission~="system:department:update"]')
+    expect(edit.attributes('data-permission')).toBe(
+      'system:department:update system:department:detail'
+    )
+    expect(edit.attributes('mode')).toBe('all')
+    await edit.trigger('click')
     await settle()
     expect(apiMocks.getSystemDepartmentDetail).toHaveBeenCalledTimes(2)
     expect(apiMocks.getSystemDepartmentDetail).toHaveBeenLastCalledWith('1')

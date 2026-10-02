@@ -238,3 +238,65 @@ test('organization command replay reprojects the canonical receipt after departm
  const effects=await pool.query("SELECT count(*) AS total FROM audit_events WHERE tenant_id='tenant-a' AND target_id=$1 AND action='organization.assign' AND actor_id=$2 AND result='success'",[target.id,subject.id])
  assert.equal(Number(effects.rows[0].total),1)
 })
+test('reparenting a department cannot widen implicit or explicit descendant roles using department edit permission',async()=>{
+ for(const explicit of [false,true]){
+  const destination=await createDepartment('tree-destination'),source=await createDepartment('tree-source'),peer=await createDepartment('tree-peer')
+  const subject=await createMember(explicit?peer:destination),hidden=await createMember(source)
+  const role=await roleFor(['system:department:update','system:user:list','system:user:detail'])
+  await configure(role,'department-and-children',explicit?[destination.id]:[])
+  ok(await call(`/system/users/${subject.id}/authorization`,{method:'POST',body:{roleIds:[role.id],directPermissions:[],expectedRevision:subject.revision}}))
+  assert.equal((await call(`/system/users/${hidden.id}`,{user:subject.username})).status,404)
+  const body={departmentName:source.departmentName,parentId:destination.id,leader:source.leader,sort:source.sort,status:source.status,expectedRevision:source.revision}
+  const moved=await call(`/system/departments/${source.id}`,{user:subject.username,method:'PUT',body})
+  assert.equal(moved.status,403);assert.equal(moved.businessCode,'SCOPE_DELEGATION')
+  const unchanged=ok(await call(`/system/departments/${source.id}`));assert.equal(unchanged.parentId,null);assert.equal(unchanged.revision,source.revision)
+  assert.equal((await call(`/system/users/${hidden.id}`,{user:subject.username})).status,404)
+  ok(await call(`/system/departments/${source.id}`,{method:'PUT',body}))
+  assert.equal(ok(await call(`/system/users/${hidden.id}`,{user:subject.username})).id,hidden.id)
+ }
+})
+test('a structural editor can reorganize a subtree it already fully governs without manufacturing new authority',async()=>{
+ const root=await createDepartment('tree-owned-root'),destination=await createDepartment('tree-owned-destination',root.id),source=await createDepartment('tree-owned-source',root.id)
+ const subject=await createMember(root),recipient=await createMember(destination),target=await createMember(source)
+ const editor=await roleFor(['system:department:update','system:user:list','system:user:detail']),bounded=await roleFor(['system:user:list','system:user:detail'])
+ await configure(editor,'department-and-children');await configure(bounded,'department-and-children')
+ ok(await call(`/system/users/${subject.id}/authorization`,{method:'POST',body:{roleIds:[editor.id],directPermissions:[],expectedRevision:subject.revision}}))
+ ok(await call(`/system/users/${recipient.id}/authorization`,{method:'POST',body:{roleIds:[bounded.id],directPermissions:[],expectedRevision:recipient.revision}}))
+ assert.equal((await call(`/system/users/${target.id}`,{user:recipient.username})).status,404)
+ const beforeVersion=(await pool.query("SELECT revision FROM tenants WHERE id='tenant-a'")).rows[0].revision
+ const body={departmentName:source.departmentName,parentId:destination.id,leader:source.leader,sort:source.sort,status:source.status,expectedRevision:source.revision},key=randomUUID()
+ const moved=ok(await call(`/system/departments/${source.id}`,{user:subject.username,method:'PUT',body,key}))
+ assert.equal(moved.parentId,destination.id);assert.equal(moved.revision,source.revision+1)
+ assert.equal(ok(await call(`/system/departments/${source.id}`,{user:subject.username,method:'PUT',body,key})).revision,moved.revision)
+ assert.equal(ok(await call(`/system/users/${target.id}`,{user:recipient.username})).id,target.id)
+ assert.equal((await pool.query("SELECT revision FROM tenants WHERE id='tenant-a'")).rows[0].revision,beforeVersion+1)
+ const fact=(await pool.query("SELECT detail FROM audit_events WHERE tenant_id='tenant-a' AND target_id=$1 AND action='department.update' AND result='success'",[source.id])).rows
+ assert.equal(fact.length,1);assert.equal(fact[0].detail.parentId,destination.id);assert.equal(fact[0].detail.previousParentId,root.id)
+})
+test('department deletion refuses live scope-root references until the role is explicitly reconfigured',async()=>{
+ const root=await createDepartment('scope-root-reference'),role=await roleFor(['system:user:list'])
+ await configure(role,'department-and-children',[root.id])
+ const denied=await call(`/system/departments/${root.id}`,{method:'DELETE',body:{expectedRevision:root.revision}})
+ assert.equal(denied.status,409);assert.equal(denied.businessCode,'DEPARTMENT_SCOPE_REFERENCED')
+ assert.equal(ok(await call(`/system/departments/${root.id}`)).revision,root.revision)
+ await configure(role,'self')
+ ok(await call(`/system/departments/${root.id}`,{method:'DELETE',body:{expectedRevision:root.revision}}))
+})
+test('competing tree writes serialize against one revision and cannot commit a scoped import after a privileged move',async()=>{
+ const destination=await createDepartment('tree-race-destination'),other=await createDepartment('tree-race-other'),source=await createDepartment('tree-race-source')
+ const subject=await createMember(destination),hidden=await createMember(source),role=await roleFor(['system:department:update','system:user:list','system:user:detail'])
+ await configure(role,'department-and-children')
+ ok(await call(`/system/users/${subject.id}/authorization`,{method:'POST',body:{roleIds:[role.id],directPermissions:[],expectedRevision:subject.revision}}))
+ const body={departmentName:source.departmentName,leader:source.leader,sort:source.sort,status:source.status,expectedRevision:source.revision},key=randomUUID()
+ const [bounded,privileged]=await Promise.all([
+  call(`/system/departments/${source.id}`,{user:subject.username,method:'PUT',body:{...body,parentId:destination.id}}),
+  call(`/system/departments/${source.id}`,{method:'PUT',body:{...body,parentId:other.id},key}),
+ ])
+ assert.ok([403,409].includes(bounded.status));assert.ok(['SCOPE_DELEGATION','REVISION_CONFLICT'].includes(bounded.businessCode))
+ const saved=ok(privileged);assert.equal(saved.parentId,other.id);assert.equal(saved.revision,source.revision+1)
+ assert.equal(ok(await call(`/system/departments/${source.id}`)).parentId,other.id)
+ assert.equal((await call(`/system/users/${hidden.id}`,{user:subject.username})).status,404)
+ assert.equal(ok(await call(`/system/departments/${source.id}`,{method:'PUT',body:{...body,parentId:other.id},key})).revision,saved.revision)
+ const effects=await pool.query("SELECT count(*) AS total FROM audit_events WHERE tenant_id='tenant-a' AND target_id=$1 AND action='department.update' AND result='success'",[source.id])
+ assert.equal(Number(effects.rows[0].total),1)
+})

@@ -4,6 +4,7 @@ import { tenantScope, resetTenantContext } from '@/services/tenant-context'
 import { retainLeaveDrafts } from '@/services/leave-draft-recovery'
 import { requestBaseUrl } from '@config'
 import { createRequestClient } from './request-client'
+import type { ApiErrorContext } from './request-client'
 
 const getCurrentRedirect = () => {
   const { pathname, search, hash } = window.location
@@ -24,7 +25,13 @@ const redirectToLogin = () => {
   window.location.assign(`/login${search}`)
 }
 
-const redirectToNoPermission = () => {
+const redirectToNoPermission = (context: ApiErrorContext) => {
+  if (
+    ['SCOPE_DELEGATION', 'SCOPE_AUTHORITY', 'FIELD_FORBIDDEN'].includes(
+      context.businessCode || ''
+    )
+  )
+    return
   retainLeaveDrafts()
   if (window.location.pathname === '/login') return
   if (window.location.pathname !== '/not-allowed') {

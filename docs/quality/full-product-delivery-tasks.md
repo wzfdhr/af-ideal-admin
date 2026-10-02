@@ -176,3 +176,12 @@
 - data-scope-selectors-placement-red.log真实复现目录字段暴露和越界调动；data-scope-selectors-placement-final.log的81项数据库/API通过，含合法下级调动、调动后的真实查询范围变化、失败不改成员版本和重试审计一次。data-scope-selector-ui-unit.log的428单测通过。早期静态类型及渲染lint失败保留；修复可投影回执类型和渲染分支后，data-scope-selectors-browser-build.log的完整workspace构建通过。
 - data-scope-selectors-browser.log保留新用例同时选择外层/内层section以及旧岗位用例假设员工在首10条的失败。增加明确成员列表定位和真实分页后，data-scope-selectors-browser-fixed.log有5项通过；余下岗位用例在reload后需重新定位分页，修复后data-scope-selector-paging-reload-browser.log独立通过。原保存重开、引用删除、双租户、键盘和员工身份断言不变，没有清空演示成员或删减失败用例。
 - FP-006继续进行中。角色目录Mock范围、部门树移动引发范围扩张的控制、跨模块业务范围、模块完整并发/恢复及部署回退仍未完成；不缩减冻结范围，不标记全产品交付完成。本增量须新的提交及远端CI，不能沿用ec27ec3的绿色结果。
+
+### FP-006 调树与拒绝交互增量
+
+- 实施/阶段自检：Codex。39ac65f388ac960425f220d9dd34daf84432c94c的实际CI36968927731已通过，verify/real-business均success；远端81项数据库/API和24条真实浏览器通过，归档ci-36968927731及data-scope-selectors-remote-ci.json。本轮增量不包含在这个CI提交中。
+- 新增tree-scope在旧树检查移入引发的隐式/显式下级角色扩张，包括尚可重新启用的角色绑定；合法已覆盖子树的调整允许。显式角色范围引用阻止部门删除，清除配置引用后才可删除。
+- 调树写入使用租户治理排他锁，父级变化推进租户权限版本，旧/新父级进入同事务事实审计。data-scope-tree-red.log复现越权移入及删除范围根失败；data-scope-tree-version-audit-http.log的85项真实数据库/API通过，包含受限/合法调整、竞争版本、幂等及版本/事实只推进一次。
+- 首轮浏览器暴露缺少详情权限仍显示编辑按钮，以及业务范围403被通用处理器跳转导致输入丢失。编辑按钮现在要求详情+修改，表单展示后端提示；三个明确范围/字段拒绝保留页面，功能权限FORBIDDEN仍进入无权限页。data-scope-tree-domain-browser-green.log及data-scope-tree-final-browser.log验证真实拒绝保留输入、角色即时追加详情权限和随后撤销修改权限的两种行为；岗位持久化/引用删除也回归通过。早期失败data-scope-tree-browser.log、data-scope-tree-browser-fixed.log、data-scope-tree-browser-permissions-green.log保留，不能把这些文件名误作通过结果。
+- 部门页单测保留两次详情API调用次数断言，并增加详情+修改权限组合及all模式断言，兼容stub的数组权限。data-scope-tree-final-unit.log的428项通过；data-scope-tree-domain-denial-build.log完整workspace构建通过，data-scope-tree-types.log类型通过，data-scope-tree-final-lint-clean.log无错误。data-scope-tree-mock-browser.log的3条原开发Mock路径通过，未据此宣称Mock范围完整或真实部署完成。
+- 全产品45项冻结范围保持不变。FP-006还缺跨模块业务/附件/报表/审计范围、Mock范围生命周期、容量和完整部署/恢复/兼容回退；本增量需要新提交和新CI，不标记完整模块或全产品完成。
