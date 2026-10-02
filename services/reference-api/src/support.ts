@@ -125,7 +125,10 @@ export const idempotent = <T>(
   payload: unknown,
   run: (client: PoolClient, current: Actor) => Promise<T>,
   exclusiveTenant = false,
-  identityGate = ''
+  identityGate = '',
+  projectResponse:
+    | ((client: PoolClient, current: Actor, response: T) => Promise<T>)
+    | undefined = undefined
 ): Promise<T> => {
   if (!key || key.length < 8 || key.length > 200)
     invalid('Idempotency-Key', '写命令必须提供有效的 Idempotency-Key')
@@ -161,7 +164,9 @@ export const idempotent = <T>(
             'IDEMPOTENCY_CONFLICT',
             '同一个重试标识不能用于不同内容'
           )
-        return previous[0].response
+        return projectResponse
+          ? projectResponse(client, current, previous[0].response)
+          : previous[0].response
       }
       const result = await run(client, current)
       await client.query(
@@ -175,7 +180,7 @@ export const idempotent = <T>(
           JSON.stringify(result),
         ]
       )
-      return result
+      return projectResponse ? projectResponse(client, current, result) : result
     },
     exclusiveTenant,
     identityGate

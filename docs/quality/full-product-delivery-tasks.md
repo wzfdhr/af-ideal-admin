@@ -167,3 +167,12 @@
 - 源码检查点b757ce09868d88f47221f3262b1db18b7146a200已推送；手动触发CI36966746115，结果须等运行结束核实。额外专属API进程替换检查data-scope-process-persistence.log通过：3条已保存规则、字段与版本一致，旧会话有效。data-scope-keyboard-compact.log通过1280x720的原生选择器焦点、Tab进入字段选项、Escape取消和弹窗边界；不代表完整多分辨率/辅助技术验收。
 - b757ce0的实际CI36966746115已通过，verify/real-business均success；下载证据ci-36966746115，状态data-scope-remote-ci.json。远端77项数据库/API和23条真实浏览器通过。
 - 随后新增联系方式功能授权自身也必须覆盖目标成员行/字段的回归。data-scope-contact-boundary-red.log真实复现：仅本人read-contacts角色与全租户查询角色拼接后返回他人原始电话。服务端投影改为再次检查read-contacts目标行/字段，原始电话筛选也需要同样授权。data-scope-contact-boundary-green.log的78项通过，lint无错误及全部workspace类型通过；此修复不包含在b757ce0的CI结果里，必须以新提交重新运行CI。
+
+### FP-006 组织选择器与调动边界增量
+
+- 实施/阶段自检：Codex。联系方式修复ec27ec3782c55a386f168ab2d457cf970e5f5de3的CI36967243918实际通过，verify/real-business均success，远端78项数据库/API和23项真实页面通过；artifact归档ci-36967243918，状态data-scope-contact-remote-ci.json。
+- 新增组织/授权成员逐字段投影、隐藏账号的筛选拒绝、部门/岗位字段映射、组织列表授权事务、组织调动前的目标部门与成员隐式角色范围检查。API依然独立检查字段写权限，页面显示“无字段权限”并隐藏不可执行的组织绑定。
+- 幂等支持可选事务内响应投影；旧部门字段权限撤销后重试不能恢复旧回执中的部门/岗位，不重复推进成员版本或写事实审计。
+- data-scope-selectors-placement-red.log真实复现目录字段暴露和越界调动；data-scope-selectors-placement-final.log的81项数据库/API通过，含合法下级调动、调动后的真实查询范围变化、失败不改成员版本和重试审计一次。data-scope-selector-ui-unit.log的428单测通过。早期静态类型及渲染lint失败保留；修复可投影回执类型和渲染分支后，data-scope-selectors-browser-build.log的完整workspace构建通过。
+- data-scope-selectors-browser.log保留新用例同时选择外层/内层section以及旧岗位用例假设员工在首10条的失败。增加明确成员列表定位和真实分页后，data-scope-selectors-browser-fixed.log有5项通过；余下岗位用例在reload后需重新定位分页，修复后data-scope-selector-paging-reload-browser.log独立通过。原保存重开、引用删除、双租户、键盘和员工身份断言不变，没有清空演示成员或删减失败用例。
+- FP-006继续进行中。角色目录Mock范围、部门树移动引发范围扩张的控制、跨模块业务范围、模块完整并发/恢复及部署回退仍未完成；不缩减冻结范围，不标记全产品交付完成。本增量须新的提交及远端CI，不能沿用ec27ec3的绿色结果。

@@ -9,9 +9,9 @@ export interface PermissionDefinition {
 }
 export interface AuthorizationMember {
   id: string
-  username: string
-  name: string
-  status: string
+  username?: string
+  name?: string
+  status?: string
   revision: number
 }
 export interface MemberAuthorization {

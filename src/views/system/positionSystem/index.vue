@@ -19,7 +19,7 @@
         empty-text="暂无岗位"
       />
     </section>
-    <section v-if="canAssign">
+    <section v-if="canAssign" data-testid="organization-member-list">
       <h2>组织成员</h2>
       <ProTable
         ref="membersTable"
@@ -371,24 +371,36 @@ const positionColumns = [
   },
 ]
 const memberColumns = [
-  { title: '成员', dataIndex: 'name' },
+  {
+    title: '成员',
+    render: ({ record }: { record: Record<string, unknown> }) =>
+      String(record.name ?? '无字段权限'),
+  },
   {
     title: '所属部门',
-    render: ({ record }: { record: Record<string, unknown> }) =>
-      departments.value.find((item) => item.value === record.departmentId)
-        ?.label || '未绑定',
+    render: ({ record }: { record: Record<string, unknown> }) => {
+      if (record.departmentId === undefined) return '无字段权限'
+      return (
+        departments.value.find((item) => item.value === record.departmentId)
+          ?.label || '未绑定'
+      )
+    },
   },
   {
     title: '岗位',
     render: ({ record }: { record: Record<string, unknown> }) =>
-      String(record.positionName || '未绑定'),
+      record.positionName === undefined
+        ? '无字段权限'
+        : String(record.positionName || '未绑定'),
   },
   {
     title: '操作',
-    render: ({ record }: { record: Record<string, unknown> }) =>
-      action(POSITION_PERMISSIONS.assign, '组织绑定', () =>
+    render: ({ record }: { record: Record<string, unknown> }) => {
+      if (record.departmentId === undefined) return h('span', '无字段权限')
+      return action(POSITION_PERMISSIONS.assign, '组织绑定', () =>
         openAssignment(record as unknown as OrganizationMember)
-      ),
+      )
+    },
   },
 ]
 onMounted(() =>

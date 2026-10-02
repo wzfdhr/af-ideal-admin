@@ -79,7 +79,11 @@
       unmount-on-close
       @before-ok="saveAuthorization"
     >
-      <p>{{ subject?.name }}（{{ subject?.username }}）</p>
+      <p>
+        {{ subject?.name ?? '无字段权限' }}（{{
+          subject?.username ?? subject?.id
+        }}）
+      </p>
       <p v-if="error" role="alert">{{ error }}</p>
       <fieldset>
         <legend>绑定角色</legend>
@@ -361,6 +365,10 @@ const removeRole = async (value: ManagedRole) => {
     error.value = message(failure)
   }
 }
+const statusLabel = (status: unknown) => {
+  if (status === undefined) return '无字段权限'
+  return status === 'enabled' ? '启用' : '停用'
+}
 const action = (permission: string, name: string, run: () => void) =>
   h(
     PermissionButton,
@@ -373,7 +381,7 @@ const roleColumns = [
   {
     title: '状态',
     render: ({ record }: { record: Record<string, unknown> }) =>
-      h('span', record.status === 'enabled' ? '启用' : '停用'),
+      h('span', statusLabel(record.status)),
   },
   {
     title: '权限数量',
@@ -394,12 +402,20 @@ const roleColumns = [
   },
 ]
 const memberColumns = [
-  { title: '账号', dataIndex: 'username' },
-  { title: '成员', dataIndex: 'name' },
+  {
+    title: '账号',
+    render: ({ record }: { record: Record<string, unknown> }) =>
+      String(record.username ?? '无字段权限'),
+  },
+  {
+    title: '成员',
+    render: ({ record }: { record: Record<string, unknown> }) =>
+      String(record.name ?? '无字段权限'),
+  },
   {
     title: '状态',
     render: ({ record }: { record: Record<string, unknown> }) =>
-      h('span', record.status === 'enabled' ? '启用' : '停用'),
+      h('span', statusLabel(record.status)),
   },
   {
     title: '操作',

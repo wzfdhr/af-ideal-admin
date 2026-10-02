@@ -118,3 +118,84 @@ test('saved member scope survives reload and immediately restricts the existing 
     await otherContext.close()
   }
 })
+
+test('organization page distinguishes hidden member fields and does not offer department editing without field authority', async ({
+  browser,
+  request,
+}) => {
+  const context = await browser.newContext()
+  const page = await context.newPage()
+  const suffix = randomUUID().slice(0, 8)
+  const username = `scope-org-${suffix}`
+  const password = 'Scope-organization-browser-2026'
+  try {
+    await login(page, 'a-admin')
+    const token = await page.evaluate(() => localStorage.getItem('token'))
+    const call = async (path: string, data: unknown, method = 'POST') => {
+      const response = await request.fetch(
+        `${process.env.R1_API_URL || 'http://127.0.0.1:10888'}/api${path}`,
+        {
+          method,
+          headers: {
+            'x-access-token': token || '',
+            'x-tenant-id': 'tenant-a',
+            'idempotency-key': randomUUID(),
+          },
+          data,
+        }
+      )
+      expect(response.status()).toBe(200)
+      return (await response.json()).data
+    }
+    const user = await call('/system/users', {
+      username,
+      name: '组织隐藏合成姓名',
+      phone: '',
+      email: '',
+      initialPassword: password,
+      status: 'enabled',
+    })
+    const role = await call('/system/roles', {
+      roleName: `组织字段-${suffix}`,
+      roleKey: `org-field-${suffix}`,
+      roleSort: 0,
+      remark: '',
+      status: 'enabled',
+      permissions: ['system:organization:assign'],
+    })
+    await call(
+      `/permissions/data-scopes/${role.id}`,
+      {
+        dataScope: 'self',
+        departmentIds: [],
+        fieldPermissions: [],
+        expectedRevision: 1,
+      },
+      'PUT'
+    )
+    await call(`/system/users/${user.id}/authorization`, {
+      roleIds: [role.id],
+      directPermissions: [],
+      expectedRevision: user.revision,
+    })
+    await login(page, username, password)
+    await page.goto('/system/positionSystem')
+    await expect(page.getByTestId('position-system')).toBeVisible()
+    const members = page.getByTestId('organization-member-list')
+    await expect(members.locator('tbody tr')).toHaveCount(1)
+    await expect(members.locator('tbody')).toContainText('无字段权限')
+    await expect(members.locator('tbody')).not.toContainText('组织隐藏合成姓名')
+    await expect(members.locator('tbody')).not.toContainText('未绑定')
+    await expect(
+      members.getByRole('button', { name: '组织绑定', exact: true })
+    ).toHaveCount(0)
+    await page.reload()
+    await expect(members.locator('tbody')).toContainText('无字段权限')
+    await page.screenshot({
+      path: 'test-results/full-product/organization-hidden-fields.png',
+      fullPage: true,
+    })
+  } finally {
+    await context.close()
+  }
+})

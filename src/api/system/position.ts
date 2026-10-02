@@ -7,12 +7,12 @@ import type {
 
 export interface OrganizationMember {
   id: string
-  name: string
-  departmentId: string | null
-  positionId: string | null
-  positionName: string | null
+  name?: string
+  departmentId?: string | null
+  positionId?: string | null
+  positionName?: string | null
   revision: number
-  status: string
+  status?: string
 }
 export const fetchPositions = async (params: {
   current: number

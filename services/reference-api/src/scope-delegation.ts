@@ -79,7 +79,7 @@ export const assertDataDelegation = async (
         roots: [],
         fields: [...MEMBER_SCOPE_FIELDS],
       }
-      if (roleId) {
+      if (roleId || candidate) {
         const target =
           candidate ||
           one(

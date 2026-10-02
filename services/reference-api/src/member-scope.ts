@@ -43,6 +43,11 @@ export const projectMemberFields = async (
     ]
   )
   const names = new Set(permitted.map((row) => row.field))
+  const aliases: Record<string, string> = {
+    departmentId: 'dept',
+    positionId: 'dept',
+    positionName: 'dept',
+  }
   if (value.contactsMasked === false) {
     const raw = await rows<{ field: string }>(
       db,
@@ -67,12 +72,14 @@ export const projectMemberFields = async (
     }
   }
   return Object.fromEntries(
-    Object.entries(value).filter(
-      ([field]) =>
+    Object.entries(value).filter(([key]) => {
+      const field = aliases[key] || key
+      return (
         !MEMBER_SCOPE_FIELDS.includes(
           field as typeof MEMBER_SCOPE_FIELDS[number]
         ) || names.has(field)
-    )
+      )
+    })
   )
 }
 export const assertMemberFields = async (

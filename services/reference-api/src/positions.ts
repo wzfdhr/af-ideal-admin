@@ -14,8 +14,20 @@ import {
   hasPermission,
 } from '@af-admin/workflow-core'
 import { authenticate, scalarHeader } from './auth'
-import { audit, idempotent, one, pageQuery, rows } from './support'
-import { assertMemberScope } from './member-scope'
+import {
+  audit,
+  idempotent,
+  one,
+  pageQuery,
+  rows,
+  authorizedTransaction,
+} from './support'
+import {
+  assertMemberScope,
+  projectMemberFields,
+  assertMemberFields,
+} from './member-scope'
+import { assertDataDelegation } from './scope-delegation'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { Pool, PoolClient } from 'pg'
 import type { Position } from '@af-admin/contracts'
@@ -238,35 +250,54 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
   })
   server.get('/api/system/organization-members', async (request) => {
     const actor = await authenticate(pool, request)
-    requirePermission(actor.permissions, POSITION_PERMISSIONS.assign)
-    const page = pageQuery(request.query)
-    const result = await rows<{
-      id: string
-      name: string
-      departmentId: string | null
-      positionId: string | null
-      positionName: string | null
-      revision: number
-      status: string
-    }>(
+    return authorizedTransaction(
       pool,
-      'SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,m.department_id AS "departmentId",m.position_id AS "positionId",p.position_name AS "positionName",m.revision,m.status FROM memberships m JOIN users u ON m.user_id=u.id LEFT JOIN positions p ON p.tenant_id=m.tenant_id AND p.id=m.position_id WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND af_member_scope_visible($1,$2,$3,m.user_id) ORDER BY m.user_id LIMIT $4 OFFSET $5',
-      [
-        actor.tenantId,
-        actor.userId,
-        POSITION_PERMISSIONS.assign,
-        page.pageSize,
-        page.offset,
-      ]
+      actor,
+      POSITION_PERMISSIONS.assign,
+      async (client, current) => {
+        const page = pageQuery(request.query)
+        const result = await rows<{
+          id: string
+          name: string
+          departmentId: string | null
+          positionId: string | null
+          positionName: string | null
+          revision: number
+          status: string
+        }>(
+          client,
+          'SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,m.department_id AS "departmentId",m.position_id AS "positionId",p.position_name AS "positionName",m.revision,m.status FROM memberships m JOIN users u ON m.user_id=u.id LEFT JOIN positions p ON p.tenant_id=m.tenant_id AND p.id=m.position_id WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND af_member_scope_visible($1,$2,$3,m.user_id) ORDER BY m.user_id LIMIT $4 OFFSET $5',
+          [
+            current.tenantId,
+            current.userId,
+            POSITION_PERMISSIONS.assign,
+            page.pageSize,
+            page.offset,
+          ]
+        )
+        const count = one(
+          await rows<{ total: string }>(
+            client,
+            'SELECT count(*) AS total FROM memberships WHERE tenant_id=$1 AND deleted_at IS NULL AND af_member_scope_visible($1,$2,$3,user_id)',
+            [current.tenantId, current.userId, POSITION_PERMISSIONS.assign]
+          )
+        )
+        const visible = await result.reduce(
+          async (previous, member) => [
+            ...(await previous),
+            await projectMemberFields(
+              client,
+              current,
+              POSITION_PERMISSIONS.assign,
+              member.id,
+              member
+            ),
+          ],
+          Promise.resolve([] as Record<string, unknown>[])
+        )
+        return ok({ list: visible, total: Number(count.total) }, request.id)
+      }
     )
-    const count = one(
-      await rows<{ total: string }>(
-        pool,
-        'SELECT count(*) AS total FROM memberships WHERE tenant_id=$1 AND deleted_at IS NULL AND af_member_scope_visible($1,$2,$3,user_id)',
-        [actor.tenantId, actor.userId, POSITION_PERMISSIONS.assign]
-      )
-    )
-    return ok({ list: result, total: Number(count.total) }, request.id)
   })
   server.post(
     '/api/system/organization-members/:id/assign',
@@ -284,7 +315,7 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
         expectedRevision: positiveInteger(body.expectedRevision),
       }
       return ok(
-        await idempotent(
+        await idempotent<Record<string, unknown>>(
           pool,
           actor,
           POSITION_PERMISSIONS.assign,
@@ -293,9 +324,13 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
           input,
           async (client, current) => {
             const member = one(
-              await rows<{ revision: number; status: string }>(
+              await rows<{
+                revision: number
+                status: string
+                department_id: string | null
+              }>(
                 client,
-                'SELECT revision,status FROM memberships WHERE tenant_id=$1 AND user_id=$2 AND deleted_at IS NULL FOR UPDATE',
+                'SELECT revision,status,department_id FROM memberships WHERE tenant_id=$1 AND user_id=$2 AND deleted_at IS NULL FOR UPDATE',
                 [current.tenantId, id]
               )
             )
@@ -305,6 +340,52 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
               POSITION_PERMISSIONS.assign,
               id
             )
+            await assertMemberFields(
+              client,
+              current,
+              POSITION_PERMISSIONS.assign,
+              id,
+              ['dept']
+            )
+            if (member.department_id !== input.departmentId) {
+              await assertDataDelegation(
+                client,
+                current,
+                [POSITION_PERMISSIONS.assign],
+                null,
+                id,
+                {
+                  scope: 'department',
+                  roots: [input.departmentId],
+                  fields: ['dept'],
+                }
+              )
+              const affected = await rows<{
+                id: string
+                data_scope: string
+                field_permissions: string[]
+                permissions: string[]
+              }>(
+                client,
+                "SELECT r.id,s.data_scope,s.field_permissions,(SELECT COALESCE(jsonb_agg(rp.permission_code),'[]'::jsonb) FROM role_permissions rp WHERE rp.tenant_id=r.tenant_id AND rp.role_id=r.id) AS permissions FROM member_roles mr JOIN roles r ON r.tenant_id=mr.tenant_id AND r.id=mr.role_id JOIN role_member_scopes s ON s.tenant_id=r.tenant_id AND s.role_id=r.id WHERE mr.tenant_id=$1 AND mr.user_id=$2 AND r.deleted_at IS NULL AND r.status='enabled' AND s.data_scope IN ('department','department-and-children') AND NOT EXISTS(SELECT 1 FROM role_scope_departments sd WHERE sd.tenant_id=r.tenant_id AND sd.role_id=r.id)",
+                [current.tenantId, id]
+              )
+              await affected.reduce(async (previous, role) => {
+                await previous
+                await assertDataDelegation(
+                  client,
+                  current,
+                  role.permissions,
+                  role.id,
+                  id,
+                  {
+                    scope: role.data_scope,
+                    roots: [input.departmentId],
+                    fields: role.field_permissions,
+                  }
+                )
+              }, Promise.resolve())
+            }
             assertRevision(member.revision, input.expectedRevision)
             if (member.status !== 'enabled')
               throw new DomainError(409, 'MEMBER_UNAVAILABLE', '成员已停用')
@@ -354,7 +435,16 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
               revision: member.revision + 1,
             }
           },
-          true
+          true,
+          '',
+          async (client, current, response) =>
+            projectMemberFields(
+              client,
+              current,
+              POSITION_PERMISSIONS.assign,
+              id,
+              response
+            )
         ),
         request.id
       )

@@ -9,6 +9,32 @@ const login = async (page: Page, user: string) => {
   await page.getByRole('textbox', { name: '密码', exact: true }).fill(user)
   await submitLogin(page)
 }
+const findOrganizationMember = async (
+  page: Page,
+  name: string,
+  remaining = 100
+): Promise<Locator> => {
+  expect(
+    remaining,
+    'member must be reachable through actual pagination'
+  ).toBeGreaterThan(0)
+  const list = page.getByTestId('organization-member-list')
+  await expect(list.locator('tbody tr').first()).toBeVisible()
+  await expect(list.locator('.arco-spin-loading')).toHaveCount(0)
+  const member = list.locator('tbody tr').filter({ hasText: name })
+  if (await member.count()) return member
+  const next = list.locator('.arco-pagination-item-next')
+  await expect(next).not.toHaveClass(/arco-pagination-item-disabled/)
+  const loaded = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/system/organization-members') &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
+  )
+  await next.click()
+  await (await loaded).finished()
+  return findOrganizationMember(page, name, remaining - 1)
+}
 const selectField = async (
   page: Page,
   editor: Locator,
@@ -167,8 +193,7 @@ test('positions and member binding persist through a new browser and prevent del
   try {
     await login(page, 'a-admin')
     await page.goto('/system/positionSystem')
-    const employee = page.locator('tbody tr').filter({ hasText: 'A 员工' })
-    await employee
+    await (await findOrganizationMember(page, 'A 员工'))
       .getByRole('button', { name: '组织绑定', exact: true })
       .click()
     const assignment = page.getByRole('dialog', { name: '成员组织绑定' })
@@ -192,7 +217,7 @@ test('positions and member binding persist through a new browser and prevent del
     await editor.getByPlaceholder('请输入岗位名称').fill(`${name}-更新`)
     await editor.getByRole('button', { name: '保存', exact: true }).click()
     await expect(editor).not.toBeVisible()
-    await employee
+    await (await findOrganizationMember(page, 'A 员工'))
       .getByRole('button', { name: '组织绑定', exact: true })
       .click()
     await assignment
@@ -203,7 +228,7 @@ test('positions and member binding persist through a new browser and prevent del
       .click()
     await expect(assignment).not.toBeVisible()
     await page.reload()
-    await employee
+    await (await findOrganizationMember(page, 'A 员工'))
       .getByRole('button', { name: '组织绑定', exact: true })
       .click()
     await expect(
@@ -230,9 +255,8 @@ test('positions and member binding persist through a new browser and prevent del
       const fresh = await other.newPage()
       await login(fresh, 'a-admin')
       await fresh.goto('/system/positionSystem')
-      await fresh
-        .locator('tbody tr')
-        .filter({ hasText: 'A 员工' })
+      const persistedEmployee = await findOrganizationMember(fresh, 'A 员工')
+      await persistedEmployee
         .getByRole('button', { name: '组织绑定', exact: true })
         .click()
       const reopened = fresh.getByRole('dialog', { name: '成员组织绑定' })
@@ -267,7 +291,7 @@ test('positions and member binding persist through a new browser and prevent del
     } finally {
       await tenantB.close()
     }
-    await employee
+    await (await findOrganizationMember(page, 'A 员工'))
       .getByRole('button', { name: '组织绑定', exact: true })
       .click()
     await assignment.getByLabel('成员部门').selectOption(departmentId)

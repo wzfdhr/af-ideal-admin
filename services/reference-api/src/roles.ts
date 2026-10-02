@@ -26,7 +26,7 @@ import {
   pageQuery,
 } from './support'
 import { governors, assertGovernorTransition } from './governance'
-import { assertMemberScope } from './member-scope'
+import { assertMemberScope, projectMemberFields } from './member-scope'
 import { assertDataDelegation } from './scope-delegation'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { Pool, PoolClient } from 'pg'
@@ -351,7 +351,7 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
       async (client, current) => {
         const page = pageQuery(request.query)
         const filter =
-          'WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND u.username ILIKE $2 AND af_member_scope_visible($1,$3,$4,m.user_id)'
+          "WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND u.username ILIKE $2 AND af_member_scope_visible($1,$3,$4,m.user_id) AND ($2='%%' OR af_member_field_visible($1,$3,$4,m.user_id,'username'))"
         const params = [
           current.tenantId,
           `%${page.keyword}%`,
@@ -376,7 +376,20 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
           `SELECT m.user_id AS id,u.username,COALESCE(m.display_name,u.name) AS name,m.status,m.revision FROM memberships m JOIN users u ON u.id=m.user_id ${filter} ORDER BY m.user_id LIMIT $5 OFFSET $6`,
           [...params, page.pageSize, page.offset]
         )
-        return ok({ list: members, total: Number(count.total) }, request.id)
+        const visible = await members.reduce(
+          async (previous, member) => [
+            ...(await previous),
+            await projectMemberFields(
+              client,
+              current,
+              ROLE_PERMISSIONS.assign,
+              member.id,
+              member
+            ),
+          ],
+          Promise.resolve([] as Record<string, unknown>[])
+        )
+        return ok({ list: visible, total: Number(count.total) }, request.id)
       }
     )
   })
