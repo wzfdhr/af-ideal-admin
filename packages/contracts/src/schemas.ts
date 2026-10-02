@@ -73,6 +73,10 @@ export interface Application {
   activeReleaseId: string | null
   revision: number
   releases?: Release[]
+  status?: 'enabled' | 'archived'
+  businessKind?: 'leave' | 'generic'
+  formDraftId?: string | null
+  workflowDraftId?: string | null
 }
 export interface LeaveRequest extends LeaveFields {
   id: string

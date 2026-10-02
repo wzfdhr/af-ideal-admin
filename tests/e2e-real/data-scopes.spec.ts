@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import submitLogin from './helpers/login'
-import type { Page } from '@playwright/test'
+import type { Page, Locator } from '@playwright/test'
 
 const login = async (page: Page, user: string, password = user) => {
   await page.goto('/login')
@@ -10,6 +10,32 @@ const login = async (page: Page, user: string, password = user) => {
   await submitLogin(page)
 }
 
+const findScopeRow = async (
+  page: Page,
+  name: string,
+  remaining = 100
+): Promise<Locator> => {
+  expect(
+    remaining,
+    'saved role must be reachable through real pagination'
+  ).toBeGreaterThan(0)
+  const list = page.getByTestId('member-data-scope-page')
+  await expect(list.locator('tbody tr').first()).toBeVisible()
+  await expect(list.locator('.arco-spin-loading')).toHaveCount(0)
+  const row = list.locator('tbody tr').filter({ hasText: name })
+  if (await row.count()) return row
+  const next = list.locator('.arco-pagination-item-next')
+  await expect(next).not.toHaveClass(/arco-pagination-item-disabled/)
+  const loaded = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/permissions/data-scopes') &&
+      response.request().method() === 'GET' &&
+      response.status() === 200
+  )
+  await next.click()
+  await (await loaded).finished()
+  return findScopeRow(page, name, remaining - 1)
+}
 test('saved member scope survives reload and immediately restricts the existing member session and preview', async ({
   browser,
   request,
@@ -68,7 +94,7 @@ test('saved member scope survives reload and immediately restricts the existing 
     await expect(member.locator('tbody tr')).toHaveCount(1)
     await admin.goto('/permissions/backend/data-scope')
     await expect(admin.getByTestId('member-data-scope-page')).toBeVisible()
-    const row = admin.locator('tbody tr').filter({ hasText: roleName })
+    const row = await findScopeRow(admin, roleName)
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: '配置', exact: true }).click()
     const editor = admin.getByTestId('member-scope-editor')
@@ -87,6 +113,7 @@ test('saved member scope survives reload and immediately restricts the existing 
     await editor.getByRole('button', { name: '确定', exact: true }).click()
     await expect(editor).not.toBeVisible()
     await admin.reload()
+    await findScopeRow(admin, roleName)
     await expect(row).toContainText('本人')
     await row.getByRole('button', { name: '配置', exact: true }).click()
     await expect(

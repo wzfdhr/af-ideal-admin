@@ -2,8 +2,8 @@
   <main class="leave-page leave-configuration" data-testid="leave-application">
     <div class="leave-header">
       <div>
-        <p>请假审批 / 配置与发布</p>
-        <h1>请假应用</h1>
+        <p>业务应用 / 配置与发布</p>
+        <h1>{{ app?.name || '应用配置' }}</h1>
       </div>
       <a-button :disabled="busy" @click="reload">重新加载</a-button>
     </div>
@@ -32,7 +32,13 @@
     />
     <a-spin :loading="loading" class="w-full">
       <section v-if="app" class="leave-panel">
-        <h2>当前发布版本 v{{ activeRelease?.releaseVersion }}</h2>
+        <h2>
+          {{
+            activeRelease
+              ? `当前发布版本 v${activeRelease.releaseVersion}`
+              : '尚未发布'
+          }}
+        </h2>
         <p class="leave-muted">
           表单和流程一起发布。已提交的申请继续使用原版本；新申请使用活动版本。
         </p>
@@ -40,7 +46,13 @@
           <a-button
             v-if="can('application:publish')"
             type="primary"
-            :disabled="dirty || busy || !formDraft || !workflowDraft"
+            :disabled="
+              dirty ||
+              busy ||
+              !formDraft ||
+              !workflowDraft ||
+              app?.status === 'archived'
+            "
             data-testid="application-publish"
             @click="publish"
           >
@@ -64,7 +76,12 @@
           </select>
           <a-button
             v-if="can('application:rollback')"
-            :disabled="busy || rollbackId === app.activeReleaseId"
+            :disabled="
+              busy ||
+              !rollbackId ||
+              rollbackId === app.activeReleaseId ||
+              app.status === 'archived'
+            "
             data-testid="application-rollback"
             @click="activate"
           >
@@ -169,8 +186,8 @@
   </main>
 </template>
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import { confirmR1Action } from '@/services/r1-confirm'
 import FormDesigner from '@/components/form-designer/index.vue'
 import WorkflowDesigner from '@/components/workflow-designer/index.vue'
@@ -198,6 +215,10 @@ import { errorMessage, fieldErrors, stableSignature } from './shared'
 import type { Application } from '@af-admin/contracts'
 
 const user = useUserStore()
+const route = useRoute()
+const applicationId = computed(() =>
+  typeof route.params.id === 'string' ? route.params.id : 'leave'
+)
 const app = ref<Application>()
 const forms = ref<ConfigurationDraft[]>([])
 const workflows = ref<ConfigurationDraft[]>([])
@@ -251,26 +272,40 @@ const selectWorkflow = () => {
   editedWorkflow.value = workflowDraft.value?.schema
 }
 const load = async () => {
+  const requestedId = applicationId.value
   validation.value = {}
   loading.value = true
   error.value = ''
   try {
     const [application, formData, workflowData, people] = await Promise.all([
-      getLeaveApplication('leave'),
+      getLeaveApplication(requestedId),
       fetchConfigurationDrafts('form'),
       fetchConfigurationDrafts('workflow'),
       fetchConfigurationMembers(user.tenantId || ''),
     ])
+    if (requestedId !== applicationId.value) return
     app.value = application
     forms.value = formData.list
     workflows.value = workflowData.list
+    if (requestedId !== 'leave') {
+      forms.value = forms.value.filter(
+        (item) => item.id === application.formDraftId
+      )
+      workflows.value = workflows.value.filter(
+        (item) => item.id === application.workflowDraftId
+      )
+    }
     members.value = people
     formId.value =
-      forms.value.find((item) => item.id === 'form-leave')?.id ||
+      forms.value.find(
+        (item) => item.id === (application.formDraftId || 'form-leave')
+      )?.id ||
       forms.value[0]?.id ||
       ''
     workflowId.value =
-      workflows.value.find((item) => item.id === 'workflow-leave')?.id ||
+      workflows.value.find(
+        (item) => item.id === (application.workflowDraftId || 'workflow-leave')
+      )?.id ||
       workflows.value[0]?.id ||
       ''
     selectForm()
@@ -343,12 +378,12 @@ const publish = () =>
       workflowRevision: workflowDraft.value.revision,
     }
     const release = await publishLeaveApplication(
-      'leave',
+      applicationId.value,
       payload,
       retry.key('publish', payload)
     )
     retry.complete('publish')
-    app.value = await getLeaveApplication('leave')
+    app.value = await getLeaveApplication(applicationId.value)
     rollbackId.value = app.value.activeReleaseId || ''
     message.value = `发布成功，当前为 v${release.releaseVersion}`
   })
@@ -364,7 +399,7 @@ const activate = () =>
       expectedRevision: app.value.revision,
     }
     app.value = await activateLeaveRelease(
-      'leave',
+      applicationId.value,
       payload.releaseId,
       payload.expectedRevision,
       retry.key('activate', payload)
@@ -382,6 +417,17 @@ const reload = async () => {
 onBeforeRouteLeave(
   () => !dirty.value || confirmR1Action('配置有未保存修改，确认离开？')
 )
+onBeforeRouteUpdate(
+  async () =>
+    !dirty.value || confirmR1Action('切换应用将丢弃未保存修改，是否继续？')
+)
+watch(applicationId, () => {
+  app.value = undefined
+  forms.value = []
+  workflows.value = []
+  retry.clear()
+  load()
+})
 onMounted(load)
 onBeforeUnmount(unregister)
 </script>

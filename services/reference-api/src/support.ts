@@ -77,7 +77,7 @@ const refreshActor = async (
 export const authorizedTransaction = <T>(
   pool: Pool,
   actor: Actor,
-  permission: string,
+  permission: string | undefined,
   run: (client: PoolClient, current: Actor) => Promise<T>,
   exclusiveTenant = false,
   identityGate = ''
@@ -98,7 +98,7 @@ export const authorizedTransaction = <T>(
       )
     )
     const current = await refreshActor(client, actor)
-    requirePermission(current.permissions, permission)
+    if (permission) requirePermission(current.permissions, permission)
     return run(client, current)
   })
 const canonical = (input: Json): Json => {

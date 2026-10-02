@@ -376,7 +376,12 @@ const load = async () => {
   error.value = ''
   try {
     if (isNew.value) {
-      const app = await getLeaveApplication('leave')
+      const app = await getLeaveApplication(
+        current.value?.release?.applicationId ||
+          (typeof route.query.applicationId === 'string'
+            ? route.query.applicationId
+            : 'leave')
+      )
       release.value = app.releases?.find(
         (item) => item.id === app.activeReleaseId
       )
@@ -535,7 +540,12 @@ const reload = async () => {
 }
 const previewLatest = async () => {
   try {
-    const app = await getLeaveApplication('leave')
+    const app = await getLeaveApplication(
+      current.value?.release?.applicationId ||
+        (typeof route.query.applicationId === 'string'
+          ? route.query.applicationId
+          : 'leave')
+    )
     proposedRelease.value = app.releases?.find(
       (item) => item.id === app.activeReleaseId
     )

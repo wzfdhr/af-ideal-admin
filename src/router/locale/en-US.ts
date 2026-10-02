@@ -1,4 +1,8 @@
 export default {
+  'menu.applications': 'Business applications',
+  'menu.applications.center': 'Application center',
+  'menu.applications.configuration': 'Application configuration',
+
   'menu.leave': 'Leave application',
   'menu.leave.requests': 'My requests',
   'menu.leave.detail': 'Request details',

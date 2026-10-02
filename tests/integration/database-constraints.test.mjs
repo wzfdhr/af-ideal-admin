@@ -32,7 +32,7 @@ test('migrations are checksum verified and repeatable against real PostgreSQL', 
   await migrations.migrate(pool)
   await migrations.migrate(pool)
   const result=await pool.query('SELECT name FROM schema_migrations ORDER BY name')
-  assert.deepEqual(result.rows.map((row)=>row.name),['001_leave_approval.sql','002_audit_and_telemetry.sql','003_organization.sql','004_positions.sql','005_member_profiles.sql','006_credential_revisions.sql','007_roles_and_permissions.sql','008_member_data_scopes.sql'])
+  assert.deepEqual(result.rows.map((row)=>row.name),['001_leave_approval.sql','002_audit_and_telemetry.sql','003_organization.sql','004_positions.sql','005_member_profiles.sql','006_credential_revisions.sql','007_roles_and_permissions.sql','008_member_data_scopes.sql','009_application_lifecycle.sql'])
 })
 test('database rejects cross-tenant references and published release mutation', async () => {
   await isolated(async(client)=>{

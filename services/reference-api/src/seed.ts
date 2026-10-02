@@ -65,6 +65,10 @@ export const seedDemo = async (pool: Pool) => {
         "INSERT INTO workflow_drafts (tenant_id,id,name,schema) VALUES ($1,'workflow-leave','请假审批',$2) ON CONFLICT DO NOTHING",
         [tenantId, JSON.stringify(workflow)]
       )
+      await client.query(
+        "UPDATE applications SET form_draft_id='form-leave',workflow_draft_id='workflow-leave' WHERE tenant_id=$1 AND id='leave' AND form_draft_id IS NULL AND workflow_draft_id IS NULL",
+        [tenantId]
+      )
       const existing = await client.query(
         'SELECT id FROM application_releases WHERE tenant_id=$1 AND application_id=$2',
         [tenantId, 'leave']

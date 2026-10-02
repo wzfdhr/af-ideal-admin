@@ -178,6 +178,10 @@ export const initializePilot = async (pool: Pool, input: unknown) => {
         ),
       ]
     )
+    await client.query(
+      "UPDATE applications SET form_draft_id='form-leave',workflow_draft_id='workflow-leave' WHERE tenant_id=$1 AND id='leave'",
+      [tenantId]
+    )
   })
 }
 

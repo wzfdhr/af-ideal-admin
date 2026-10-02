@@ -4,6 +4,10 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  { code: 'application:list', title: '查看应用中心', module: '应用' },
+  { code: 'application:create', title: '创建应用', module: '应用' },
+  { code: 'application:copy', title: '独立复制应用', module: '应用' },
+  { code: 'application:archive', title: '归档和恢复应用', module: '应用' },
   {
     code: 'data-permission:view',
     title: '查看数据范围配置',

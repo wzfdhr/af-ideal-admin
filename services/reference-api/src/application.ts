@@ -54,6 +54,10 @@ interface ApplicationRow {
   code: string
   name: string
   active_release_id: string | null
+  status: 'enabled' | 'archived'
+  business_kind: 'leave' | 'generic'
+  form_draft_id: string | null
+  workflow_draft_id: string | null
   revision: number
 }
 interface DraftRow {
@@ -95,6 +99,10 @@ export const applicationDto = (row: ApplicationRow): Application => ({
   name: row.name,
   code: row.code,
   activeReleaseId: row.active_release_id,
+  status: row.status,
+  businessKind: row.business_kind,
+  formDraftId: row.form_draft_id,
+  workflowDraftId: row.workflow_draft_id,
   revision: row.revision,
 })
 export const readApplication = async (
@@ -111,6 +119,13 @@ export const readApplication = async (
       )
     )
   )
+  if (
+    id !== 'leave' &&
+    !hasPermission(actor.permissions, 'application:configure') &&
+    !hasPermission(actor.permissions, 'application:list') &&
+    (!app.activeReleaseId || app.businessKind !== 'leave')
+  )
+    throw new DomainError(404, 'NOT_FOUND', '资源不存在')
   app.releases = (
     await rows<ReleaseRow>(
       db,
@@ -298,7 +313,37 @@ export const publishApplication = (
           [current.tenantId, id]
         )
       )
+      if (app.status === 'archived')
+        throw new DomainError(
+          409,
+          'APPLICATION_ARCHIVED',
+          '应用已归档，请先恢复'
+        )
       assertRevision(app.revision, payload.expectedRevision)
+      if (
+        id !== 'leave' &&
+        (payload.formDraftId !== app.form_draft_id ||
+          payload.workflowDraftId !== app.workflow_draft_id)
+      )
+        throw new DomainError(
+          422,
+          'APPLICATION_BINDING_INVALID',
+          '应用必须发布自己的独立表单和流程草稿'
+        )
+      if (
+        (
+          await rows(
+            client,
+            'SELECT id FROM applications WHERE tenant_id=$1 AND id<>$2 AND (form_draft_id=$3 OR workflow_draft_id=$4) LIMIT 1',
+            [current.tenantId, id, payload.formDraftId, payload.workflowDraftId]
+          )
+        ).length
+      )
+        throw new DomainError(
+          422,
+          'APPLICATION_BINDING_INVALID',
+          '不能发布其他应用拥有的可变草稿，请先复制配置'
+        )
       const form = one(
         await rows<DraftRow>(
           client,
@@ -316,7 +361,7 @@ export const publishApplication = (
       assertRevision(form.revision, payload.formRevision)
       assertRevision(workflow.revision, payload.workflowRevision)
       const formSnapshot = parseForm(form.schema)
-      validateLeaveForm(formSnapshot)
+      if (app.business_kind === 'leave') validateLeaveForm(formSnapshot)
       const workflowSnapshot = validateSerialWorkflow(workflow.schema)
       workflowSnapshot.nodes.forEach((node) => {
         if (node.config.formId && node.config.formId !== payload.formDraftId)
@@ -350,8 +395,14 @@ export const publishApplication = (
       )
       fault('publish:release-created')
       await client.query(
-        'UPDATE applications SET active_release_id=$3,revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2',
-        [current.tenantId, id, releaseId]
+        'UPDATE applications SET active_release_id=$3,form_draft_id=$4,workflow_draft_id=$5,revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2',
+        [
+          current.tenantId,
+          id,
+          releaseId,
+          payload.formDraftId,
+          payload.workflowDraftId,
+        ]
       )
       await audit(
         client,
@@ -395,6 +446,12 @@ export const activateRelease = (
           [current.tenantId, id]
         )
       )
+      if (app.status === 'archived')
+        throw new DomainError(
+          409,
+          'APPLICATION_ARCHIVED',
+          '应用已归档，请先恢复'
+        )
       assertRevision(app.revision, payload.expectedRevision)
       const release = await readRelease(
         client,

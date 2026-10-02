@@ -275,12 +275,28 @@ export const listLeaves = async (
 const activeRelease = async (db: Database, actor: Actor, releaseId: string) => {
   const release = await readRelease(db, actor.tenantId, releaseId)
   const app = one(
-    await rows<{ active_release_id: string | null }>(
+    await rows<{
+      active_release_id: string | null
+      status: string
+      business_kind: string
+    }>(
       db,
-      'SELECT active_release_id FROM applications WHERE tenant_id=$1 AND id=$2 FOR SHARE',
+      'SELECT active_release_id,status,business_kind FROM applications WHERE tenant_id=$1 AND id=$2 FOR SHARE',
       [actor.tenantId, release.applicationId]
     )
   )
+  if (app.status === 'archived')
+    throw new DomainError(
+      409,
+      'APPLICATION_ARCHIVED',
+      '应用已归档，不能创建或提交新业务'
+    )
+  if (app.business_kind !== 'leave')
+    throw new DomainError(
+      422,
+      'APPLICATION_KIND_INVALID',
+      '此应用不使用请假业务运行时'
+    )
   if (app.active_release_id !== releaseId)
     throw new DomainError(
       409,

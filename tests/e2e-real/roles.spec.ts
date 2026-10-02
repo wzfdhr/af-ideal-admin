@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import submitLogin from './helpers/login'
+import findTableRow from './helpers/pagination'
 import type { Page } from '@playwright/test'
 
 const login = async (page: Page, user: string, password = user) => {
@@ -49,7 +50,13 @@ test('real role grants reach an existing member session and revocation removes m
     await roleEditor.getByLabel('查看成员详情', { exact: true }).check()
     await roleEditor.getByRole('button', { name: '确定', exact: true }).click()
     await expect(roleEditor).not.toBeVisible()
-    const roleRow = admin.locator('tbody tr').filter({ hasText: name })
+    const roles = admin
+      .getByTestId('reference-role-system')
+      .locator(':scope > section')
+      .filter({
+        has: admin.getByRole('heading', { name: '角色', exact: true }),
+      })
+    const roleRow = await findTableRow(admin, roles, name, '/api/system/roles')
     await expect(roleRow).toBeVisible()
     await admin.getByLabel('查询授权账号').fill(username)
     await admin.getByRole('button', { name: '查询成员', exact: true }).click()
@@ -71,6 +78,7 @@ test('real role grants reach an existing member session and revocation removes m
       member.getByText('用户配置', { exact: true }).first()
     ).toBeVisible()
     await admin.reload()
+    await findTableRow(admin, roles, name, '/api/system/roles')
     await expect(roleRow).toBeVisible()
     await login(other, 'b-admin')
     await other.goto('/system/roleSystem')

@@ -1,4 +1,8 @@
 export default {
+  'menu.applications': '业务应用',
+  'menu.applications.center': '应用中心',
+  'menu.applications.configuration': '应用配置',
+
   'menu.leave': '请假应用',
   'menu.leave.requests': '我的申请',
   'menu.leave.detail': '申请详情',

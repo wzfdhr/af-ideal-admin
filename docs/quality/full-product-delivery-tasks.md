@@ -24,7 +24,7 @@
 | FP-006 | 后端数据范围、字段投影/脱敏；all 只表示本租户 | FP-003/005 | T-608 | 进行中 |
 | FP-007 | 菜单资源持久化、安全 componentKey、路由/按钮权限一致 | FP-005 | T-106/T-204 | 未开始 |
 | FP-008 | 字典和项目持久化、版本、租户范围及缓存失效 | FP-005 | T-203/T-204 | 未开始 |
-| FP-009 | 应用创建/复制/配置/发布/归档，独立 ID 和版本 | FP-005 | LA-037 | 未开始 |
+| FP-009 | 应用创建/复制/配置/发布/归档，独立 ID 和版本 | FP-005 | LA-037 | 进行中 |
 | FP-010 | 通用业务记录、提交/详情/权限/快照/历史和 R1 适配 | FP-006/009 | LA-037/042 | 未开始 |
 | FP-011 | 复杂表单校验/联动、安全数据源登记、映射、超时及恢复 | FP-008/010 | T-301/303 | 未开始 |
 | FP-012 | 表单编辑重开、比较、发布运行一致、格式迁移和回滚 | FP-011 | T-304/LA-040 | 未开始 |
@@ -185,3 +185,15 @@
 - 首轮浏览器暴露缺少详情权限仍显示编辑按钮，以及业务范围403被通用处理器跳转导致输入丢失。编辑按钮现在要求详情+修改，表单展示后端提示；三个明确范围/字段拒绝保留页面，功能权限FORBIDDEN仍进入无权限页。data-scope-tree-domain-browser-green.log及data-scope-tree-final-browser.log验证真实拒绝保留输入、角色即时追加详情权限和随后撤销修改权限的两种行为；岗位持久化/引用删除也回归通过。早期失败data-scope-tree-browser.log、data-scope-tree-browser-fixed.log、data-scope-tree-browser-permissions-green.log保留，不能把这些文件名误作通过结果。
 - 部门页单测保留两次详情API调用次数断言，并增加详情+修改权限组合及all模式断言，兼容stub的数组权限。data-scope-tree-final-unit.log的428项通过；data-scope-tree-domain-denial-build.log完整workspace构建通过，data-scope-tree-types.log类型通过，data-scope-tree-final-lint-clean.log无错误。data-scope-tree-mock-browser.log的3条原开发Mock路径通过，未据此宣称Mock范围完整或真实部署完成。
 - 全产品45项冻结范围保持不变。FP-006还缺跨模块业务/附件/报表/审计范围、Mock范围生命周期、容量和完整部署/恢复/兼容回退；本增量需要新提交和新CI，不标记完整模块或全产品完成。
+
+### FP-009 应用中心首批真实纵向路径
+
+- 实施/阶段自检：Codex。36025c5cdf10c8060da250e492a8fbe549fec86a的实际CI36972459081已通过，verify/real-business均success，85项数据库/API及25条真实浏览器通过；归档ci-36972459081，状态data-scope-tree-remote-ci.json。本轮应用中心不包含在该CI里。
+- 新增009迁移及应用中心创建、列表/查询、独立复制、元数据维护、归档/恢复接口。每个新应用有独立草稿引用和发布版本；复制实际重映射流程formId，已有不可变发布、人员校验、审批、历史及通知复用。模板复制不复制业务数据、会话或凭据。
+- 应用配置页按当前应用加载自己的默认草稿；新应用发布禁止借用其他应用可变草稿。认证读取事务刷新权限；未发布或generic配置需要管理权限。归档阻止新业务和发布/切换，但真实在途审批可完成。
+- application-lifecycle-first-http.log保留用例使用了错误审批URL的404；修正为现有workflow-tasks真实入口后，application-lifecycle-binding-http.log的91项数据库/API通过，包含独立发布v1、表单引用重映射、原模板不变、元数据冲突与标识不可变、双租户/原始非法输入、目录/复制但无配置权限的受控草稿复制，以及归档后既有两级审批完成。
+- application-lifecycle-browser-fixed.log的应用中心真实页面闭环通过：创建请假模板、保存刷新、自己的草稿、两设计器保存、独立发布v1、运行提交、复制、归档/恢复和第二租户隔离。先前application-lifecycle-browser.log因把原生select的id当成testid而失败；改为语义label，并从真实元数据验证精确草稿ID，未弱化独立性断言。
+- application-lifecycle-final-unit.log的428单测通过；application-lifecycle-final-build-fixed.log的workspace构建通过，application-lifecycle-page-types.log类型通过；application-lifecycle-commit-lint.log无错误。构建和格式早期失败保留。application-lifecycle-final-mock-browser.log的3条旧开发Mock路径通过，不证明新应用中心Mock生命周期。
+- 原全量浏览器application-lifecycle-final-real-browser.log有23通过、3失败，原因是积累的演示记录不再在第一页；权限/业务断言均保留，改为真实分页/现有查询定位。application-lifecycle-paginated-browser.log的7条相关路径全部通过，完整26项再次回归另存application-lifecycle-complete-real-browser.log，须以该实际结果记录完成情况。
+- 009只应用到专属开发演示库及API10890/网关4189，原R1环境、卷、包保持独立。通用记录/第二业务模板、应用中心完整Mock、失败注入/进程恢复、容量及部署备份回退仍需继续，FP-009保持进行中。不能将复制请假模板算成第二个不同业务模板，不能把空白generic配置当作通用业务运行完成。
+- application-lifecycle-complete-real-browser.log 的完整26项真实浏览器回归已通过，包含原R1及新应用中心。application-lifecycle-command-contracts.log的16契约与15领域/Mock检查通过；这些结果仍非全产品最终门禁。

@@ -267,6 +267,25 @@ export const createR1Menu = (permissions: string[]) => {
         },
       ],
     })
+  if (permissions.includes('application:list') || permissions.includes('*'))
+    entries.push({
+      path: '/applications',
+      name: 'applications',
+      componentKey: 'DefaultLayout',
+      meta: { requireAuth: true, locale: 'menu.applications', order: 2 },
+      children: [
+        {
+          path: 'center',
+          name: 'applicationCenter',
+          componentKey: 'ApplicationCenter',
+          meta: {
+            requireAuth: true,
+            locale: 'menu.applications.center',
+            access: { permissions: ['application:list'] },
+          },
+        },
+      ],
+    })
   return entries
 }
 

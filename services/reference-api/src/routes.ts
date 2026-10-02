@@ -34,7 +34,7 @@ import {
   readNotification,
   readAllNotifications,
 } from './notification'
-import { rows, one, pageQuery, noFault } from './support'
+import { rows, one, pageQuery, noFault, authorizedTransaction } from './support'
 import type { Pool } from 'pg'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { FaultInjector } from './support'
@@ -57,7 +57,13 @@ export const registerBusiness = (
   server.get('/api/applications/:id', async (request) =>
     ok(
       request,
-      await readApplication(pool, await auth(request), parameterId(request))
+      await authorizedTransaction(
+        pool,
+        await auth(request),
+        undefined,
+        (client, current) =>
+          readApplication(client, current, parameterId(request))
+      )
     )
   )
   server.post('/api/applications/:id/releases', async (request) =>

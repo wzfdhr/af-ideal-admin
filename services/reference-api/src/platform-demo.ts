@@ -5,6 +5,7 @@ import {
   ROLE_PERMISSIONS,
   LEAVE_PERMISSIONS,
   DATA_SCOPE_PERMISSIONS,
+  APPLICATION_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -38,6 +39,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(ROLE_PERMISSIONS),
           ...Object.values(LEAVE_PERMISSIONS),
           ...Object.values(DATA_SCOPE_PERMISSIONS),
+          ...Object.values(APPLICATION_PERMISSIONS),
         ]),
       ]
     )
