@@ -51,7 +51,7 @@
     <span class="label">最大行数</span>
     <a-input-number v-model="maxrow" @change="ischange"></a-input-number>
   </div>
-  <a-form-item label="自定义校验规则">
+  <a-form-item v-if="dataMode === 'mock'" label="自定义校验规则">
     <a-textarea
       v-model="widget.config.rules"
       :auto-size="{ minRows: 4, maxRows: 6 }"
@@ -71,6 +71,7 @@
 
 <script setup lang="ts">
 import { computed, PropType, ref } from 'vue'
+import { dataMode } from '../../../../config/data-mode'
 import { IConfigTextarea } from '../types'
 import { inputEventNames } from '../utils'
 

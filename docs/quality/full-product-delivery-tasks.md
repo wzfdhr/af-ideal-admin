@@ -292,3 +292,20 @@
 - package-sources-browser.log保留UI文案调整后旧测试假定“待绑定槽位”失败；恢复清楚的“人员待绑定槽位”文本同时保留新增数据源槽位，不删除旧v1断言。package-sources-browser-style.log保留新增测试for-of不符合lint的错误，改数组迭代后package-sources-browser-style-final.log无错误。
 - package-sources-unit.log的437单测、package-sources-types-final.log的全部workspace类型、package-sources-all-build.log及后续package-sources-label-build.log构建通过；package-sources-lint.log无错误/6既有警告。旧smoke/独立Mock分别3项通过，证据package-sources-smoke-browser.log/package-sources-mock-browser.log。
 - 本轮没有新增/改写数据库迁移，仍使用专属演示库和API10890/网关4189；原R1包/环境/卷保留。源/目标全新部署、完整格式迁移、HTTP/页面/物料/插件包、包容量/恢复及最终备份/回退等仍开放，FP-019保持进行中。当前结果仍需本轮新提交远端CI，不替代全产品最终交付。
+
+### 应用包来源重绑远端验证
+
+- d8c8eb7fbf6bd96b5b3b8cd6da6d9c7f4268d148的实际CI37050214019已通过，verify/real-business均success；证据归档ci-37050214019及package-sources-remote-ci.json。远端118项数据库/API、33条真实浏览器通过。此结果只对应该提交，不能证明后续表单规则或全产品交付完成。
+
+### FP-011/012 结构化表单校验与单条件联动增量
+
+- 实施/阶段自检：Codex，2026-10-03。方案见full-product-form-behavior-design.md。表单v2新增闭合validation/behavior：文本最小长度、邮箱/HTTPS/电话命名格式，同类型相等与日期/数值先后比较，单字段实际值驱动显示/条件必填。拒绝脚本/任意正则、未知规则、错误类型、悬空/自引用/联动字段级联、隐藏比较目标；整数条件按规范化数值匹配，日期验证真实Gregorian日历。固定R1请假契约拒绝新增此类规则，保持既有专用契约。
+- 服务端草稿允许未填写字段，已填写字段执行校验；完整提交执行条件必填和比较。隐藏字段非空注入422，不以客户端隐藏代替接口校验。使用当前编辑值决定条件并清除隐藏值；历史只读详情不改写存储。规则保存并固定于发布快照，编辑后续草稿不改变运行实例。无数据库迁移，原R1交付包、部署及卷保留。
+- 设计器提供结构化控件并写回真实AST；reference模式隐藏旧任意自定义规则编辑框。运行表单使用共享条件、格式、日历和比较函数。form-behavior-browser.log的实际编辑/保存/刷新重开/发布/员工填写/隐藏值清除/校验错误保留输入/缺必填提交拒绝/修正提交成功/另一租户详情拒绝通过，未注入成功响应。form-behavior-runtime.png已检查，发布后业务内容及提交历史可读。
+- form-behavior-http.log的119项数据库/API通过，新增真实持久化规则、隐藏注入/非法日期/逆序比较/格式错误422、缺条件必填无流程副作用、更新幂等、双租户拒绝及真实子API进程替换后读原快照并提交。form-behavior-unit.log的438单测通过，含运行联动值清除；form-behavior-contracts-final.log的30契约+15领域/Mock通过，覆盖闭合规则与旧R1拒绝。form-behavior-all-types.log及form-behavior-build.log通过。form-behavior-lint.log保留新增单测未格式化的失败，修复后form-behavior-lint-final.log无错误/6既有警告。
+- 多级联动、更多复杂控件、受控HTTP及参数数据源、版本比较/完整迁移、全部键盘/分辨率、新部署/备份/数据库恢复/回退和全产品正式交付仍开放。FP-011/012保持进行中，不因这批规则与阶段验证勾完成；本批源码仍须对应提交远端CI。
+
+- form-behavior-full-browser.log的34项完整真实浏览器回归通过；独立Mock3项与旧smoke3项通过，证据form-behavior-mock-browser.log/form-behavior-smoke-browser.log。旧smoke仍有10888未运行的代理报错，不能用该Mock路径证明真实服务；实际后台证据是10890/4189及119项隔离数据库测试。
+- 随后加入“隐藏字段配置默认值”的回归，在form-behavior-default-browser.log发现保存路由切换时编辑值被默认值重新填入并触发未保存提示，失败截图/上下文归档form-behavior-default-failure。修复运行时：已有modelValue使用其准确字段集；默认值只在未提供编辑数据时初始化，各控件不再次按default-value回填。form-behavior-unit-final.log的439单测通过，新增schema重建保留明确空值/省略字段的回归。最终默认值回归和源码提交的远端CI须单独确认，首次34项结果不代替最终变更验证。
+
+- 默认值与modelValue恢复修复后，form-behavior-full-browser-final.log的34项完整真实页面重新全部通过，包含配置默认值后隐藏/再显示保持空值、保存无虚假未保存弹窗、缺条件必填被真实服务拒绝、修正并刷新后提交。form-behavior-default-central-build.log重建通过；form-behavior-central-runtime-unit.log的10项运行表单回归通过；form-behavior-lint-final2.log无错误/6既有警告；form-behavior-smoke-browser-final.log的旧3项再次通过。待本批提交对应远端CI确认。

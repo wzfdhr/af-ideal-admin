@@ -1,4 +1,11 @@
+import {
+  formFieldState,
+  textValidationError,
+  isCalendarDate,
+  comparisonError,
+} from './form-behavior'
 import { DomainError, record, invalid, parseForm } from './schemas'
+import type { FormValidation } from './form-behavior'
 import type { FormSchema, JsonObject, LeaveStatus } from './schemas'
 
 export const BUSINESS_PERMISSIONS = {
@@ -37,6 +44,12 @@ export const validateBusinessFields = (
     const { config } = widget
     let value = body[widget.uid]
     const label = String(config.label || widget.name)
+    const state = formFieldState(config, body)
+    if (!state.visible) {
+      if (value !== undefined && value !== null && value !== '')
+        invalid(widget.uid, `${label}当前不可填写，请清除隐藏值`)
+      return
+    }
     if (config.readonly === true || config.disabled === true) {
       if (
         value !== undefined &&
@@ -46,8 +59,7 @@ export const validateBusinessFields = (
       value = config.defaultValue
     }
     if (value === undefined || value === null || value === '') {
-      if (complete && config.required === true)
-        invalid(widget.uid, `${label}为必填项`)
+      if (complete && state.required) invalid(widget.uid, `${label}为必填项`)
       return
     }
     if (
@@ -110,12 +122,29 @@ export const validateBusinessFields = (
       )
         invalid(widget.uid, `${label}选项无效`)
     }
-    if (
-      widget.type === 'date-picker' &&
-      !/^\d{4}-\d{2}-\d{2}$/.test(value as string)
-    )
+    if (widget.type === 'date-picker' && !isCalendarDate(value))
       invalid(widget.uid, `${label}日期无效`)
+    if (config.validation) {
+      const message = textValidationError(
+        config.validation as unknown as FormValidation,
+        value as string
+      )
+      if (message) invalid(widget.uid, `${label}：${message}`)
+    }
     result[widget.uid] = value as string
+  })
+  schema.widgetsConfig.forEach((widget) => {
+    const rules = widget.config.validation as unknown as
+      | FormValidation
+      | undefined
+    const message = comparisonError(
+      rules?.compare,
+      result[widget.uid],
+      result,
+      ['integer', 'decimal'].includes(String(widget.config.valueType)),
+      complete
+    )
+    if (message) invalid(widget.uid, message)
   })
   return result
 }

@@ -276,4 +276,76 @@ describe('FormRuntimeRenderer', () => {
     const wrapper = mountRenderer(schema)
     expect(wrapper.find('a-date-picker-stub').exists()).toBe(true)
   })
+  it('clears hidden editing values and reflects the shared conditional required rule after driver changes', async () => {
+    const schema = migrateFormSchema({
+      version: 2,
+      formConfig: { size: 'medium', layout: 'vertical', labelAlign: 'right' },
+      dataSources: [],
+      widgetsConfig: [
+        {
+          type: 'input',
+          uid: 'kind',
+          name: '范围',
+          config: { defaultValue: 'internal' },
+        },
+        {
+          type: 'input',
+          uid: 'email',
+          name: '联系邮箱',
+          config: {
+            validation: { format: 'email' },
+            behavior: {
+              visibleWhen: { field: 'kind', operator: 'eq', value: 'external' },
+              requiredWhen: {
+                field: 'kind',
+                operator: 'eq',
+                value: 'external',
+              },
+            },
+          },
+        },
+      ],
+    })
+    const wrapper = mountRenderer(schema)
+    const runtime = wrapper.vm as unknown as {
+      setValues: (values: Record<string, unknown>) => void
+      getValues: () => Record<string, unknown>
+    }
+    expect(wrapper.find('[data-field="email"]').exists()).toBe(false)
+    runtime.setValues({ kind: 'external', email: 'old@example.test' })
+    await settle()
+    expect(wrapper.find('[data-field="email"]').attributes('required')).toBe(
+      'true'
+    )
+    runtime.setValues({ kind: 'internal', email: 'old@example.test' })
+    await settle()
+    expect(runtime.getValues()).toEqual({ kind: 'internal' })
+    expect(wrapper.find('[data-field="email"]').exists()).toBe(false)
+    runtime.setValues({ kind: 'external' })
+    await settle()
+    expect(wrapper.find('[data-field="email"]').exists()).toBe(true)
+    expect(runtime.getValues().email).toBeUndefined()
+    wrapper.unmount()
+  })
+  it('preserves intentionally absent editing fields across schema rebuild instead of restoring configured defaults', async () => {
+    const schema = migrateFormSchema({
+      widgetsConfig: [
+        {
+          type: 'input',
+          uid: 'email',
+          name: '邮箱',
+          config: { defaultValue: 'old@example.test' },
+        },
+      ],
+    })
+    const wrapper = mountRenderer(schema)
+    await wrapper.setProps({ modelValue: {} })
+    await wrapper.setProps({ ast: migrateFormSchema(schema) })
+    await settle()
+    const runtime = wrapper.vm as unknown as {
+      getValues: () => Record<string, unknown>
+    }
+    expect(runtime.getValues()).toEqual({})
+    wrapper.unmount()
+  })
 })

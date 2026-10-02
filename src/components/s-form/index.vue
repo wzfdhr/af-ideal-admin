@@ -18,6 +18,7 @@ import type {
   VersionedFormSchema,
   WidgetsConfig,
 } from '@/components/form-designer/schema'
+import { formFieldState } from '@af-admin/contracts'
 import WidgetRenderer from './renderer/index.vue'
 import {
   formData,
@@ -82,15 +83,16 @@ const emit = defineEmits<{
 }>()
 
 const formRef = ref<FormInstanceLike>()
-const data = ref<FormRuntimeData>({
-  ...createInitialFormData(props.ast.widgetsConfig),
-  ...props.modelValue,
-})
+const initialValues = () =>
+  props.modelValue === undefined
+    ? createInitialFormData(props.ast.widgetsConfig)
+    : { ...props.modelValue }
+const data = ref<FormRuntimeData>(initialValues())
 
 watch(
   () => props.ast.widgetsConfig,
-  (widgets) => {
-    data.value = { ...createInitialFormData(widgets), ...props.modelValue }
+  () => {
+    data.value = initialValues()
   },
   { deep: true }
 )
@@ -105,9 +107,18 @@ watch(
 watch(
   data,
   (values) => {
+    if (props.ast.version === 2) {
+      props.ast.widgetsConfig.forEach((widget) => {
+        if (
+          'behavior' in widget.config &&
+          !formFieldState(widget.config, values).visible
+        )
+          delete values[widget.uid]
+      })
+    }
     emit('update:modelValue', { ...values })
   },
-  { deep: true }
+  { deep: true, immediate: true }
 )
 
 provide(formData, data)

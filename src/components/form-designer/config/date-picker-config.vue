@@ -42,7 +42,7 @@
     <span class="label">允许选择时间</span>
     <a-switch v-model="widget.showTime" />
   </div>
-  <a-form-item label="自定义校验规则">
+  <a-form-item v-if="dataMode === 'mock'" label="自定义校验规则">
     <a-textarea
       v-model="widget.rules"
       :auto-size="{ minRows: 4, maxRows: 6 }"
@@ -62,6 +62,7 @@
 
 <script setup lang="ts">
 import { computed, PropType } from 'vue'
+import { dataMode } from '../../../../config/data-mode'
 import { IConfigDatePicker } from '../types'
 import { inputEventNames } from '../utils'
 

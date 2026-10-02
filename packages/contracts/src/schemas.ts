@@ -470,6 +470,8 @@ export const parseForm = (input: unknown): FormSchema => {
       ...(version === 2
         ? [
             'optionsSourceKey',
+            'validation',
+            'behavior',
             'allowSearch',
             'allowCreate',
             'limit',
@@ -516,6 +518,28 @@ export const parseForm = (input: unknown): FormSchema => {
         (config.rules !== undefined && config.rules !== ''))
     )
       invalid(uid, '当前格式不支持任意新增选项、多选或脚本校验')
+    if (version === 2) {
+      if (
+        ['required', 'disabled', 'readonly'].some(
+          (key) => config[key] !== undefined && typeof config[key] !== 'boolean'
+        )
+      )
+        invalid(uid, '字段状态必须为布尔值')
+      if (
+        config.maxLength !== undefined &&
+        (!Number.isSafeInteger(config.maxLength) ||
+          Number(config.maxLength) < 1 ||
+          Number(config.maxLength) > 2000)
+      )
+        invalid(uid, '最大长度需为1至2000的整数')
+      if (
+        widget.type === 'date-picker' &&
+        ((config.modeSelection !== undefined &&
+          config.modeSelection !== 'date') ||
+          config.showTime === true)
+      )
+        invalid(uid, '业务日期仅支持按日选择')
+    }
     if (config.id !== undefined && config.id !== uid)
       invalid(uid, 'R1 业务字段标识不能改变')
     if (
@@ -558,6 +582,99 @@ export const parseForm = (input: unknown): FormSchema => {
     )
   )
     invalid('dataSources', '数据源没有绑定字段')
+  const condition = (conditionInput: unknown, id: string) => {
+    const c = record(conditionInput, 'condition')
+    onlyKeys(c, ['field', 'operator', 'value'])
+    const field = text(c.field, 'condition.field', 100)
+    const target = widgetsConfig.find((widget) => widget.uid === field)
+    if (
+      !target ||
+      field === id ||
+      target.config.behavior !== undefined ||
+      target.config.readonly === true ||
+      target.config.disabled === true ||
+      !['eq', 'neq'].includes(String(c.operator)) ||
+      !['string', 'number', 'boolean'].includes(typeof c.value) ||
+      (typeof c.value === 'string' && c.value.length > 100) ||
+      (typeof c.value === 'number' && !Number.isFinite(c.value))
+    )
+      invalid(id, '条件引用、运算符或字面值无效，不支持循环或级联')
+    if (
+      target?.config.valueType === 'decimal' ||
+      ['textarea', 'date-picker'].includes(target?.type || '')
+    )
+      invalid(id, '条件驱动字段需为普通输入或单选')
+    if (
+      target?.config.valueType === 'integer' &&
+      (typeof c.value !== 'number' ||
+        !Number.isSafeInteger(c.value) ||
+        c.value < 0 ||
+        c.value > 999999999)
+    )
+      invalid(id, '整数驱动字段需匹配非负整数字面值')
+    if (target?.config.valueType !== 'integer' && typeof c.value !== 'string')
+      invalid(id, '文本驱动字段需匹配文本字面值')
+    return { field, operator: c.operator, value: c.value }
+  }
+  widgetsConfig.forEach((widget) => {
+    const { config } = widget
+    if (config.validation !== undefined) {
+      const rules = record(config.validation, 'validation')
+      onlyKeys(rules, ['minLength', 'format', 'compare'])
+      if (
+        rules.minLength !== undefined &&
+        (!Number.isSafeInteger(rules.minLength) ||
+          Number(rules.minLength) < 1 ||
+          Number(rules.minLength) > 2000 ||
+          Number(rules.minLength) > Number(config.maxLength || 2000))
+      )
+        invalid(widget.uid, '最小长度无效')
+      if (
+        rules.format !== undefined &&
+        !['email', 'https-url', 'phone'].includes(String(rules.format))
+      )
+        invalid(widget.uid, '格式校验只能使用已登记规则')
+      if (
+        (rules.minLength !== undefined || rules.format !== undefined) &&
+        (!['input', 'textarea'].includes(widget.type) ||
+          (config.valueType !== undefined && config.valueType !== 'text'))
+      )
+        invalid(widget.uid, '文本校验只能用于输入文本')
+      if (rules.compare !== undefined) {
+        const compare = record(rules.compare, 'compare')
+        onlyKeys(compare, ['field', 'operator'])
+        const target = widgetsConfig.find(
+          (field) => field.uid === compare.field
+        )
+        if (
+          !target ||
+          target.uid === widget.uid ||
+          target.config.behavior !== undefined ||
+          !['eq', 'gte', 'lte'].includes(String(compare.operator)) ||
+          target.type !== widget.type ||
+          target.config.valueType !== config.valueType
+        )
+          invalid(widget.uid, '比较字段需存在且类型相同')
+        if (
+          compare.operator !== 'eq' &&
+          widget.type !== 'date-picker' &&
+          !['integer', 'decimal'].includes(String(config.valueType))
+        )
+          invalid(widget.uid, '先后比较仅用于日期或数值')
+      }
+    }
+    if (config.behavior !== undefined) {
+      const behavior = record(config.behavior, 'behavior')
+      onlyKeys(behavior, ['visibleWhen', 'requiredWhen'])
+      if (!Object.keys(behavior).length) invalid(widget.uid, '联动规则不能为空')
+      if (behavior.visibleWhen !== undefined)
+        condition(behavior.visibleWhen, widget.uid)
+      if (behavior.requiredWhen !== undefined)
+        condition(behavior.requiredWhen, widget.uid)
+      if (config.readonly === true || config.disabled === true)
+        invalid(widget.uid, '只读字段不能通过联动改写')
+    }
+  })
   let computedFields: ComputedMoneyField[] | undefined
   if (fc.computedFields !== undefined) {
     if (!Array.isArray(fc.computedFields) || fc.computedFields.length > 10)
@@ -610,6 +727,15 @@ export const parseForm = (input: unknown): FormSchema => {
   }
 }
 export const validateLeaveForm = (schema: FormSchema) => {
+  if (
+    schema.widgetsConfig.some(
+      (widget) => widget.config.validation || widget.config.behavior
+    )
+  )
+    invalid(
+      'widgetsConfig',
+      '固定请假契约不支持新增联动校验，请使用通用业务模板'
+    )
   if (schema.dataSources.length)
     invalid(
       'dataSources',

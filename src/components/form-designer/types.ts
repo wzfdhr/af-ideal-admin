@@ -1,5 +1,12 @@
 // import { TagData } from '@arco-design/web-vue'
 import type { Ref } from 'vue'
+import type { FormValidation, FormBehavior } from '@af-admin/contracts'
+
+export interface StructuredFieldRules {
+  validation?: FormValidation
+  behavior?: FormBehavior
+  valueType?: 'text' | 'integer' | 'decimal'
+}
 
 export type InputEvent = 'input' | 'change' | 'focus' | 'blur'
 
@@ -35,7 +42,7 @@ export interface DataSourceConfig {
 
 export type DataSourceType = 'fixed' | 'remote' | 'registered'
 
-export interface IOptInput {
+export interface IOptInput extends StructuredFieldRules {
   id?: string
   required?: boolean
   disabled?: boolean
@@ -64,7 +71,7 @@ export interface IOptInputTag {
   prefix?: string
   affix?: string
 }
-export interface IOptSelect {
+export interface IOptSelect extends StructuredFieldRules {
   id?: string
   required?: boolean
   disabled?: boolean
@@ -89,7 +96,7 @@ export interface IOptSelect {
   optionsSourceKey?: string
 }
 
-export interface IOptRadio {
+export interface IOptRadio extends StructuredFieldRules {
   id?: string
   required?: boolean
   label: string
@@ -138,7 +145,7 @@ export interface IOptSlider {
   width?: string
 }
 
-export interface IOptDatePicker {
+export interface IOptDatePicker extends StructuredFieldRules {
   id?: string
   required?: boolean
   label: string
@@ -260,7 +267,7 @@ export interface IOptCascader {
   optionsSourceKey?: string
 }
 
-export interface IOptTextarea {
+export interface IOptTextarea extends StructuredFieldRules {
   id?: string
   required?: boolean
   label?: string

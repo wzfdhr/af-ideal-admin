@@ -126,3 +126,42 @@ test('generic records and their existing session survive API replacement; revoca
  await pool.query("UPDATE memberships SET permissions=permissions-'business:read:self' WHERE tenant_id='tenant-a' AND user_id='a-employee'")
  try{assert.equal((await call(`/business/records/${created.id}`,{user:'a-employee'})).status,404)}finally{await pool.query("UPDATE memberships SET permissions=$1::jsonb WHERE tenant_id='tenant-a' AND user_id='a-employee'",[JSON.stringify(stored)])}
 })
+
+test('structured form rules persist across release and process replacement; actual writes reject hidden injection and submission enforces conditional required',async()=>{
+ const application=await app(),draft=ok(await call(`/form-schemas/${application.formDraftId}`)),schema=structuredClone(draft.schema)
+ schema.version=2
+ schema.widgetsConfig.push(
+  {uid:'recipient',type:'input',name:'接收范围',config:{id:'recipient',label:'接收范围',required:true,maxLength:30}},
+  {uid:'contact',type:'input',name:'联系邮箱',config:{id:'contact',label:'联系邮箱',validation:{minLength:6,format:'email'},behavior:{visibleWhen:{field:'recipient',operator:'eq',value:'external'},requiredWhen:{field:'recipient',operator:'eq',value:'external'}}}},
+  {uid:'start',type:'date-picker',name:'开始日期',config:{id:'start',label:'开始日期',required:true}},
+  {uid:'end',type:'date-picker',name:'结束日期',config:{id:'end',label:'结束日期',required:true,validation:{compare:{field:'start',operator:'gte'}}}}
+ )
+ const saved=ok(await call(`/form-schemas/${draft.id}`,{method:'PUT',body:{schema,expectedRevision:draft.revision}}))
+ assert.deepEqual(ok(await call(`/form-schemas/${draft.id}`)).schema,schema)
+ const current=ok(await call(`/application-center/${application.id}`)),workflow=ok(await call(`/workflows/${application.workflowDraftId}`))
+ const release=ok(await call(`/applications/${application.id}/releases`,{method:'POST',body:{formDraftId:draft.id,workflowDraftId:workflow.id,formRevision:saved.revision,workflowRevision:workflow.revision,expectedRevision:current.revision}}))
+ const data={...fields,recipient:'internal',start:'2028-02-29',end:'2028-03-01'}
+ for(const change of [{contact:'secret@example.test'},{start:'2026-02-29'},{end:'2028-02-28'},{recipient:'external',contact:'x'}]){
+  assert.equal((await call('/business/records',{user:'a-employee',method:'POST',body:{applicationReleaseId:release.id,fields:{...data,...change}}})).status,422)
+ }
+ const external=ok(await call('/business/records',{user:'a-employee',method:'POST',body:{applicationReleaseId:release.id,fields:{...data,recipient:'external'}}}))
+ assert.equal((await call(`/business/records/${external.id}/submit`,{user:'a-employee',method:'POST',body:{expectedRevision:1}})).status,422)
+ assert.equal((await pool.query('SELECT id FROM workflow_instances WHERE request_id=$1',[external.id])).rowCount,0)
+ const key=randomUUID(),body={expectedRevision:external.revision,fields:{...data,recipient:'external',contact:'real@example.test'}}
+ const updated=ok(await call(`/business/records/${external.id}`,{user:'a-employee',method:'PATCH',body,key}))
+ assert.deepEqual(ok(await call(`/business/records/${external.id}`,{user:'a-employee',method:'PATCH',body,key})),updated)
+ assert.equal((await call(`/business/records/${external.id}`,{user:'b-employee'})).status,404)
+ const nextSchema=structuredClone(schema);nextSchema.widgetsConfig.find(widget=>widget.uid==='contact').config.validation.format='phone'
+ ok(await call(`/form-schemas/${draft.id}`,{method:'PUT',body:{schema:nextSchema,expectedRevision:saved.revision}}))
+ const child=spawn(process.execPath,[fileURLToPath(new URL('./helpers/organization-api-child.mjs',import.meta.url))],{env:{DATABASE_URL:process.env.DATABASE_URL,APP_MODE:'demo'},stdio:['ignore','ignore','ignore','ipc']})
+ try{
+  const [ready]=await once(child,'message',{signal:AbortSignal.timeout(5000)})
+  const detail=ok(await call(`/business/records/${external.id}`,{user:'a-employee',origin:ready.base}))
+  assert.equal(detail.release.formSnapshot.widgetsConfig.find(widget=>widget.uid==='contact').config.validation.format,'email')
+  assert.equal(detail.fields.contact,'real@example.test')
+  ok(await call(`/business/records/${external.id}/submit`,{user:'a-employee',method:'POST',body:{expectedRevision:updated.revision},origin:ready.base}))
+ }finally{const stopped=once(child,'exit');child.kill('SIGTERM');await stopped}
+ const goodInternal=ok(await call('/business/records',{user:'a-employee',method:'POST',body:{applicationReleaseId:release.id,fields:data}}))
+ ok(await call(`/business/records/${goodInternal.id}/submit`,{user:'a-employee',method:'POST',body:{expectedRevision:goodInternal.revision}}))
+ assert.equal(ok(await call(`/business/records/${goodInternal.id}`,{user:'a-employee'})).fields.contact,undefined)
+})

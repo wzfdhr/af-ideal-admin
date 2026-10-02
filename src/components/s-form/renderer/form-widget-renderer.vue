@@ -1,15 +1,15 @@
 <template>
   <a-form-item
+    v-if="fieldState.visible"
     :label="widget.config.label || widget.name"
-    :required="widget.config.required"
+    :required="fieldState.required"
     :field="widget.uid"
-    :rules="computedRules(widget.config.rules)"
+    :rules="computedRules"
     :validate-trigger="widget.config.trigger"
   >
     <template v-if="widget.type === 'input'">
       <a-input
         v-model="ctx[widget.uid]"
-        :default-value="widget.config.defaultValue"
         :placeholder="widget.config.placeholder"
         :allow-clear="widget.config.allowClear"
         :max-length="widget.config.maxLength"
@@ -22,7 +22,6 @@
     <template v-if="widget.type === 'inputNumber'">
       <a-input-number
         v-model="ctx[widget.uid]"
-        :default-value="widget.config.defaultValue"
         :placeholder="widget.config.placeholder"
         :allow-clear="widget.config.allowClear"
         :readonly="widget.config.readonly"
@@ -36,7 +35,6 @@
     <template v-if="widget.type === 'checkbox'">
       <a-checkbox-group
         v-model="ctx[widget.uid]"
-        :default-value="widget.config.defaultValue"
         :disabled="widget.config.disabled"
         :direction="widget.config.direction"
         :indeterminate="widget.config.indeterminate"
@@ -64,7 +62,6 @@
         :allow-clear="widget.config.allowClear"
         :allow-create="widget.config.allowCreate"
         :allow-search="widget.config.allowSearch"
-        :default-value="widget.config.defaultValue"
         :disabled="widget.config.disabled"
         :multiple="widget.config.limit !== undefined && widget.config.limit > 0"
         :limit="widget.config.limit"
@@ -91,7 +88,6 @@
       <a-radio-group
         v-model="ctx[widget.uid]"
         :direction="widget.config.direction"
-        :default-value="widget.config.defaultValue"
         :type="widget.config.type"
         :disabled="widget.config.disabled"
       >
@@ -114,7 +110,6 @@
     <template v-if="widget.type === 'slider'">
       <a-slider
         v-model="ctx[widget.uid]"
-        :default-value="widget.config.defaultValue"
         :step="widget.config.step"
         :min="widget.config.min"
         :marks="widget.config.marks"
@@ -283,7 +278,6 @@
             : widget.config.options
         "
         :placeholder="widget.config.placeholder"
-        :default-value="widget.config.defaultValue"
         :disabled="widget.config.disabled"
         :allow-search="widget.config.allowSearch"
         :allow-clear="widget.config.allowClear"
@@ -333,11 +327,19 @@ import {
   type RemoteOption,
 } from '@/components/form-runtime/remote-options'
 import {
+  formFieldState,
+  textValidationError,
+  comparisonError,
+  isCalendarDate,
+} from '@af-admin/contracts'
+import {
   formData,
   formDataSources,
   type FormRuntimeData,
 } from './use-form-preview'
 import { parseWidgetRules } from './rules'
+import type { FormValidation, FormBehavior } from '@af-admin/contracts'
+import type { FieldRule } from '@arco-design/web-vue'
 import type { Ref } from 'vue'
 
 type FormWidget = Exclude<WidgetsConfig, IConfigTab | IConfigGrid>
@@ -424,5 +426,40 @@ watch(
   { deep: true, immediate: true }
 )
 
-const computedRules = (rules?: string) => parseWidgetRules(rules)
+const structured = computed(
+  () =>
+    props.widget.config as typeof props.widget.config & {
+      validation?: FormValidation
+      behavior?: FormBehavior
+      valueType?: string
+    }
+)
+const fieldState = computed(() => formFieldState(structured.value, ctx.value))
+const computedRules = computed<FieldRule[]>(() => [
+  ...(parseWidgetRules(props.widget.config.rules) || []),
+  {
+    validator: (value, callback) => {
+      if (value === undefined || value === null || value === '')
+        return callback()
+      const config = structured.value
+      if (
+        props.widget.type === 'date-picker' &&
+        (!props.widget.config.modeSelection ||
+          props.widget.config.modeSelection === 'date') &&
+        !props.widget.config.showTime &&
+        !isCalendarDate(value)
+      )
+        return callback('日期无效')
+      const message =
+        textValidationError(config.validation || {}, String(value)) ||
+        comparisonError(
+          config.validation?.compare,
+          value,
+          ctx.value,
+          ['integer', 'decimal'].includes(String(config.valueType))
+        )
+      return callback(message)
+    },
+  },
+])
 </script>

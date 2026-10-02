@@ -84,7 +84,7 @@
       :max="widget.config.options?.length"
     />
   </div>
-  <a-form-item label="自定义校验规则">
+  <a-form-item v-if="dataMode === 'mock'" label="自定义校验规则">
     <a-textarea
       v-model="widget.config.rules"
       :auto-size="{ minRows: 4, maxRows: 6 }"
@@ -105,6 +105,7 @@
 <script setup lang="ts">
 import { computed, PropType, inject } from 'vue'
 import { merge } from 'lodash'
+import { dataMode } from '../../../../config/data-mode'
 import { IConfigCheckbox, FormDesignerContext, contextSymbol } from '../types'
 import { inputEventNames } from '../utils'
 

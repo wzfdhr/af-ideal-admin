@@ -55,6 +55,11 @@
       v-if="config.type === 'select'"
       v-model:widget-config="config"
     />
+    <FieldBehaviorEditor
+      v-if="dataMode === 'reference' && behaviorField"
+      :widget="behaviorField"
+      @update="updateStructuredRules"
+    />
     <a-collapse class="ast-pre">
       <a-collapse-item key="json" header="控件配置 JSON">
         <pre>{{ config }}</pre>
@@ -65,6 +70,7 @@
 
 <script lang="ts" setup>
 import { PropType, computed } from 'vue'
+import { dataMode } from '../../../config/data-mode'
 import { WidgetsConfig } from './types'
 import checkboxConfig from './config/checkbox-config.vue'
 import inputnumberConfig from './config/inputnumber-config.vue'
@@ -82,6 +88,14 @@ import TabConfig from './config/tab-config.vue'
 import InputConfig from './config/input-config.vue'
 import SelectConfig from './config/select-config.vue'
 import InputTagConfig from './config/inputtag-config.vue'
+import FieldBehaviorEditor from './field-behavior-editor.vue'
+import type {
+  IConfigInput,
+  IConfigSelect,
+  IConfigRadio,
+  IConfigDatePicker,
+  IConfigTextarea,
+} from './types'
 
 const props = defineProps({
   widgetConfig: {
@@ -98,4 +112,23 @@ const config = computed({
     emit('update:widgetConfig', val)
   },
 })
+const behaviorField = computed(() => {
+  if (
+    ['input', 'select', 'radio', 'date-picker', 'textarea'].includes(
+      config.value.type
+    )
+  )
+    return config.value as
+      | IConfigInput
+      | IConfigSelect
+      | IConfigRadio
+      | IConfigDatePicker
+      | IConfigTextarea
+  return undefined
+})
+const updateStructuredRules = (
+  widget: NonNullable<typeof behaviorField.value>
+) => {
+  if (behaviorField.value) behaviorField.value.config = widget.config
+}
 </script>

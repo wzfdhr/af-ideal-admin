@@ -90,7 +90,7 @@
     <span class="label">是否禁用</span>
     <a-switch v-model="widget.config.disabled" />
   </div>
-  <a-form-item label="自定义校验规则">
+  <a-form-item v-if="dataMode === 'mock'" label="自定义校验规则">
     <a-textarea
       v-model="widget.config.rules"
       :auto-size="{ minRows: 4, maxRows: 6 }"

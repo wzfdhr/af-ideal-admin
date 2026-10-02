@@ -18,3 +18,5 @@ export * from './application-packages'
 export * from './dictionaries'
 
 export * from './form-data-sources'
+
+export * from './form-behavior'
