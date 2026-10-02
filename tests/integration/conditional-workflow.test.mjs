@@ -139,3 +139,13 @@ test('self-approval is refused on the selected path while an unselected applican
   assert.equal((await pool.query('SELECT id FROM workflow_instances WHERE request_id=$1',[high.id])).rowCount,0)
  }finally{await pool.query("UPDATE memberships SET permissions=$1::jsonb WHERE tenant_id='tenant-a' AND user_id='a-employee'",[JSON.stringify(old)])}
 })
+
+test('a valid larger computed amount in a customized form reaches the high branch without narrowing the existing calculation range',async()=>{
+ const app=await createApp(),f=ok(await call(`/form-schemas/${app.formDraftId}`)),w=ok(await call(`/workflows/${app.workflowDraftId}`)),current=ok(await call(`/applications/${app.id}`))
+ f.schema.widgetsConfig.find(field=>field.uid==='quantity').config.max=1000000;f.schema.widgetsConfig.find(field=>field.uid==='unitPrice').config.max=1000000
+ const saved=ok(await call(`/form-schemas/${f.id}`,{method:'PUT',body:{schema:f.schema,expectedRevision:f.revision}}))
+ const release=ok(await call(`/applications/${app.id}/releases`,{method:'POST',body:{formDraftId:f.id,workflowDraftId:w.id,formRevision:saved.revision,workflowRevision:w.revision,expectedRevision:current.revision}}))
+ const record=ok(await call('/business/records',{user:'a-employee',method:'POST',body:{applicationReleaseId:release.id,fields:{itemName:'大额边界',quantity:1000000,unitPrice:'1000000.00',reason:'金额域保持'}}}))
+ ok(await submit(record));assert.ok(await task(record,'a-manager-2'))
+ assert.equal(ok(await call(`/business/records/${record.id}`,{user:'a-employee'})).computedFields.totalAmount,'1000000000000.00')
+})

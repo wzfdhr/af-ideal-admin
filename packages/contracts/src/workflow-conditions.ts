@@ -39,10 +39,13 @@ const typedValue = (
     return Number(value)
   }
   if (type === 'decimal') {
-    if (typeof value !== 'string' || !/^\d{1,10}(?:\.\d{1,2})?$/.test(value))
+    if (typeof value !== 'string' || !/^\d{1,14}(?:\.\d{1,2})?$/.test(value))
       invalid('condition', '条件金额值无效')
     const [whole, fraction = ''] = String(value).split('.')
-    return Number(whole) * 100 + Number(fraction.padEnd(2, '0'))
+    const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'))
+    if (!Number.isSafeInteger(cents))
+      invalid('condition', '条件金额超过精确计算范围')
+    return cents
   }
   if (typeof value !== 'string' || value.length > 2000)
     invalid('condition', '条件文本值无效')

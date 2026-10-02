@@ -345,3 +345,6 @@
 - 进一步修正运行时人员语义：发布仍检查全部配置人员；已有固定记录按实际选中路径检查人员及自审，未选分支停用或包含申请人不会错误阻断有效分支，选中的停用/自审路径仍拒绝且无实例副作用。与数据库实现一致调整领域Mock的路径选择及route历史。conditions-selected-path-http.log的126项通过，随后conditions-self-route-http.log的127项通过，覆盖未选分支停用以及选中路径SELF_APPROVAL拒绝。conditions-release-build.log完整构建、conditions-all-types-release.log全workspace类型、conditions-unit-release-final.log443项、conditions-contracts-release.log36契约+18领域/Mock通过；conditions-lint-release.log无错误/6既有警告。
 
 - 最后完成conditions-full-browser-final.log的36项全量真实回归（包含错误规则真实保存拒绝/输入保留/发布禁用及修正恢复），conditions-mock-browser-release.log/conditions-smoke-browser-release.log各3项通过，原Mock/权限回归保留。conditions-unit-release-final.log443项通过，conditions-release-build.log和conditions-all-types-release.log通过。本批仍须对应新提交远端CI；整个Goal及FP-013正式模块交付保持开放。
+
+- 1622e2527d3e4e58ca65e65b7c8ac785cd652f1a提交后边界复核发现：自定义表单允许数量及单价各1000000并生成合法精确总额1000000000000.00，旧条件操作数十位整数位限制却拒绝该结果。修正运行操作数为最多14位整数位并检查安全整数分位，不缩窄既有计算范围；条件定义字面值仍按有界契约验证，超出9007199254740991分的操作数明确拒绝。新增领域和真实API用例保证大额计算总值进入实际高额任务；这项后续修复需独立证据及远端CI。
+- conditions-money-range-build.log共享构建通过，conditions-money-domain.log19领域/Mock通过，conditions-money-http.log128项数据库/API通过，conditions-money-lint.log无错误/6既有警告。大额修复没有更改Schema版本、图或UI；最终提交仍需完整远端CI确认。

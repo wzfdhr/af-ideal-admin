@@ -36,3 +36,9 @@ test('graph and typed binding reject bypasses, loops, missing fallback, wrong ty
  const old={...graph(),version:1};delete old.nodes[1].config.condition;old.edges.forEach(edge=>delete edge.branch)
  assert.throws(()=>core.validateExecutableWorkflow(old),/R1/)
 })
+test('valid larger registered computed money remains routable and values beyond exact safe cents are rejected',()=>{
+ const form=structuredClone(c.EQUIPMENT_FORM);form.widgetsConfig.find(field=>field.uid==='quantity').config.max=1000000;form.widgetsConfig.find(field=>field.uid==='unitPrice').config.max=1000000
+ const fields=c.validateBusinessFields(form,{itemName:'大额边界',quantity:1000000,unitPrice:'1000000.00',reason:'既有精确计算范围'}),computed=c.computeBusinessFields(form,fields)
+ assert.equal(computed.totalAmount,'1000000000000.00');assert.equal(core.advanceWorkflow(graph(),undefined,{...fields,...computed}).approval.id,'high')
+ assert.throws(()=>core.advanceWorkflow(graph(),undefined,{totalAmount:'90071992547409.92'}),error=>error.status===422)
+})
