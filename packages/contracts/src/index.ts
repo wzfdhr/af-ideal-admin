@@ -14,3 +14,5 @@ export * from './business-records'
 export * from './files'
 
 export * from './application-packages'
+
+export * from './dictionaries'

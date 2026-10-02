@@ -1,5 +1,6 @@
 import request from '@/api/request'
 import { SYSTEM_DICT_PERMISSIONS } from '@/constants/system-dictionary'
+import type { DictionaryItem } from '@af-admin/contracts'
 
 export type SystemDictionaryStatus = 'enabled' | 'disabled'
 
@@ -12,6 +13,8 @@ export interface SystemDictionaryRecord {
   description?: string
   createdAt: string
   updatedAt: string
+  revision?: number
+  items?: DictionaryItem[]
 }
 
 export interface SystemDictionaryQuery {
@@ -27,6 +30,7 @@ export interface SystemDictionaryPayload {
   dictType: string
   dictStatus: SystemDictionaryStatus
   description?: string
+  expectedRevision?: number
 }
 
 export interface SystemDictionaryPageResult {
@@ -54,27 +58,65 @@ export const getSystemDictionaryDetail = async (id: string) => {
 }
 
 export const createSystemDictionary = async (
-  payload: SystemDictionaryPayload
+  payload: SystemDictionaryPayload,
+  key?: string
 ) => {
-  const response = await request.post<SystemDictionaryRecord>(
-    '/system/dictionaries',
-    payload
-  )
+  const response = key
+    ? await request.post<SystemDictionaryRecord>(
+        '/system/dictionaries',
+        payload,
+        { headers: { 'Idempotency-Key': key } }
+      )
+    : await request.post<SystemDictionaryRecord>(
+        '/system/dictionaries',
+        payload
+      )
   return response.data
 }
 
 export const updateSystemDictionary = async (
   id: string,
-  payload: SystemDictionaryPayload
+  payload: SystemDictionaryPayload,
+  key?: string
 ) => {
-  const response = await request.put<SystemDictionaryRecord>(
-    `/system/dictionaries/${id}`,
-    payload
-  )
+  const response = key
+    ? await request.put<SystemDictionaryRecord>(
+        `/system/dictionaries/${id}`,
+        payload,
+        { headers: { 'Idempotency-Key': key } }
+      )
+    : await request.put<SystemDictionaryRecord>(
+        `/system/dictionaries/${id}`,
+        payload
+      )
   return response.data
 }
 
-export const deleteSystemDictionary = async (id: string) => {
-  const response = await request.delete<null>(`/system/dictionaries/${id}`)
+export const deleteSystemDictionary = async (
+  id: string,
+  revision?: number,
+  key?: string
+) => {
+  const response =
+    revision === undefined
+      ? await request.delete<null>(`/system/dictionaries/${id}`)
+      : await request.delete<null>(`/system/dictionaries/${id}`, {
+          data: { expectedRevision: revision },
+          headers: { 'Idempotency-Key': key },
+        })
   return response.data
 }
+
+export const updateDictionaryItems = async (
+  id: string,
+  expectedRevision: number,
+  items: DictionaryItem[],
+  key: string
+) =>
+  (
+    await request.put<SystemDictionaryRecord>(
+      `/system/dictionaries/${id}/items`,
+      { expectedRevision, items },
+      { headers: { 'Idempotency-Key': key } }
+    )
+  ).data

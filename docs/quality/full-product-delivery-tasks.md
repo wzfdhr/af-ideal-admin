@@ -23,7 +23,7 @@
 | FP-005 | 动态角色、权限绑定、即时撤权、最后管理员保护及授权审计 | FP-004 | T-104/T-204 | 进行中 |
 | FP-006 | 后端数据范围、字段投影/脱敏；all 只表示本租户 | FP-003/005 | T-608 | 进行中 |
 | FP-007 | 菜单资源持久化、安全 componentKey、路由/按钮权限一致 | FP-005 | T-106/T-204 | 未开始 |
-| FP-008 | 字典和项目持久化、版本、租户范围及缓存失效 | FP-005 | T-203/T-204 | 未开始 |
+| FP-008 | 字典和项目持久化、版本、租户范围及缓存失效 | FP-005 | T-203/T-204 | 进行中 |
 | FP-009 | 应用创建/复制/配置/发布/归档，独立 ID 和版本 | FP-005 | LA-037 | 进行中 |
 | FP-010 | 通用业务记录、提交/详情/权限/快照/历史和 R1 适配 | FP-006/009 | LA-037/042 | 进行中 |
 | FP-011 | 复杂表单校验/联动、安全数据源登记、映射、超时及恢复 | FP-008/010 | T-301/303 | 未开始 |
@@ -231,3 +231,17 @@
 - application-package-final-real-browser.log有28通过、1失败：旧保存冲突用例在已登录后又额外登录，触发真实账号限流。改为用当前真实浏览器会话认证另一API客户端的真实更新，保留乐观版本冲突、输入不丢和显式重载断言；application-package-conflict-session-browser.log通过，完整application-package-complete-real-browser.log的29项全部通过。没有放宽限流或删减冲突断言。
 - application-package-unit.log的430项单测通过，application-package-contracts.log为19契约+15领域/Mock通过；application-package-page-types.log和application-package-page-build.log通过，application-package-final-lint.log无错误。application-package-mock-browser.log的3条旧开发路径通过，不证明新定义包Mock完成。
 - 012只应用专属演示库、API10890/网关4189，原R1包/卷/环境保留。低代码页面/物料/插件与数据源依赖的包扩展、完整新部署导入、兼容格式迁移、容量与最终备份/回退仍未完成。FP-019保持进行中，v1表单/串行流程包不替代冻结全产品包要求。
+
+### 应用定义包远端验证
+
+- 1e1c26706c316645ec53fc5f20d15bbc8c061565的实际CI37004915044已通过，verify/real-business均success；报告归档ci-37004915044，状态application-package-remote-ci.json。108项数据库/API和29条真实浏览器通过，本结果只覆盖该源码提交，不包含后续字典增量。
+
+### FP-008 真实字典和字典项首批
+
+- 实施/阶段自检：Codex，2026-10-02。范围为现有字典及其选项，不新增独立项目管理平台。013增加租户字典与有序选项表、组合FK、唯一类型/值及墓碑；元数据和选项共享revision。类型创建后固定且删除后不复用，平台状态字典不能由租户覆盖。
+- 严格契约、有界原始值/数量、事务版本/幂等、失败回滚、事实审计与独立运行读取权限已实现。选项缓存按租户代次隔离、30秒过期、编辑/刷新失效；旧上下文/旧刷新返回不能覆盖新缓存。缓存不代替服务端提交授权与选项有效性校验。
+- dictionaries-http-final.log的112项真实数据库/API通过，新增双租户相同类型隔离、停用/墓碑、跨租户FK/重复值/越界序号/对象值拒绝、并发同key一次、过期版本、撤权和失败恢复；服务实例关闭重建后使用原会话重读持久化选项。dictionaries-http-restart.log保留重建测试实例忘记重装失败注入器所致的失败，修正夹具后dictionaries-http-restart-final.log及最终全量通过，未削弱事务断言。
+- dictionaries-browser.log真实复现旧reference页面白名单拒绝新字典页；补入口规则与独立正负向回归后继续验收。dictionaries-browser-route-fixed.log保留测试错误假定冲突文案包含“版本”的失败，改为同时断言真实409/REVISION_CONFLICT及实际提示，仍验证输入保留。dictionaries-browser-final.log保留查询/隐藏编辑表单共用placeholder导致的严格定位失败，改为定位真实查询区域并等待实际搜索响应。
+- dictionaries-browser-complete.log完成真实创建、文本选项/停用过滤、保存、页面刷新/重开、实际并发版本冲突、本地值保留、显式重读恢复和另一租户不可见。dictionaries-full-real-browser.log的30条真实页面回归全部通过，包含R1、应用包、设备及真实ClamAV附件；未注入成功响应。dictionaries-options-runtime.png已检查，修正标签换行和控件边界布局。
+- dictionaries-unit-final.log为433单测通过，dictionaries-contracts.log为21契约+15领域/Mock通过；dictionaries-all-types.log、dictionaries-all-build-final.log、最终页面重构建dictionaries-visual-build.log通过。dictionaries-final-lint-all.log无错误/6警告，其中2项为新选项编辑的明确丢弃确认。旧smoke3条和独立Mock2条分别通过，证据dictionaries-smoke-browser.log/dictionaries-mock-browser.log。
+- 013仅应用专属开发演示库、API10890/网关4189。原R1包/卷/部署保留。引用保护与发布绑定、进程/数据库重启专项、完整字典项Mock、多分辨率/键盘及部署/备份恢复/兼容回退仍须继续，FP-008保持进行中。方案及回滚边界见full-product-dictionary-design.md，当前结果不替代新提交远端CI或全产品最终门禁。

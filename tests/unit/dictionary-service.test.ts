@@ -2,6 +2,50 @@ import { describe, expect, it, vi } from 'vitest'
 import { createDictionaryService } from '@/services/dictionary'
 
 describe('dictionary service', () => {
+  it('isolates tenants, rejects late old responses and only retains the newest refresh', async () => {
+    let scope = 'tenant-a'
+    const pending: ((value: { label: string; value: string }[]) => void)[] = []
+    const service = createDictionaryService({
+      scope: () => scope,
+      fetcher: () =>
+        new Promise((resolve) => {
+          pending.push(resolve)
+        }),
+    })
+    const old = service.getOptions('private').catch((error) => error)
+    scope = 'tenant-b'
+    expect(service.getLabel('private', 'v')).toBe('v')
+    const current = service.getOptions('private')
+    pending[1]([{ label: 'B', value: 'v' }])
+    await current
+    pending[0]([{ label: 'A private', value: 'v' }])
+    expect((await old).name).toBe('ContextChangedError')
+    expect(service.getLabel('private', 'v')).toBe('B')
+    const earlier = service.getOptions('private', true).catch((error) => error)
+    const newest = service.getOptions('private', true)
+    pending[3]([{ label: 'newest', value: 'v' }])
+    await newest
+    pending[2]([{ label: 'earlier', value: 'v' }])
+    expect((await earlier).name).toBe('ContextChangedError')
+    expect(service.getLabel('private', 'v')).toBe('newest')
+  })
+  it('expires a successful cache and invalidates pending requests on clear', async () => {
+    let now = 0
+    const fetcher = vi.fn().mockResolvedValue([{ label: 'old', value: 'v' }])
+    const service = createDictionaryService({
+      fetcher,
+      now: () => now,
+      ttlMs: 10,
+    })
+    await service.getOptions('category')
+    now = 11
+    fetcher.mockResolvedValue([{ label: 'new', value: 'v' }])
+    await service.getOptions('category')
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(service.getLabel('category', 'v')).toBe('new')
+    service.clear('category')
+    expect(service.getLabel('category', 'v')).toBe('v')
+  })
   it('caches remote dictionary requests by key', async () => {
     const fetcher = vi.fn().mockResolvedValue([{ label: '男', value: 1 }])
     const service = createDictionaryService({ fetcher })

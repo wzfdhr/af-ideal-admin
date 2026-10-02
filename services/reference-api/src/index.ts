@@ -11,6 +11,7 @@ import { registerOrganization } from './organization'
 import { registerPositions } from './positions'
 import { registerUsers } from './users'
 import { registerCredentials } from './credentials'
+import { registerDictionaries } from './dictionaries'
 import { registerRoles } from './roles'
 import { registerApplicationPackages } from './application-packages'
 import { registerFiles } from './files'
@@ -113,6 +114,7 @@ export const createServer = (
   registerUsers(server, pool)
   registerCredentials(server, pool)
   registerRoles(server, pool)
+  registerDictionaries(server, pool, fault)
   registerDataScopes(server, pool)
   registerApplicationCenter(server, pool)
   registerBusinessRecords(server, pool, fault)

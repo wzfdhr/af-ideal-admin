@@ -23,6 +23,7 @@ const pagePermissions: Record<string, string[]> = {
   formDesign: ['application:configure'],
   workflowDesign: ['application:configure'],
   departmentSystem: ['system:department:list'],
+  dictSystem: ['system:dict:list'],
   positionSystem: ['system:position:list', 'system:organization:assign'],
   userSystem: ['system:user:list'],
   roleSystem: ['system:role:list'],

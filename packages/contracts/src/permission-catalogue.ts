@@ -4,6 +4,18 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  ...[
+    ['list', '查看字典列表'],
+    ['detail', '查看字典详情及选项'],
+    ['create', '创建字典'],
+    ['update', '更新字典和选项'],
+    ['delete', '删除字典'],
+    ['read', '读取运行字典选项'],
+  ].map(([action, title]) => ({
+    code: `system:dict:${action}`,
+    title,
+    module: '字典',
+  })),
   { code: 'application:export', title: '导出脱敏应用定义包', module: '应用' },
   { code: 'application:import', title: '校验并导入应用定义包', module: '应用' },
   { code: 'file:list', title: '查看授权文件和附件', module: '文件' },

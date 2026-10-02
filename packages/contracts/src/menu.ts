@@ -174,6 +174,28 @@ export const createR1Menu = (permissions: string[]) => {
         children: [page],
       })
   }
+  if (permissions.includes('system:dict:list') || permissions.includes('*')) {
+    const system = entries.find((entry) => entry.name === 'system')
+    const page = {
+      path: 'dictSystem',
+      name: 'dictSystem',
+      componentKey: 'SystemDictPage',
+      meta: {
+        requireAuth: true,
+        locale: 'menu.system.dict',
+        access: { permissions: ['system:dict:list'] },
+      },
+    }
+    if (system) system.children?.push(page)
+    else
+      entries.push({
+        path: '/system',
+        name: 'system',
+        componentKey: 'DefaultLayout',
+        meta: { requireAuth: true, locale: 'menu.system', order: 6 },
+        children: [page],
+      })
+  }
   if (permissions.includes('system:user:list') || permissions.includes('*')) {
     const system = entries.find((entry) => entry.name === 'system')
     const page = {

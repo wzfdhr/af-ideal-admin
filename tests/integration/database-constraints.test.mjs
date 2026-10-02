@@ -32,7 +32,7 @@ test('migrations are checksum verified and repeatable against real PostgreSQL', 
   await migrations.migrate(pool)
   await migrations.migrate(pool)
   const result=await pool.query('SELECT name FROM schema_migrations ORDER BY name')
-  assert.deepEqual(result.rows.map((row)=>row.name),['001_leave_approval.sql','002_audit_and_telemetry.sql','003_organization.sql','004_positions.sql','005_member_profiles.sql','006_credential_revisions.sql','007_roles_and_permissions.sql','008_member_data_scopes.sql','009_application_lifecycle.sql','010_business_records.sql','011_file_storage.sql','012_application_packages.sql'])
+  assert.deepEqual(result.rows.map((row)=>row.name),['001_leave_approval.sql','002_audit_and_telemetry.sql','003_organization.sql','004_positions.sql','005_member_profiles.sql','006_credential_revisions.sql','007_roles_and_permissions.sql','008_member_data_scopes.sql','009_application_lifecycle.sql','010_business_records.sql','011_file_storage.sql','012_application_packages.sql','013_dictionaries.sql'])
 })
 test('database rejects cross-tenant references and published release mutation', async () => {
   await isolated(async(client)=>{
@@ -43,6 +43,17 @@ test('database rejects cross-tenant references and published release mutation', 
     const row=await client.query('SELECT content_hash FROM application_releases WHERE tenant_id=$1',[a])
     assert.equal(row.rows[0].content_hash,'fixture')
   })
+})
+test('dictionary options have tenant-qualified references, unique typed values and bounded order in PostgreSQL', async()=>{
+ await isolated(async client=>{
+  const {a,b}=await fixtures(client)
+  await client.query("INSERT INTO dictionaries(tenant_id,id,dict_name,dict_type) VALUES($1,'dictionary','设备类型','equipment-type')",[a])
+  await rejected(client,"INSERT INTO dictionary_items(tenant_id,dictionary_id,ordinal,label,value) VALUES($1,'dictionary',0,'越权','\"private\"')",[b],'23503')
+  await client.query("INSERT INTO dictionary_items(tenant_id,dictionary_id,ordinal,label,value) VALUES($1,'dictionary',0,'笔记本','\"laptop\"')",[a])
+  await rejected(client,"INSERT INTO dictionary_items(tenant_id,dictionary_id,ordinal,label,value) VALUES($1,'dictionary',1,'重复','\"laptop\"')",[a],'23505')
+  await rejected(client,"INSERT INTO dictionary_items(tenant_id,dictionary_id,ordinal,label,value) VALUES($1,'dictionary',200,'越界','true')",[a],'23514')
+  await rejected(client,"INSERT INTO dictionary_items(tenant_id,dictionary_id,ordinal,label,value) VALUES($1,'dictionary',1,'对象','{}')",[a],'23514')
+ })
 })
 test('database uniqueness prevents a second instance or repeated node task',async()=>{
   await isolated(async(client)=>{

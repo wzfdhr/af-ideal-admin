@@ -36,6 +36,7 @@
       :title="editorTitle"
       @before-ok="submitEditor"
     >
+      <p v-if="editorError" role="alert">{{ editorError }}</p>
       <ProForm
         ref="editorFormRef"
         v-model="editorModel"
@@ -81,14 +82,28 @@
       <p>
         确认删除字典
         <strong>{{ pendingDeleteRecord?.dictName }}</strong>
-        吗？删除后将无法在当前 Mock 数据中恢复。
+        吗？{{
+          realMode
+            ? '删除后该类型不能重新创建，历史记录保留。'
+            : '删除后将无法在当前 Mock 数据中恢复。'
+        }}
       </p>
     </component>
+    <DictionaryItemsEditor
+      v-if="realMode"
+      :id="itemsId"
+      :visible="itemsVisible"
+      @close="itemsVisible = false"
+      @saved="tableRef?.reload()"
+    />
   </main>
 </template>
 
 <script setup lang="ts">
-import { computed, h, onMounted, ref } from 'vue'
+import { computed, h, onMounted, onBeforeUnmount, ref } from 'vue'
+import { createCommandRetry } from '@/services/command-retry'
+import { registerDirtyCheck } from '@/services/tenant-context'
+import DictionaryItemsEditor from '@/components/dictionary-items-editor.vue'
 import ProForm from '@/components/pro-form/index.vue'
 import ProTable from '@/components/pro-table/index.vue'
 import PermissionButton from '@/components/permission-button.vue'
@@ -112,9 +127,16 @@ import type {
   ProTableExpose,
   ProTableFetchParams,
 } from '@/components/pro-table/types'
+import { dataMode } from '../../../../config/data-mode'
 import type { TableColumnData } from '@arco-design/web-vue'
 
 const { Message, Modal } = adminUi
+const realMode = dataMode === 'reference'
+const retry = createCommandRetry()
+const editingRevision = ref<number>()
+const editorError = ref('')
+const itemsVisible = ref(false)
+const itemsId = ref('')
 
 const tableRef = ref<ProTableExpose>()
 const queryFormRef = ref<ProFormExpose>()
@@ -127,6 +149,10 @@ const editingId = ref('')
 const detailRecord = ref<SystemDictionaryRecord>()
 const pendingDeleteRecord = ref<SystemDictionaryRecord>()
 const editorModel = ref<Record<string, unknown>>({})
+const unregisterDirty = registerDirtyCheck(
+  () => realMode && editorVisible.value
+)
+onBeforeUnmount(unregisterDirty)
 
 const editorTitle = computed(() =>
   editorMode.value === 'create' ? '新增字典' : '编辑字典'
@@ -220,6 +246,9 @@ const toPayload = (
     dictType: String(values.dictType || '').trim(),
     dictStatus,
     description: String(values.description || '').trim(),
+    ...(realMode && editorMode.value === 'update'
+      ? { expectedRevision: editingRevision.value }
+      : {}),
   }
 }
 
@@ -232,6 +261,7 @@ const fetchDictionaryData = async (params: ProTableFetchParams) => {
     })
   } catch {
     Message.error('字典列表加载失败')
+    if (realMode) throw new Error('字典列表加载失败，请重试')
     return { list: [], total: 0 }
   }
 }
@@ -243,6 +273,9 @@ const handleReset = (values: Record<string, unknown>) =>
   tableRef.value?.reset(toCleanFilters(values))
 
 const openCreate = () => {
+  retry.clear()
+  editingRevision.value = undefined
+  editorError.value = ''
   editorMode.value = 'create'
   editingId.value = ''
   editorModel.value = {
@@ -259,6 +292,9 @@ const openEdit = async (record: SystemDictionaryRecord) => {
     const detail = await getSystemDictionaryDetail(record.id)
     editorMode.value = 'update'
     editingId.value = detail.id
+    editingRevision.value = detail.revision
+    retry.clear()
+    editorError.value = ''
     editorModel.value = { ...detail }
     editorVisible.value = true
   } catch {
@@ -282,14 +318,29 @@ const openDeleteConfirm = (record: SystemDictionaryRecord) => {
 
 const saveDictionary = async (values: Record<string, unknown>) => {
   const payload = toPayload(values)
-  if (editorMode.value === 'create') {
-    await createSystemDictionary(payload)
-    Message.success('新增成功')
-  } else {
-    await updateSystemDictionary(editingId.value, payload)
-    Message.success('保存成功')
+  const creating = editorMode.value === 'create'
+  const operation = creating ? 'create' : `update:${editingId.value}`
+  editorError.value = ''
+  try {
+    if (creating) {
+      if (realMode)
+        await createSystemDictionary(payload, retry.key(operation, payload))
+      else await createSystemDictionary(payload)
+    } else if (realMode)
+      await updateSystemDictionary(
+        editingId.value,
+        payload,
+        retry.key(operation, payload)
+      )
+    else await updateSystemDictionary(editingId.value, payload)
+  } catch (failure) {
+    editorError.value =
+      failure instanceof Error ? failure.message : '保存失败，输入已保留'
+    throw failure
   }
-
+  retry.complete(operation)
+  if (realMode) dictionaryService.clear(payload.dictType)
+  Message.success(creating ? '新增成功' : '保存成功')
   editorVisible.value = false
   await tableRef.value?.reload()
 }
@@ -309,7 +360,16 @@ const confirmDelete = async () => {
   }
 
   try {
-    await deleteSystemDictionary(pendingDeleteRecord.value.id)
+    if (realMode) {
+      const item = pendingDeleteRecord.value
+      await deleteSystemDictionary(
+        item.id,
+        item.revision,
+        retry.key(`delete:${item.id}`, { expectedRevision: item.revision })
+      )
+      retry.complete(`delete:${item.id}`)
+      dictionaryService.clear(item.dictType)
+    } else await deleteSystemDictionary(pendingDeleteRecord.value.id)
     Message.success('删除成功')
     deleteVisible.value = false
     pendingDeleteRecord.value = undefined
@@ -323,7 +383,7 @@ const confirmDelete = async () => {
 
 const renderActionButton = (
   record: SystemDictionaryRecord,
-  permission: string,
+  permission: string | string[],
   label: string,
   onClick: () => void,
   danger = false
@@ -332,6 +392,7 @@ const renderActionButton = (
     PermissionButton,
     {
       permission,
+      mode: 'all',
       type: 'text',
       size: 'small',
       status: danger ? 'danger' : undefined,
@@ -339,6 +400,21 @@ const renderActionButton = (
     },
     { default: () => label }
   )
+
+const optionActions = (item: SystemDictionaryRecord) => {
+  if (!realMode) return []
+  return [
+    renderActionButton(
+      item,
+      [SYSTEM_DICT_PERMISSIONS.update, SYSTEM_DICT_PERMISSIONS.detail],
+      '选项',
+      () => {
+        itemsId.value = item.id
+        itemsVisible.value = true
+      }
+    ),
+  ]
+}
 
 const columns: TableColumnData[] = [
   {
@@ -378,6 +454,7 @@ const columns: TableColumnData[] = [
         renderActionButton(item, SYSTEM_DICT_PERMISSIONS.update, '编辑', () =>
           openEdit(item)
         ),
+        ...optionActions(item),
         renderActionButton(
           item,
           SYSTEM_DICT_PERMISSIONS.delete,
