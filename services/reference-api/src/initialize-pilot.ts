@@ -125,7 +125,7 @@ export const initializePilot = async (pool: Pool, input: unknown) => {
         : []
     await members.reduce(async (previous, member) => {
       await previous
-      let owned = capabilities[member.kind]
+      let owned: string[] = capabilities[member.kind]
       if (member.kind === 'manager')
         owned = [...capabilities.employee, ...capabilities.manager]
       if (member.kind === 'admin' && body.platformGovernance === true)
