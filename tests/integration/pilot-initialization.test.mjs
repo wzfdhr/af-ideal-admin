@@ -50,3 +50,24 @@ test('an empty pilot database accepts private identities once and exposes no dem
     await adminPool.end()
   }
 })
+test('explicit empty-platform initialization creates a private governor without wildcard or later silent upgrades',async()=>{
+ const adminPool=db.createPool(),database=`platform_pilot_${randomUUID().replaceAll('-','')}`,previous=process.env.APP_MODE
+ let pool,server
+ await adminPool.query(`CREATE DATABASE ${database}`)
+ try{
+  const url=new URL(process.env.DATABASE_URL);url.pathname=`/${database}`
+  pool=new Pool({connectionString:url.toString()});await migrations.migrate(pool);process.env.APP_MODE='pilot'
+  const members=['admin','manager','manager'].map((kind,i)=>({username:`platform-member-${i}`,name:`平台私有成员${i}`,department:'合成组织',kind,password:randomUUID()}))
+  const input={tenantId:'platform-fixture',tenantName:'平台私有初始化验收',members,platformGovernance:true}
+  await initialization.initializePilot(pool,input)
+  server=api.createServer(pool)
+  const login=await server.inject({method:'POST',url:'/api/user/login',payload:{username:members[0].username,password:members[0].password}})
+  assert.equal(login.statusCode,200)
+  const headers={'x-access-token':login.json().data.token,'x-tenant-id':'platform-fixture'}
+  const info=(await server.inject({url:'/api/user/info',headers})).json().data
+  assert.ok(info.permissions.includes('system:role:assign'));assert.ok(info.permissions.includes('system:user:create'));assert.ok(!info.permissions.includes('*'))
+  assert.equal((await server.inject({url:'/api/system/roles',headers})).statusCode,200)
+  assert.equal((await pool.query('SELECT count(*)::int AS count FROM users WHERE owner_tenant_id=$1',['platform-fixture'])).rows[0].count,3)
+  await assert.rejects(initialization.initializePilot(pool,input),error=>error.businessCode==='ALREADY_INITIALIZED')
+ }finally{process.env.APP_MODE=previous;if(server)await server.close();if(pool)await pool.end();await adminPool.query(`DROP DATABASE ${database}`);await adminPool.end()}
+})

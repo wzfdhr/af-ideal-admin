@@ -32,6 +32,7 @@ describe('revoked bootstrap authentication recovery', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     state.authed = true
+    state.user.role = ''
     state.user.info.mockRejectedValue(new Error('成员已不可访问'))
   })
   const guard = () => {
@@ -69,5 +70,13 @@ describe('revoked bootstrap authentication recovery', () => {
     await guard()({ name: 'login', query: {} }, {}, next)
     expect(next).toHaveBeenCalledWith()
     expect(state.authed).toBe(false)
+  })
+  it('refreshes permissions before protected navigation even when the display role was already loaded', async () => {
+    state.user.role = 'user'
+    state.user.info.mockResolvedValueOnce(undefined)
+    const next = vi.fn()
+    await guard()({ name: 'userSystem', query: {} }, {}, next)
+    expect(state.user.info).toHaveBeenCalledOnce()
+    expect(next).toHaveBeenCalledWith()
   })
 })

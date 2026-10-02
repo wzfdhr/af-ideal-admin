@@ -18,7 +18,16 @@ export const initializePilot = async (pool: Pool, input: unknown) => {
   if (process.env.APP_MODE !== 'pilot')
     throw new Error('Pilot initialization requires explicit APP_MODE=pilot')
   const body = record(input)
-  onlyKeys(body, ['tenantId', 'tenantName', 'members'])
+  onlyKeys(body, ['tenantId', 'tenantName', 'members', 'platformGovernance'])
+  if (
+    body.platformGovernance !== undefined &&
+    typeof body.platformGovernance !== 'boolean'
+  )
+    throw new DomainError(
+      422,
+      'INVALID_INITIALIZATION',
+      '平台治理初始化选项必须为布尔值'
+    )
   const tenantId = text(body.tenantId, 'tenantId', 100)
   const tenantName = text(body.tenantName, 'tenantName', 100)
   if (
@@ -106,11 +115,30 @@ export const initializePilot = async (pool: Pool, input: unknown) => {
       tenantId,
       tenantName,
     ])
+    const platformCapabilities =
+      body.platformGovernance === true
+        ? (
+            await client.query<{ code: string }>(
+              "SELECT code FROM permission_definitions WHERE status='enabled' ORDER BY code"
+            )
+          ).rows.map((row) => row.code)
+        : []
     await members.reduce(async (previous, member) => {
       await previous
+      let owned = capabilities[member.kind]
+      if (member.kind === 'manager')
+        owned = [...capabilities.employee, ...capabilities.manager]
+      if (member.kind === 'admin' && body.platformGovernance === true)
+        owned = platformCapabilities
       await client.query(
-        'INSERT INTO users (id,username,name,password_hash) VALUES ($1,$2,$3,$4)',
-        [member.id, member.username, member.name, member.passwordHash]
+        'INSERT INTO users (id,username,name,password_hash,owner_tenant_id) VALUES ($1,$2,$3,$4,$5)',
+        [
+          member.id,
+          member.username,
+          member.name,
+          member.passwordHash,
+          body.platformGovernance === true ? tenantId : null,
+        ]
       )
       await client.query(
         'INSERT INTO memberships (tenant_id,user_id,department_name,role,permissions) VALUES ($1,$2,$3,$4,$5)',
@@ -124,11 +152,7 @@ export const initializePilot = async (pool: Pool, input: unknown) => {
             employee: 'user',
             auditor: 'user',
           }[member.kind],
-          JSON.stringify(
-            member.kind === 'manager'
-              ? [...capabilities.employee, ...capabilities.manager]
-              : capabilities[member.kind]
-          ),
+          JSON.stringify(owned),
         ]
       )
     }, Promise.resolve())

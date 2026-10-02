@@ -184,6 +184,28 @@ export const createR1Menu = (permissions: string[]) => {
         children: [page],
       })
   }
+  if (permissions.includes('system:role:list') || permissions.includes('*')) {
+    const system = entries.find((entry) => entry.name === 'system')
+    const page = {
+      path: 'roleSystem',
+      name: 'roleSystem',
+      componentKey: 'SystemRolePage',
+      meta: {
+        requireAuth: true,
+        locale: 'menu.system.role',
+        access: { permissions: ['system:role:list'] },
+      },
+    }
+    if (system) system.children.push(page)
+    else
+      entries.push({
+        path: '/system',
+        name: 'system',
+        componentKey: 'DefaultLayout',
+        meta: { requireAuth: true, locale: 'menu.system', order: 6 },
+        children: [page],
+      })
+  }
   if (
     permissions.includes('account:password:update') ||
     permissions.includes('*')

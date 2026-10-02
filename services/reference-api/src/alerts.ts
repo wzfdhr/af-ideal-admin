@@ -6,7 +6,7 @@ import type { Database } from './support'
 export const alertConfigurationAdmins = async (db: Database, actor: Actor) => {
   const admins = await rows<{ user_id: string }>(
     db,
-    "SELECT user_id FROM memberships WHERE tenant_id=$1 AND status='enabled' AND (permissions @> '[\"application:configure\"]'::jsonb OR permissions @> '[\"*\"]'::jsonb)",
+    "SELECT user_id FROM memberships WHERE tenant_id=$1 AND status='enabled' AND (af_effective_permissions(tenant_id,user_id) @> '[\"application:configure\"]'::jsonb OR af_effective_permissions(tenant_id,user_id) @> '[\"*\"]'::jsonb)",
     [actor.tenantId]
   )
   await sequential(admins, async (admin) => {

@@ -18,6 +18,7 @@ import {
   assertRevision,
 } from '@af-admin/workflow-core'
 import { authenticate, scalarHeader } from './auth'
+import { assertMemberDeactivation, assertNoPendingReviews } from './governance'
 import { hashPassword } from './security'
 import {
   audit,
@@ -95,43 +96,8 @@ const preserveGovernor = async (
   actor: Actor,
   id: string
 ) => {
-  const required = [
-    USER_PERMISSIONS.create,
-    USER_PERMISSIONS.update,
-    USER_PERMISSIONS.delete,
-  ]
-  const governors = await rows<{ user_id: string; permissions: string[] }>(
-    client,
-    "SELECT m.user_id,m.permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.status='enabled' AND m.deleted_at IS NULL AND u.status='enabled'",
-    [actor.tenantId]
-  )
-  const available = governors.filter((member) =>
-    required.every((permission) =>
-      hasPermission(member.permissions, permission)
-    )
-  )
-  if (
-    available.some((member) => member.user_id === id) &&
-    !available.some((member) => member.user_id !== id)
-  )
-    throw new DomainError(
-      409,
-      'LAST_ADMINISTRATOR',
-      '必须保留至少一名有效用户管理员'
-    )
-  const pending = one(
-    await rows<{ total: string }>(
-      client,
-      "SELECT count(*) AS total FROM workflow_tasks t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id WHERE t.tenant_id=$1 AND t.assignee_id=$2 AND t.status='pending' AND i.status='running'",
-      [actor.tenantId, id]
-    )
-  )
-  if (Number(pending.total))
-    throw new DomainError(
-      409,
-      'MEMBER_HAS_PENDING_TASKS',
-      '成员仍有待处理审批，请先处理或转交'
-    )
+  await assertMemberDeactivation(client, actor.tenantId, id)
+  await assertNoPendingReviews(client, actor.tenantId, id)
 }
 
 export const registerUsers = (server: FastifyInstance, pool: Pool) => {

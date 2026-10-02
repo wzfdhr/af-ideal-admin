@@ -140,7 +140,7 @@ export const validatePeople = async (
   await sequential(people, async (userId) => {
     const members = await rows<{ permissions: string[] }>(
       db,
-      "SELECT m.permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND u.status='enabled'",
+      "SELECT af_effective_permissions(m.tenant_id,m.user_id) AS permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND u.status='enabled'",
       [tenantId, userId]
     )
     if (!members.length)

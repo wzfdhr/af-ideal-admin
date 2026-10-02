@@ -58,7 +58,7 @@ export const authenticate = async (
     role: UserRole
     permissions: string[]
   }>(
-    "SELECT m.session_epoch,COALESCE(m.display_name,u.name) AS name,COALESCE(d.department_name,m.department_name) AS department_name,m.role,m.permissions FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND t.status='enabled' AND u.status='enabled'",
+    "SELECT m.session_epoch,COALESCE(m.display_name,u.name) AS name,COALESCE(d.department_name,m.department_name) AS department_name,m.role,af_effective_permissions(m.tenant_id,m.user_id) AS permissions FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND t.status='enabled' AND u.status='enabled'",
     [tenantId, user.user_id]
   )
   if (!membership.rowCount)
@@ -98,7 +98,7 @@ export const tenantContexts = async (
     permissions: string[]
     permissionVersion: number
   }>(
-    'SELECT t.id AS "tenantId",t.name,m.permissions,m.revision AS "permissionVersion" FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=$1 AND m.status=\'enabled\' AND t.status=\'enabled\' ORDER BY t.id',
+    'SELECT t.id AS "tenantId",t.name,af_effective_permissions(m.tenant_id,m.user_id) AS permissions,m.revision AS "permissionVersion" FROM memberships m JOIN tenants t ON t.id=m.tenant_id WHERE m.user_id=$1 AND m.status=\'enabled\' AND t.status=\'enabled\' ORDER BY t.id',
     [userId]
   )
   return result.rows.map((context) => ({
@@ -286,7 +286,7 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
       name: string
       permissions: string[]
     }>(
-      "SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,m.permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.status='enabled' AND m.deleted_at IS NULL AND u.status='enabled' ORDER BY COALESCE(m.display_name,u.name),m.user_id",
+      "SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,af_effective_permissions(m.tenant_id,m.user_id) AS permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.status='enabled' AND m.deleted_at IS NULL AND u.status='enabled' ORDER BY COALESCE(m.display_name,u.name),m.user_id",
       [tenantId]
     )
     return {

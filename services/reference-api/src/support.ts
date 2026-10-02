@@ -62,7 +62,7 @@ const refreshActor = async (
       name: string
     }>(
       client,
-      "SELECT m.permissions,COALESCE(d.department_name,m.department_name) AS department_name,m.role,COALESCE(m.display_name,u.name) AS name FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND m.session_epoch=$3 AND u.status='enabled' AND t.status='enabled' AND EXISTS (SELECT 1 FROM sessions s WHERE s.token_hash=$4 AND s.user_id=m.user_id AND s.revoked_at IS NULL AND s.expires_at>now()) FOR SHARE OF m,u,t",
+      "SELECT af_effective_permissions(m.tenant_id,m.user_id) AS permissions,COALESCE(d.department_name,m.department_name) AS department_name,m.role,COALESCE(m.display_name,u.name) AS name FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id LEFT JOIN departments d ON d.tenant_id=m.tenant_id AND d.id=m.department_id AND d.deleted_at IS NULL WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND m.session_epoch=$3 AND u.status='enabled' AND t.status='enabled' AND EXISTS (SELECT 1 FROM sessions s WHERE s.token_hash=$4 AND s.user_id=m.user_id AND s.revoked_at IS NULL AND s.expires_at>now()) FOR SHARE OF m,u,t",
       [actor.tenantId, actor.userId, actor.sessionEpoch, actor.sessionHash]
     )
   )
@@ -220,7 +220,7 @@ export const enqueue = async (
   const membership = one(
     await rows<{ permissions: string[] }>(
       db,
-      'SELECT permissions FROM memberships WHERE tenant_id=$1 AND user_id=$2',
+      'SELECT af_effective_permissions(tenant_id,user_id) AS permissions FROM memberships WHERE tenant_id=$1 AND user_id=$2',
       [actor.tenantId, recipientId]
     )
   )

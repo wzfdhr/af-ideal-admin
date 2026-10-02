@@ -204,7 +204,7 @@ export const decideTask = (
         if (next.approval) {
           const available = await rows<{ id: string; permissions: string[] }>(
             client,
-            "SELECT m.user_id AS id,m.permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND u.status='enabled'",
+            "SELECT m.user_id AS id,af_effective_permissions(m.tenant_id,m.user_id) AS permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND u.status='enabled'",
             [current.tenantId, next.approval.config.approvers?.[0]]
           )
           if (

@@ -50,7 +50,10 @@ const aboutRoutes: AppRouteRecordRaw = {
     {
       path: 'roleSystem',
       name: 'roleSystem',
-      component: () => import('@/views/system/roleSystem/index.vue'),
+      component:
+        dataMode === 'reference'
+          ? () => import('@/views/system/roleSystem/reference.vue')
+          : () => import('@/views/system/roleSystem/index.vue'),
       meta: {
         locale: 'menu.system.role',
         requireAuth: true,
