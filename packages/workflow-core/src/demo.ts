@@ -200,12 +200,22 @@ export class R1DemoStore {
     return this.identities.some((user) => user.id === id)
   }
 
+  private permissionProvider?: (userId: string, tenantId: string) => string[]
+
+  setPermissionProvider(
+    provider: (userId: string, tenantId: string) => string[]
+  ) {
+    this.permissionProvider = provider
+  }
+
   private actor(id: string, tenantId: string): DemoIdentity {
     const user = this.identities.find((candidate) => candidate.id === id)
     if (!user)
       throw new DomainError(401, 'UNAUTHORIZED', '登录已过期，请重新登录')
     if (!user.tenantIds.includes(tenantId)) return missing()
-    return user
+    return this.permissionProvider
+      ? { ...user, permissions: this.permissionProvider(id, tenantId) }
+      : user
   }
 
   private page<T>(items: T[], url: URL) {
@@ -348,7 +358,7 @@ export class R1DemoStore {
             )
           if (
             !['workflow:approve', 'workflow:reject'].every((code) =>
-              hasPermission(person.permissions, code)
+              hasPermission(this.actor(person.id, tenantId).permissions, code)
             )
           )
             throw new DomainError(
@@ -470,8 +480,7 @@ export class R1DemoStore {
     category = 'message',
     copied = false
   ) {
-    const person =
-      this.identities.find((value) => value.id === recipientId) || missing()
+    const person = this.actor(recipientId, request.tenantId)
     const canRead =
       hasPermission(person.permissions, 'leave:read:self') ||
       hasPermission(person.permissions, 'workflow:todo')
@@ -569,7 +578,7 @@ export class R1DemoStore {
         tenants: user.tenantIds.map((value) => ({
           tenantId: value,
           name: value === 'tenant-a' ? '演示集团 A' : '演示集团 B',
-          permissions: user.permissions,
+          permissions: this.actor(userId, value).permissions,
           permissionVersion: 1,
         })),
       }
@@ -586,11 +595,11 @@ export class R1DemoStore {
         total: user.tenantIds.length,
       }
     if (parts[0] === 'tenants' && parts[2] === 'context') {
-      this.actor(userId, id)
+      const contextActor = this.actor(userId, id)
       return {
         tenantId: id,
         name: id === 'tenant-a' ? '演示集团 A' : '演示集团 B',
-        permissions: user.permissions,
+        permissions: contextActor.permissions,
         permissionVersion: 1,
         currentTenant: {
           id,
@@ -641,11 +650,11 @@ export class R1DemoStore {
       const body = record(input)
       onlyKeys(body, ['tenantId'])
       const selected = text(body.tenantId, 'tenantId', 100)
-      this.actor(userId, selected)
+      const selectedActor = this.actor(userId, selected)
       return {
         tenantId: selected,
         name: selected === 'tenant-a' ? '演示集团 A' : '演示集团 B',
-        permissions: user.permissions,
+        permissions: selectedActor.permissions,
         permissionVersion: 1,
       }
     }
@@ -658,7 +667,7 @@ export class R1DemoStore {
           id: person.id,
           name: person.name,
           canApprove: ['workflow:approve', 'workflow:reject'].every((code) =>
-            hasPermission(person.permissions, code)
+            hasPermission(this.actor(person.id, tenantId).permissions, code)
           ),
         }))
     }

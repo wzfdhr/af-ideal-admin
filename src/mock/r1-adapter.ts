@@ -2,6 +2,7 @@ import { getUserId } from '@/services/auth'
 import { tenantScope } from '@/services/tenant-context'
 import { R1DemoStore } from '@af-admin/workflow-core'
 import { DomainError } from '@af-admin/contracts'
+import { mockEffectivePermissions } from './authorization-state'
 import type {
   AxiosInstance,
   AxiosResponse,
@@ -9,6 +10,7 @@ import type {
 } from 'axios'
 
 export const r1Demo = new R1DemoStore()
+r1Demo.setPermissionProvider(mockEffectivePermissions)
 export const installR1MockAdapter = (client: AxiosInstance) => {
   client.interceptors.request.use((config) => {
     if (typeof config.adapter === 'function') return config

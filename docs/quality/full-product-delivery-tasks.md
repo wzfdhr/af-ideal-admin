@@ -145,3 +145,11 @@
 - roles-real-browser.log和roles-all-browser.log验证角色绑定使旧会话获得入口，撤权后接口403、菜单/路由拒绝、双租户隔离及解绑删除；全量22真实页面通过。roles-full-unit.log428单测、roles-domain.log13契约/12领域通过；原3smoke、2现有Mock页面仍通过，lint/type/build无错误。
 - 私有初始化新增显式platformGovernance:true，仅对新空库创建管理者，不升级旧初始化/已有成员，不使用通配权限。默认/false保留R1原行为。
 - 生产reference角色页与原Mock角色页分开，旧Mock没有证明新授权生命周期。新Mock闭环、数据范围、键盘/分辨率完整验收、模块部署/备份/兼容回退和本轮新CI仍须继续。FP-005保持进行中；完整规则与限制见full-product-authorization-design.md。
+- 65cd1d87f85d5e410d426299acc863eb58bae850的实际CI36944402964全部通过，artifact归档ci-36944402964；对应67数据库、22真实页面、428单测及既有Mock回归，不代替后续Mock增量CI。
+
+### FP-005 授权Mock增量
+
+- RoleDemoStore及共享permission-catalogue、authorization-state提供租户隔离、版本/幂等、失败回滚、委托上限、治理者保留和当前有效权限。R1身份/租户上下文/审批候选/通知路由、组织、权限码和角色接口使用同一来源，不依据角色展示值重新升级。
+- 角色页面在真实/Mock模式共用；角色开发浏览器通过实际创建、绑定、SPA重新登录、目录读取、撤权及菜单移除。role-mock-provider-browser-clean.log3条独立Mock通过；role-mock-provider-domain.log15领域/Mock通过；role-mock-catalogue-http.log68真实数据库/API通过，新增目录词汇精确一致性检查。
+- role-mock-final-unit.log仍428单测通过，类型/lint无错误、构建通过。热重载干扰的失败证据保留，顺序重验通过，未降低断言或提高超时。
+- 内存状态不证明持久保存、跨浏览器、真实锁、生产哈希或服务恢复；FP-005的部署/完整恢复、角色数据范围及整体发布仍未完，保持进行中。

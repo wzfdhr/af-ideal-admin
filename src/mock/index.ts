@@ -3,6 +3,7 @@ import request from '@/api/request'
 import { installR1MockAdapter, r1Demo } from './r1-adapter'
 import installOrganizationMockAdapter from './organization-adapter'
 import installCredentialMockAdapter from './credential-adapter'
+import installRoleMockAdapter from './role-adapter'
 import setupAuditMock from './modules/audit'
 import setupAuthMock from './modules/auth'
 import setupBusinessMock from './modules/business'
@@ -61,3 +62,4 @@ setupUiAdapterLabMock()
 installR1MockAdapter(request)
 installOrganizationMockAdapter(request, r1Demo)
 installCredentialMockAdapter(request)
+installRoleMockAdapter(request)

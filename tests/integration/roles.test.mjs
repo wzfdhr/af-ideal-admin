@@ -14,6 +14,10 @@ before(async()=>{
  await pool.query("UPDATE memberships SET permissions=$1::jsonb WHERE user_id IN ('a-admin','b-admin')",[JSON.stringify(codes)])
  server=api.createServer(pool);base=await server.listen({host:'127.0.0.1',port:0})
 })
+test('database permission catalogue matches the shared stable demonstration vocabulary',async()=>{
+ const actual=(await pool.query('SELECT code,title,module FROM permission_definitions ORDER BY code')).rows
+ assert.deepEqual(actual,[...contracts.PLATFORM_PERMISSION_CATALOGUE].sort((a,b)=>a.code.localeCompare(b.code)))
+})
 after(async()=>{await server.close();await pool.end()})
 const call=async(path,{user='a-admin',tenant=user.startsWith('b-')?'tenant-b':'tenant-a',method='GET',body,key=randomUUID()}={})=>{
  if(!tokens.has(user)){

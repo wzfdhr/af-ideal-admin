@@ -7,12 +7,15 @@ import {
 } from '@af-admin/workflow-core'
 import {
   DEPARTMENT_PERMISSIONS,
-  POSITION_PERMISSIONS,
   DomainError,
   demoIdentities,
   createR1Menu,
 } from '@af-admin/contracts'
 import { mockUsers } from './seed'
+import {
+  mockEffectivePermissions,
+  mockPermissionVersion,
+} from './authorization-state'
 import type {
   AxiosInstance,
   AxiosResponse,
@@ -64,17 +67,7 @@ const installOrganizationMockAdapter = (
           tenantIds[0]
         if (typeof requested !== 'string' || !tenantIds.includes(requested))
           throw new DomainError(403, 'TENANT_FORBIDDEN', '租户不可访问')
-        const permissions = [
-          ...new Set([
-            ...user.permissions,
-            ...(user.role === 'admin'
-              ? [
-                  ...Object.values(DEPARTMENT_PERMISSIONS),
-                  ...Object.values(POSITION_PERMISSIONS),
-                ]
-              : []),
-          ]),
-        ]
+        const permissions = mockEffectivePermissions(user.id, requested)
         let data: unknown
         if (uri.pathname === '/sys/dic/departmentStatus') {
           requirePermission(permissions, DEPARTMENT_PERMISSIONS.list)
@@ -96,7 +89,14 @@ const installOrganizationMockAdapter = (
               permissions,
               tenants: info.tenants.map((tenant) => ({
                 ...tenant,
-                permissions,
+                permissions: mockEffectivePermissions(
+                  user.id,
+                  String(tenant.tenantId)
+                ),
+                permissionVersion: mockPermissionVersion(
+                  user.id,
+                  String(tenant.tenantId)
+                ),
               })),
             }
           }

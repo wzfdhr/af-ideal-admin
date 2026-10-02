@@ -9,7 +9,9 @@ import {
   setToken,
   setUserId,
 } from '@/services/auth'
+import { tenantScope } from '@/services/tenant-context'
 import { mockUsers } from '../seed'
+import { mockEffectivePermissions } from '../authorization-state'
 import type { MockParams } from '../types'
 
 export const findCurrentMockUser = () =>
@@ -65,7 +67,10 @@ const setupAuthMock = () => {
           job: user.job,
           dept: user.dept,
           role: user.role,
-          permissions: user.permissions,
+          permissions: mockEffectivePermissions(
+            user.id,
+            tenantScope.snapshot().tenantId || user.tenantId
+          ),
         })
       })
 
