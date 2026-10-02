@@ -278,3 +278,17 @@
 - 015已应用专属开发演示库，API10890/网关4189；R1原包/卷/部署保留。只在明确demo初始化中为两名合成员工授使用/字典读取权，审批者不自动授予。复杂校验/联动、外部HTTP、完整源配置Mock、包重绑、全部键盘/分辨率、真实进程/数据库恢复、部署/备份/回退仍未齐备，FP-011/012/019保持进行中。当前结果仍须新提交CI，不能替代全产品最终门禁。
 
 - 随后补真实通用草稿预览：form-bindings-preview-http.log的116项再次通过，预览读取当前来源、校验真实字段/计算值，非法选项422且业务记录数不变。form-bindings-preview-unit.log的437项通过、form-bindings-preview-build.log完整构建通过，form-bindings-preview-lint.log无错误/6警告。预览按钮在reference显示服务端校验，不再使用“提交Mock”文案。
+
+### 表单绑定远端验证
+
+- 7734fff810fd7e39b28704cb6e7759f0ab796b7d的实际CI37037025632已通过，verify/real-business均success；归档ci-37037025632及form-bindings-remote-ci.json。远端116项数据库/API与32条真实浏览器通过。后续应用包来源重绑不包含于这个提交，FP-011/012保持进行中。
+
+### FP-019 登记数据源应用包重绑增量
+
+- 实施/阶段自检：Codex，2026-10-03。应用包v2包含来源槽位、form-contract v2/registered-sources v1依赖；保留v1。导出统一重映射来源ID、source key及字段引用，清除全部来源快照/版本和默认值。源成员、应用及登记ID不作为目标可执行引用；来源数据不随包携带，脱敏清单明确列出。
+- 目标租户显式绑定人员和自身登记源，校验准确槽位集合/类型、格式/依赖/摘要、当前权限及底层可用性；同事务创建独立应用/草稿/引用，幂等恢复及审计。发布读取目标来源并生成目标快照，不复用源选项。导入仍不自动发布。
+- package-sources-http.log的118项数据库/API通过，含真实源定义发布导出、去除原ID/原字典值/版本、目标重绑/独立发布/实际业务及两级审批通过、源值在目标业务拒绝、遗漏/多余/原租户绑定、伪造快照、来源权限撤销拒绝。package-sources-contracts.log的25契约+15领域/Mock通过，含v3/字符串版本/未知依赖/重复或悬空槽位/私有快照拒绝。
+- package-sources-browser-label-fixed.log的v2/v1两个实际文件下载/上传/重绑/重开/配置/发布/业务提交路径通过；源包字节检查无源字段数据或ID，目标真实下拉使用目标字典，未注入成功响应。package-sources-full-browser.log的33项全量真实页面回归通过；application-package-sources-runtime.png已检查。
+- package-sources-browser.log保留UI文案调整后旧测试假定“待绑定槽位”失败；恢复清楚的“人员待绑定槽位”文本同时保留新增数据源槽位，不删除旧v1断言。package-sources-browser-style.log保留新增测试for-of不符合lint的错误，改数组迭代后package-sources-browser-style-final.log无错误。
+- package-sources-unit.log的437单测、package-sources-types-final.log的全部workspace类型、package-sources-all-build.log及后续package-sources-label-build.log构建通过；package-sources-lint.log无错误/6既有警告。旧smoke/独立Mock分别3项通过，证据package-sources-smoke-browser.log/package-sources-mock-browser.log。
+- 本轮没有新增/改写数据库迁移，仍使用专属演示库和API10890/网关4189；原R1包/环境/卷保留。源/目标全新部署、完整格式迁移、HTTP/页面/物料/插件包、包容量/恢复及最终备份/回退等仍开放，FP-019保持进行中。当前结果仍需本轮新提交远端CI，不替代全产品最终交付。

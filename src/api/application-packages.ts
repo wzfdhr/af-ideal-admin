@@ -30,3 +30,10 @@ export const importApplicationPackage = async (body: unknown, key: string) =>
       headers: { 'Idempotency-Key': key },
     })
   ).data
+
+export const packageBindingSources = async () =>
+  (
+    await request.get<
+      { id: string; name: string; code: string; kind: 'dictionary' }[]
+    >('/application-packages/sources')
+  ).data

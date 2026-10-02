@@ -10,8 +10,14 @@ import {
   parseForm,
   parseWorkflow,
   validateLeaveForm,
+  FORM_DATA_SOURCE_PERMISSIONS,
+  DICTIONARY_PERMISSIONS,
 } from '@af-admin/contracts'
-import { assertRevision, validateSerialWorkflow } from '@af-admin/workflow-core'
+import {
+  assertRevision,
+  validateSerialWorkflow,
+  requirePermission,
+} from '@af-admin/workflow-core'
 import { authenticate, scalarHeader } from './auth'
 import {
   authorizedTransaction,
@@ -22,6 +28,10 @@ import {
   audit,
   noFault,
 } from './support'
+import {
+  requireFormSourceRead,
+  cleanDraftSourceSnapshots,
+} from './form-source-bindings'
 import { readRelease, validatePeople } from './application'
 import { provisionApplication } from './application-center'
 import type {
@@ -61,6 +71,31 @@ export const registerApplicationPackages = (
           [current.tenantId]
         )
         return ok(people, request.id)
+      }
+    )
+  })
+  server.get('/api/application-packages/sources', async (request) => {
+    const actor = await authenticate(pool, request)
+    return authorizedTransaction(
+      pool,
+      actor,
+      P.import,
+      async (client, current) => {
+        requirePermission(
+          current.permissions,
+          FORM_DATA_SOURCE_PERMISSIONS.list
+        )
+        requirePermission(
+          current.permissions,
+          FORM_DATA_SOURCE_PERMISSIONS.read
+        )
+        requirePermission(current.permissions, DICTIONARY_PERMISSIONS.read)
+        const sources = await rows(
+          client,
+          "SELECT s.id,s.name,s.code,s.kind FROM form_data_sources s JOIN dictionaries d ON d.tenant_id=s.tenant_id AND d.id=s.dictionary_id WHERE s.tenant_id=$1 AND s.status='enabled' AND d.status='enabled' AND d.deleted_at IS NULL ORDER BY s.name,s.id LIMIT 100",
+          [current.tenantId]
+        )
+        return ok(sources, request.id)
       }
     )
   })
@@ -121,7 +156,31 @@ export const registerApplicationPackages = (
           form = parseForm(f.schema)
           workflow = parseWorkflow(w.schema)
         }
+        requireFormSourceRead(current, form)
+        const sources: ApplicationPackage['sources'] = []
+        const originalSourceIds = form.dataSources.map((binding) =>
+          String(binding.registryId)
+        )
+        form = cleanDraftSourceSnapshots(form)
+        form.dataSources.forEach((binding, index) => {
+          const key = `source-${index + 1}`
+          sources.push({ key, name: String(binding.name), kind: 'dictionary' })
+          const previous = binding.key
+          binding.key = key
+          form.widgetsConfig
+            .filter((widget) => widget.config.optionsSourceKey === previous)
+            .forEach((widget) => {
+              widget.config.optionsSourceKey = key
+            })
+          binding.registryId = key
+        })
         const redactions: ApplicationPackage['redactions'] = []
+        sources.forEach((slot, index) =>
+          redactions.push({
+            path: `form.dataSources.${form.dataSources[index].key}`,
+            reason: 'source-snapshot-removed',
+          })
+        )
         form.widgetsConfig.forEach((widget) => {
           if (widget.config.defaultValue !== undefined) {
             delete widget.config.defaultValue
@@ -156,10 +215,14 @@ export const registerApplicationPackages = (
         })
         const pkg: ApplicationPackage = {
           format: 'af-admin-application',
-          version: 1,
+          version: sources.length ? 2 : 1,
+          ...(sources.length ? { sources } : {}),
           dependencies: [
-            { key: 'form-contract', version: 1 },
+            { key: 'form-contract', version: sources.length ? 2 : 1 },
             { key: 'serial-workflow', version: 1 },
+            ...(sources.length
+              ? [{ key: 'registered-sources' as const, version: 1 as const }]
+              : []),
           ],
           application: {
             name: app.name,
@@ -190,6 +253,7 @@ export const registerApplicationPackages = (
             app.workflow_draft_id,
             app.active_release_id,
             ...identities.map((member) => member.user_id),
+            ...originalSourceIds,
           ].filter(Boolean)
         )
         const inspect = (value: unknown): void => {
@@ -215,7 +279,7 @@ export const registerApplicationPackages = (
           'application',
           id,
           'success',
-          { checksum: pkg.checksum, formatVersion: 1 }
+          { checksum: pkg.checksum, formatVersion: pkg.version }
         )
         return ok(pkg, request.id)
       }
@@ -227,7 +291,14 @@ export const registerApplicationPackages = (
     async (request) => {
       const actor = await authenticate(pool, request)
       const body = record(request.body)
-      onlyKeys(body, ['package', 'code', 'name', 'description', 'bindings'])
+      onlyKeys(body, [
+        'package',
+        'code',
+        'name',
+        'description',
+        'bindings',
+        ...(record(body.package).version === 2 ? ['sourceBindings'] : []),
+      ])
       const pkg = parseApplicationPackage(body.package)
       if (checksum(pkg) !== pkg.checksum)
         throw new DomainError(
@@ -259,7 +330,33 @@ export const registerApplicationPackages = (
           text(bindings[slot.key], 'binding', 100),
         ])
       )
-      const input = { package: pkg, ...metadata, bindings: people }
+      let sourceBindings: Record<string, string> | undefined
+      if (pkg.version === 2) {
+        const map = record(body.sourceBindings, 'sourceBindings')
+        if (
+          Object.keys(map).length !== pkg.sources?.length ||
+          Object.keys(map).some(
+            (key) => !pkg.sources?.some((slot) => slot.key === key)
+          )
+        )
+          throw new DomainError(
+            422,
+            'PACKAGE_BINDINGS_INVALID',
+            '必须重绑全部数据源槽位'
+          )
+        sourceBindings = Object.fromEntries(
+          (pkg.sources || []).map((slot) => [
+            slot.key,
+            text(map[slot.key], 'sourceBinding', 100),
+          ])
+        )
+      }
+      const input = {
+        package: pkg,
+        ...metadata,
+        bindings: people,
+        ...(sourceBindings ? { sourceBindings } : {}),
+      }
       return ok(
         await idempotent(
           pool,
@@ -269,6 +366,11 @@ export const registerApplicationPackages = (
           scalarHeader(request, 'idempotency-key'),
           input,
           async (client, current) => {
+            const form = parseForm(pkg.form)
+            if (sourceBindings)
+              form.dataSources.forEach((binding) => {
+                binding.registryId = sourceBindings[String(binding.registryId)]
+              })
             const workflow = parseWorkflow(pkg.workflow)
             workflow.nodes.forEach((node) => {
               if (node.config.approvers)
@@ -289,7 +391,7 @@ export const registerApplicationPackages = (
               current,
               metadata,
               pkg.application.businessKind,
-              pkg.form,
+              form,
               workflow
             )
             fault('package:application-created')
@@ -301,7 +403,7 @@ export const registerApplicationPackages = (
               'application',
               created.id,
               'success',
-              { checksum: pkg.checksum, formatVersion: 1 }
+              { checksum: pkg.checksum, formatVersion: pkg.version }
             )
             return {
               application: created,
@@ -310,7 +412,7 @@ export const registerApplicationPackages = (
                 form: created.formDraftId,
                 workflow: created.workflowDraftId,
               },
-              formatVersion: 1,
+              formatVersion: pkg.version,
             }
           }
         ),

@@ -22,7 +22,8 @@
       <template v-if="pkg">
         <p>
           格式v{{ pkg.version }} · {{ pkg.application.name }} ·
-          {{ pkg.people.length }}个待绑定槽位
+          {{ pkg.people.length }}个人员待绑定槽位 ·
+          {{ pkg.sources?.length || 0 }}个数据源槽位
         </p>
         <p v-if="pkg.redactions.length">
           原默认值已按清单移除，导入后请复核表单配置。
@@ -51,6 +52,27 @@
             </option>
           </select>
         </label>
+        <label v-for="slot in pkg.sources || []" :key="slot.key">
+          数据源 {{ slot.name }}
+          <select
+            v-model="sourceBindings[slot.key]"
+            :aria-label="`绑定数据源 ${slot.key}`"
+          >
+            <option value="">请选择本租户已登记数据源</option>
+            <option
+              v-for="source in sources.filter(
+                (item) => item.kind === slot.kind
+              )"
+              :key="source.id"
+              :value="source.id"
+            >
+              {{ source.name }} · {{ source.code }}
+            </option>
+          </select>
+        </label>
+        <p v-if="pkg.version === 2">
+          源选项数据不随包导入；发布时读取目标数据源并生成独立快照。
+        </p>
         <p>导入只创建独立草稿，需要检查并单独发布后才能运行。</p>
       </template>
     </a-modal>
@@ -60,6 +82,7 @@
 import { ref, onUnmounted } from 'vue'
 import {
   packageBindingPeople,
+  packageBindingSources,
   importApplicationPackage,
 } from '@/api/application-packages'
 import PermissionButton from '@/components/permission-button.vue'
@@ -75,6 +98,8 @@ const pkg = ref<ApplicationPackage>()
 const name = ref('')
 const code = ref('')
 const bindings = ref<Record<string, string>>({})
+const sourceBindings = ref<Record<string, string>>({})
+const sources = ref<Awaited<ReturnType<typeof packageBindingSources>>>([])
 const people = ref<{ id: string; name: string; canApprove: boolean }[]>([])
 const retry = createCommandRetry()
 const unregister = registerDirtyCheck(() => visible.value)
@@ -97,6 +122,10 @@ const choose = async (event: Event) => {
     bindings.value = Object.fromEntries(
       pkg.value.people.map((slot) => [slot.key, ''])
     )
+    sourceBindings.value = Object.fromEntries(
+      (pkg.value.sources || []).map((slot) => [slot.key, ''])
+    )
+    sources.value = pkg.value.version === 2 ? await packageBindingSources() : []
     people.value = await packageBindingPeople()
   } catch (failure) {
     error.value = failure instanceof Error ? failure.message : '包文件读取失败'
@@ -113,6 +142,9 @@ const save = async () => {
       code: code.value,
       description: pkg.value.application.description,
       bindings: bindings.value,
+      ...(pkg.value.version === 2
+        ? { sourceBindings: sourceBindings.value }
+        : {}),
     }
     await importApplicationPackage(body, retry.key('import', body))
     retry.complete('import')
