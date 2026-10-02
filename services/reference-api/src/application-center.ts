@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import {
   APPLICATION_PERMISSIONS as P,
   DomainError,
+  EQUIPMENT_FORM,
   parseApplicationCreate,
   parseApplicationCopy,
   parseForm,
@@ -231,7 +232,7 @@ export const registerApplicationCenter = (
         async (client, current) => {
           let form = blankForm()
           let workflow = blankWorkflow()
-          if (input.template === 'leave') {
+          if (input.template === 'leave' || input.template === 'equipment') {
             const template = await read(client, current.tenantId, 'leave', true)
             enabled(template)
             if (!template.active_release_id)
@@ -241,7 +242,10 @@ export const registerApplicationCenter = (
               current.tenantId,
               template.active_release_id
             )
-            form = release.formSnapshot
+            form =
+              input.template === 'equipment'
+                ? EQUIPMENT_FORM
+                : release.formSnapshot
             workflow = release.workflowSnapshot
           }
           const created = await provision(

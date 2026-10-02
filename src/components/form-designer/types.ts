@@ -9,6 +9,7 @@ export type ItemSlot = {
 }
 
 export interface FormConfig {
+  computedFields?: import('@af-admin/contracts').ComputedMoneyField[]
   size: 'mini' | 'small' | 'medium' | 'large'
   layout: 'horizontal' | 'vertical'
   labelAlign: 'left' | 'right'

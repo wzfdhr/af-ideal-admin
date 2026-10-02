@@ -40,6 +40,7 @@
         <select v-model="template" aria-label="初始模板">
           <option value="blank">空白应用</option>
           <option value="leave">请假审批模板</option>
+          <option value="equipment">设备领用模板</option>
         </select>
       </label>
       <p v-else-if="source">
@@ -86,7 +87,7 @@ const editing = ref<ManagedApplication>()
 const name = ref('')
 const code = ref('')
 const description = ref('')
-const template = ref<'blank' | 'leave'>('blank')
+const template = ref<'blank' | 'leave' | 'equipment'>('blank')
 const unregister = registerDirtyCheck(() => visible.value)
 onUnmounted(() => {
   unregister()
@@ -238,6 +239,19 @@ const columns = [
           action('leave:create', '运行', () =>
             router.push({
               path: '/leave/requests/new',
+              query: { applicationId: app.id },
+            })
+          )
+        )
+      if (
+        app.status === 'enabled' &&
+        app.activeReleaseId &&
+        app.businessKind === 'generic'
+      )
+        actions.push(
+          action('business:create', '运行', () =>
+            router.push({
+              path: '/business/records/new',
               query: { applicationId: app.id },
             })
           )

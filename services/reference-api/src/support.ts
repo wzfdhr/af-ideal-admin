@@ -229,11 +229,22 @@ export const enqueue = async (
       [actor.tenantId, recipientId]
     )
   )
-  const canReadBusiness = ['leave:read:self', 'workflow:todo'].some(
+  const resource = one(
+    await rows<{ record_kind: string }>(
+      db,
+      'SELECT record_kind FROM business_records WHERE tenant_id=$1 AND id=$2',
+      [actor.tenantId, requestId]
+    )
+  )
+  const prefix = resource.record_kind === 'generic' ? 'business' : 'leave'
+  const canReadBusiness = [`${prefix}:read:self`, 'workflow:todo'].some(
     (permission) => hasPermission(membership.permissions, permission)
   )
   const target = encodeURIComponent(requestId)
-  let link = `/leave/requests/${target}`
+  let link =
+    resource.record_kind === 'generic'
+      ? `/business/records/${target}`
+      : `/leave/requests/${target}`
   if (kind === 'copy' && !canReadBusiness) {
     link = hasPermission(membership.permissions, 'audit:read')
       ? `/audit/logs?targetId=${target}`

@@ -75,6 +75,13 @@ const normalizeFormConfig = (schema: LegacyFormSchema): FormConfig => {
   }
 
   return {
+    ...(rawConfig.computedFields === undefined
+      ? {}
+      : {
+          computedFields: JSON.parse(
+            JSON.stringify(rawConfig.computedFields)
+          ) as FormConfig['computedFields'],
+        }),
     size: isFormSize(rawConfig.size)
       ? rawConfig.size
       : DEFAULT_FORM_CONFIG.size,

@@ -4,6 +4,23 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  {
+    code: 'business:read:self',
+    title: '查看本人和参与的业务记录',
+    module: '业务运行',
+  },
+  { code: 'business:create', title: '创建本人业务记录', module: '业务运行' },
+  {
+    code: 'business:update:self',
+    title: '编辑本人业务草稿',
+    module: '业务运行',
+  },
+  { code: 'business:submit', title: '提交本人业务记录', module: '业务运行' },
+  {
+    code: 'business:withdraw:self',
+    title: '撤回本人业务记录',
+    module: '业务运行',
+  },
   { code: 'application:list', title: '查看应用中心', module: '应用' },
   { code: 'application:create', title: '创建应用', module: '应用' },
   { code: 'application:copy', title: '独立复制应用', module: '应用' },

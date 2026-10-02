@@ -1,4 +1,6 @@
 export default {
+  'menu.business.records': 'Business requests',
+  'menu.business.record': 'Request detail',
   'menu.applications': 'Business applications',
   'menu.applications.center': 'Application center',
   'menu.applications.configuration': 'Application configuration',

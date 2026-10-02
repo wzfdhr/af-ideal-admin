@@ -1,4 +1,6 @@
 export default {
+  'menu.business.records': '业务申请',
+  'menu.business.record': '申请详情',
   'menu.applications': '业务应用',
   'menu.applications.center': '应用中心',
   'menu.applications.configuration': '应用配置',

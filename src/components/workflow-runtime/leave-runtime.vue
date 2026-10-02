@@ -39,7 +39,9 @@ const columns = [
   {
     title: '天数',
     render: ({ record }: { record: Record<string, unknown> }) =>
-      `${Number(record.halfDayUnits) / 2} 天`,
+      record.businessKind === 'generic'
+        ? '业务记录'
+        : `${Number(record.halfDayUnits) / 2} 天`,
   },
   {
     title: '状态',
@@ -57,7 +59,11 @@ const columns = [
       h(
         RouterLink,
         {
-          to: `/leave/requests/${encodeURIComponent(String(record.requestId))}`,
+          to: `${
+            record.businessKind === 'generic'
+              ? '/business/records/'
+              : '/leave/requests/'
+          }${encodeURIComponent(String(record.requestId))}`,
         },
         () => (record.status === 'pending' ? '查看并处理' : '查看记录')
       ),

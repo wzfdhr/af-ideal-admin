@@ -44,12 +44,19 @@ export interface FormWidget {
   name: string
   config: JsonObject
 }
+export interface ComputedMoneyField {
+  id: string
+  operation: 'quantity-times-price'
+  quantity: string
+  price: string
+}
 export interface FormSchema {
   version: number
   formConfig: {
     size: 'mini' | 'small' | 'medium' | 'large'
     layout: 'vertical' | 'horizontal'
     labelAlign: 'left' | 'right'
+    computedFields?: ComputedMoneyField[]
   }
   widgetsConfig: FormWidget[]
   dataSources: JsonObject[]
@@ -98,6 +105,8 @@ export interface LeaveRequest extends LeaveFields {
   tasks?: WorkflowTask[]
 }
 export interface WorkflowTask {
+  businessKind?: 'leave' | 'generic'
+  recordLink?: string
   id: string
   tenantId: string
   instanceId: string
@@ -365,7 +374,7 @@ export const parseForm = (input: unknown): FormSchema => {
   const body = record(input, 'schema')
   onlyKeys(body, ['version', 'formConfig', 'widgetsConfig', 'dataSources'])
   const fc = record(body.formConfig || {}, 'formConfig')
-  onlyKeys(fc, ['size', 'layout', 'labelAlign'])
+  onlyKeys(fc, ['size', 'layout', 'labelAlign', 'computedFields'])
   if (!Array.isArray(body.widgetsConfig) || body.widgetsConfig.length > 50)
     return invalid('widgetsConfig', '表单控件必须是有限的数组')
   if (
@@ -383,6 +392,9 @@ export const parseForm = (input: unknown): FormSchema => {
     const config = record(widget.config || {}, 'config')
     onlyKeys(config, [
       'id',
+      'valueType',
+      'min',
+      'max',
       'label',
       'required',
       'disabled',
@@ -403,6 +415,28 @@ export const parseForm = (input: unknown): FormSchema => {
       'modeSelection',
       'error',
     ])
+    if (
+      config.valueType !== undefined &&
+      !['text', 'integer', 'decimal'].includes(String(config.valueType))
+    )
+      invalid(uid, '字段数值类型不受支持')
+    if (
+      ['min', 'max'].some(
+        (key) =>
+          config[key] !== undefined &&
+          (typeof config[key] !== 'number' ||
+            !Number.isFinite(config[key]) ||
+            Number(config[key]) < 0 ||
+            Number(config[key]) > 1000000000)
+      )
+    )
+      invalid(uid, '数值范围无效')
+    if (
+      typeof config.min === 'number' &&
+      typeof config.max === 'number' &&
+      config.min > config.max
+    )
+      invalid(uid, '数值上下限无效')
     if (config.id !== undefined && config.id !== uid)
       invalid(uid, 'R1 业务字段标识不能改变')
     if (config.optionsType !== undefined && config.optionsType !== 'fixed')
@@ -418,9 +452,37 @@ export const parseForm = (input: unknown): FormSchema => {
       config: jsonValue(config) as JsonObject,
     }
   })
+  let computedFields: ComputedMoneyField[] | undefined
+  if (fc.computedFields !== undefined) {
+    if (!Array.isArray(fc.computedFields) || fc.computedFields.length > 10)
+      invalid('computedFields', '计算字段数量无效')
+    const ids = new Set(widgetIds)
+    computedFields = (fc.computedFields as unknown[]).map((calculation) => {
+      const rule = record(calculation, 'computedField')
+      onlyKeys(rule, ['id', 'operation', 'quantity', 'price'])
+      const id = text(rule.id, 'computedField.id', 100)
+      const quantity = text(rule.quantity, 'quantity', 100)
+      const price = text(rule.price, 'price', 100)
+      if (ids.has(id)) invalid(id, '计算字段标识重复')
+      ids.add(id)
+      if (
+        rule.operation !== 'quantity-times-price' ||
+        widgetsConfig.find((w) => w.uid === quantity)?.config.valueType !==
+          'integer' ||
+        widgetsConfig.find((w) => w.uid === price)?.config.valueType !==
+          'decimal'
+      )
+        invalid(
+          id,
+          '仅支持已登记整数数量与金额的乘法，不能执行脚本或任意表达式'
+        )
+      return { id, operation: 'quantity-times-price' as const, quantity, price }
+    })
+  }
   return {
     version: formatVersion(body.version),
     formConfig: {
+      ...(computedFields === undefined ? {} : { computedFields }),
       size: enumValue(
         fc.size || 'medium',
         ['mini', 'small', 'medium', 'large'],

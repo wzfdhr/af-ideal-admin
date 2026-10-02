@@ -42,9 +42,12 @@ const metadata = (body: Record<string, unknown>) => {
 export const parseApplicationCreate = (input: unknown) => {
   const body = record(input)
   onlyKeys(body, ['code', 'name', 'description', 'template'])
-  if (!['blank', 'leave'].includes(String(body.template)))
+  if (!['blank', 'leave', 'equipment'].includes(String(body.template)))
     invalid('template', '请选择受支持的应用模板')
-  return { ...metadata(body), template: body.template as 'blank' | 'leave' }
+  return {
+    ...metadata(body),
+    template: body.template as 'blank' | 'leave' | 'equipment',
+  }
 }
 export const parseApplicationCopy = (input: unknown) => {
   const body = record(input)

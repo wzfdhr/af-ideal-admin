@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import {
+  BUSINESS_PERMISSIONS,
   DomainError,
   LEAVE_FORM,
   LEAVE_PERMISSIONS,
@@ -128,6 +129,11 @@ export const initializePilot = async (pool: Pool, input: unknown) => {
       let owned: string[] = capabilities[member.kind]
       if (member.kind === 'manager')
         owned = [...capabilities.employee, ...capabilities.manager]
+      if (
+        body.platformGovernance === true &&
+        ['employee', 'manager'].includes(member.kind)
+      )
+        owned = [...owned, ...Object.values(BUSINESS_PERMISSIONS)]
       if (member.kind === 'admin' && body.platformGovernance === true)
         owned = platformCapabilities
       await client.query(

@@ -8,3 +8,5 @@ export * from './roles'
 export * from './permission-catalogue'
 export * from './data-scopes'
 export * from './applications'
+
+export * from './business-records'

@@ -6,6 +6,7 @@ import {
   LEAVE_PERMISSIONS,
   DATA_SCOPE_PERMISSIONS,
   APPLICATION_PERMISSIONS,
+  BUSINESS_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -40,8 +41,13 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(LEAVE_PERMISSIONS),
           ...Object.values(DATA_SCOPE_PERMISSIONS),
           ...Object.values(APPLICATION_PERMISSIONS),
+          ...Object.values(BUSINESS_PERMISSIONS),
         ]),
       ]
+    )
+    await client.query(
+      "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT p) FROM jsonb_array_elements(permissions || $1::jsonb) p) WHERE user_id IN ('a-employee','b-employee','shared-employee')",
+      [JSON.stringify(Object.values(BUSINESS_PERMISSIONS))]
     )
   })
 }

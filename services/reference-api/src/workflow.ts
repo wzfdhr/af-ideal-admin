@@ -7,15 +7,9 @@ import {
   requirePermission,
   hasPermission,
 } from '@af-admin/workflow-core'
+import { readRecordRow, visibleRecord } from './record-access'
 import { readRelease } from './application'
-import {
-  readLeaveRow,
-  leaveDto,
-  visibleLeave,
-  history,
-  appendHistory,
-  addTask,
-} from './leave'
+import { leaveDto, history, appendHistory, addTask } from './leave'
 import {
   rows,
   one,
@@ -25,6 +19,7 @@ import {
   enqueue,
   audit,
 } from './support'
+import type { LeaveRow } from './leave'
 import type { Actor } from './auth'
 import type { Database, FaultInjector } from './support'
 import type { Pool } from 'pg'
@@ -51,7 +46,8 @@ interface TaskRow {
   created_at: Date
   completed_at: Date | null
   applicant_name?: string
-  half_day_units?: number
+  record_kind?: 'leave' | 'generic'
+  half_day_units?: number | null
 }
 const taskDto = (row: TaskRow): WorkflowTask => ({
   tenantId: row.tenant_id,
@@ -66,13 +62,18 @@ const taskDto = (row: TaskRow): WorkflowTask => ({
   createdAt: row.created_at.toISOString(),
   completedAt: row.completed_at?.toISOString() || null,
   applicantName: row.applicant_name,
-  halfDayUnits: row.half_day_units,
+  halfDayUnits: row.half_day_units ?? undefined,
+  businessKind: row.record_kind || 'leave',
+  recordLink:
+    row.record_kind === 'generic'
+      ? `/business/records/${row.request_id}`
+      : `/leave/requests/${row.request_id}`,
 })
 const readTask = async (db: Database, actor: Actor, id: string) => {
   const row = one(
     await rows<TaskRow>(
       db,
-      'SELECT t.*,i.request_id FROM workflow_tasks t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id WHERE t.tenant_id=$1 AND t.id=$2 AND t.assignee_id=$3',
+      'SELECT t.*,i.request_id,r.record_kind FROM workflow_tasks t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id JOIN business_records r ON r.tenant_id=i.tenant_id AND r.id=i.request_id WHERE t.tenant_id=$1 AND t.id=$2 AND t.assignee_id=$3',
       [actor.tenantId, id, actor.userId]
     )
   )
@@ -90,7 +91,7 @@ export const listTasks = async (
     ? "t.status IN ('approved','rejected')"
     : "t.status='pending' AND i.status='running'"
   const params = [actor.tenantId, actor.userId, `%${page.keyword}%`]
-  const base = `FROM workflow_tasks t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id JOIN leave_requests r ON r.tenant_id=i.tenant_id AND r.id=i.request_id WHERE t.tenant_id=$1 AND t.assignee_id=$2 AND ${filter} AND (t.node_name ILIKE $3 OR r.applicant_name ILIKE $3)`
+  const base = `FROM workflow_tasks t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id JOIN business_records r ON r.tenant_id=i.tenant_id AND r.id=i.request_id WHERE t.tenant_id=$1 AND t.assignee_id=$2 AND ${filter} AND (t.node_name ILIKE $3 OR r.applicant_name ILIKE $3)`
   const total = one(
     await rows<{ total: string }>(
       db,
@@ -100,7 +101,7 @@ export const listTasks = async (
   )
   const tasks = await rows<TaskRow>(
     db,
-    `SELECT t.*,i.request_id,r.applicant_name,r.half_day_units ${base} ORDER BY t.created_at DESC,t.id LIMIT $4 OFFSET $5`,
+    `SELECT t.*,i.request_id,r.applicant_name,r.half_day_units,r.record_kind ${base} ORDER BY t.created_at DESC,t.id LIMIT $4 OFFSET $5`,
     [...params, page.pageSize, page.offset]
   )
   return { list: tasks.map(taskDto), total: Number(total.total) }
@@ -117,7 +118,7 @@ export const instanceHistory = async (
       [actor.tenantId, instanceId]
     )
   )
-  await visibleLeave(db, actor, instance.request_id)
+  await visibleRecord(db, actor, instance.request_id)
   return history(db, actor.tenantId, instanceId)
 }
 export const decideTask = (
@@ -139,7 +140,7 @@ export const decideTask = (
     payload,
     async (client, current) => {
       const located = await readTask(client, current, id)
-      const request = await readLeaveRow(
+      const request = await readRecordRow(
         client,
         current,
         located.request_id,
@@ -218,7 +219,14 @@ export const decideTask = (
               'NEXT_APPROVER_UNAVAILABLE',
               '下一节点处理人不可用，请联系管理员恢复或撤回申请'
             )
-          await addTask(client, current, instance.id, request.id, next.approval)
+          await addTask(
+            client,
+            current,
+            instance.id,
+            request.id,
+            next.approval,
+            request.record_kind
+          )
         }
         await sequential(next.copiedUserIds, async (recipient) => {
           await enqueue(
@@ -226,7 +234,7 @@ export const decideTask = (
             current,
             recipient,
             request.id,
-            '请假申请抄送',
+            request.record_kind === 'generic' ? '业务记录抄送' : '请假申请抄送',
             'message',
             'copy'
           )
@@ -246,9 +254,11 @@ export const decideTask = (
         [current.tenantId, instance.id, instanceStatus, nextNode]
       )
       await client.query(
-        'UPDATE leave_requests SET status=$3,revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2',
+        'UPDATE business_records SET status=$3,revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2',
         [current.tenantId, request.id, requestStatus]
       )
+      const titlePrefix =
+        request.record_kind === 'generic' ? '业务申请' : '请假申请'
       if (requestStatus !== 'running') {
         await client.query(
           "UPDATE workflow_tasks SET status='cancelled',revision=revision+1,completed_at=now() WHERE tenant_id=$1 AND instance_id=$2 AND status='pending'",
@@ -259,7 +269,9 @@ export const decideTask = (
           current,
           request.applicant_id,
           request.id,
-          requestStatus === 'approved' ? '请假申请已通过' : '请假申请已驳回'
+          requestStatus === 'approved'
+            ? `${titlePrefix}已通过`
+            : `${titlePrefix}已驳回`
         )
       }
       fault('decision:state-updated')
@@ -283,7 +295,7 @@ export const decideTask = (
     }
   )
 }
-export const withdrawInstance = (
+export const withdrawInstance = async (
   pool: Pool,
   actor: Actor,
   id: string,
@@ -292,10 +304,20 @@ export const withdrawInstance = (
   fault: FaultInjector
 ) => {
   const payload = parseCommand(input)
+  const subject = one(
+    await rows<{ request_id: string }>(
+      pool,
+      'SELECT request_id FROM workflow_instances WHERE tenant_id=$1 AND id=$2',
+      [actor.tenantId, id]
+    )
+  )
+  const resource = await readRecordRow(pool, actor, subject.request_id)
   return idempotent(
     pool,
     actor,
-    'leave:withdraw:self',
+    resource.record_kind === 'generic'
+      ? 'business:withdraw:self'
+      : 'leave:withdraw:self',
     `withdraw:${id}`,
     key,
     payload,
@@ -307,7 +329,7 @@ export const withdrawInstance = (
           [current.tenantId, id]
         )
       )
-      const request = await readLeaveRow(
+      const request = await readRecordRow(
         client,
         current,
         located.request_id,
@@ -329,7 +351,7 @@ export const withdrawInstance = (
         [current.tenantId, id]
       )
       await client.query(
-        "UPDATE leave_requests SET status='withdrawn',revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2",
+        "UPDATE business_records SET status='withdrawn',revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2",
         [current.tenantId, request.id]
       )
       await client.query(
@@ -349,7 +371,7 @@ export const withdrawInstance = (
         current,
         request.applicant_id,
         request.id,
-        '请假申请已撤回'
+        request.record_kind === 'generic' ? '业务申请已撤回' : '请假申请已撤回'
       )
       fault('withdraw:state-updated')
       await audit(
@@ -360,13 +382,18 @@ export const withdrawInstance = (
         'leave-request',
         request.id
       )
-      return leaveDto(
-        {
-          ...(await readLeaveRow(client, current, request.id)),
-          instance_id: id,
-        },
-        current
-      )
+      const result = {
+        ...(await readRecordRow(client, current, request.id)),
+        instance_id: id,
+      }
+      return request.record_kind === 'generic'
+        ? {
+            id: result.id,
+            revision: result.revision,
+            status: result.status,
+            instanceId: id,
+          }
+        : leaveDto(result as unknown as LeaveRow, current)
     }
   )
 }

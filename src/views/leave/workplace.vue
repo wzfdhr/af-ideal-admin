@@ -91,7 +91,11 @@ const columns = [
       h(
         RouterLink,
         {
-          to: `/leave/requests/${encodeURIComponent(String(record.requestId))}`,
+          to: `${
+            record.businessKind === 'generic'
+              ? '/business/records/'
+              : '/leave/requests/'
+          }${encodeURIComponent(String(record.requestId))}`,
         },
         () => '查看并处理'
       ),

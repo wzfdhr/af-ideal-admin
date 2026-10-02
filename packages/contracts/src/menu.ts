@@ -286,6 +286,25 @@ export const createR1Menu = (permissions: string[]) => {
         },
       ],
     })
+  if (permissions.includes('business:read:self') || permissions.includes('*'))
+    entries.push({
+      path: '/business',
+      name: 'businessRecords',
+      componentKey: 'DefaultLayout',
+      meta: { requireAuth: true, locale: 'menu.business.records', order: 3 },
+      children: [
+        {
+          path: 'records',
+          name: 'businessRecordsList',
+          componentKey: 'BusinessRecords',
+          meta: {
+            requireAuth: true,
+            locale: 'menu.business.records',
+            access: { permissions: ['business:read:self'] },
+          },
+        },
+      ],
+    })
   return entries
 }
 

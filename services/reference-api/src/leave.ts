@@ -272,7 +272,12 @@ export const listLeaves = async (
     total: Number(total.total),
   }
 }
-const activeRelease = async (db: Database, actor: Actor, releaseId: string) => {
+export const activeRelease = async (
+  db: Database,
+  actor: Actor,
+  releaseId: string,
+  kind: 'leave' | 'generic' = 'leave'
+) => {
   const release = await readRelease(db, actor.tenantId, releaseId)
   const app = one(
     await rows<{
@@ -291,7 +296,7 @@ const activeRelease = async (db: Database, actor: Actor, releaseId: string) => {
       'APPLICATION_ARCHIVED',
       '应用已归档，不能创建或提交新业务'
     )
-  if (app.business_kind !== 'leave')
+  if (app.business_kind !== kind)
     throw new DomainError(
       422,
       'APPLICATION_KIND_INVALID',
@@ -399,7 +404,8 @@ export const addTask = async (
   actor: Actor,
   instanceId: string,
   requestId: string,
-  node: WorkflowNode
+  node: WorkflowNode,
+  businessKind: 'leave' | 'generic' = 'leave'
 ) => {
   const id = randomUUID()
   await db.query(
@@ -418,7 +424,7 @@ export const addTask = async (
     actor,
     node.config.approvers?.[0] as string,
     requestId,
-    '有新的请假审批待办',
+    businessKind === 'generic' ? '有新的业务审批待办' : '有新的请假审批待办',
     'todo'
   )
   return id
