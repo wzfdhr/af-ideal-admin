@@ -13,7 +13,7 @@ test('v2 packages preserve closed conditional workflow rules with an explicit en
  pkg.dependencies=[{key:'form-contract',version:2},{key:'conditional-workflow',version:1},{key:'registered-sources',version:1}]
  pkg.workflow.nodes.splice(1,0,{id:'check',type:'condition',name:'数量判断',config:{condition:{mode:'all',predicates:[{field:'quantity',valueType:'integer',operator:'gte',value:2}]}}})
  const parsed=c.parseApplicationPackage(pkg);assert.equal(parsed.workflow.nodes[1].config.condition.predicates[0].field,'quantity');assert.deepEqual(parsed.sources,[])
- for(const mutate of [p=>p.dependencies[1].key='serial-workflow',p=>p.version=1,p=>p.workflow.nodes[1].config.condition='run()',p=>p.workflow.version=3]){
+ for(const mutate of [p=>p.dependencies[1].key='serial-workflow',p=>p.version=1,p=>p.workflow.nodes[1].config.condition='run()',p=>p.workflow.version=4]){
   const altered=structuredClone(pkg);mutate(altered);assert.throws(()=>c.parseApplicationPackage(altered),error=>error.status===422)
  }
  const old=sample();old.form.version=2;assert.throws(()=>c.parseApplicationPackage(old),error=>error.businessCode==='PACKAGE_DEPENDENCY_INVALID')

@@ -1,4 +1,5 @@
 import { DomainError, invalid, parseWorkflow } from '@af-admin/contracts'
+import { validateParallelWorkflow } from './parallel-workflow'
 import {
   validateConditionalWorkflow,
   advanceConditionalWorkflow,
@@ -109,6 +110,7 @@ export const validateExecutableWorkflow = (
   form?: unknown
 ): WorkflowSchema => {
   const schema = parseWorkflow(input)
+  if (schema.version === 3) return validateParallelWorkflow(schema, form)
   return schema.version === 2
     ? validateConditionalWorkflow(schema, form)
     : validateSerialWorkflow(schema)
@@ -118,6 +120,8 @@ export const advanceWorkflow = (
   afterNodeId?: string,
   values?: Record<string, unknown>
 ): AdvanceResult => {
+  if (input.version === 3)
+    return invalid('version', '并行流程必须使用耐久活动执行器')
   if (input.version === 2) {
     if (!values) return invalid('fields', '条件流程需要真实固定业务字段')
     return advanceConditionalWorkflow(input, afterNodeId, values)

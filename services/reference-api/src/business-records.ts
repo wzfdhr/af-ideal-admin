@@ -12,6 +12,10 @@ import {
 } from '@af-admin/contracts'
 import { assertRevision, advanceWorkflow } from '@af-admin/workflow-core'
 import {
+  startParallelActivities,
+  parallelActivityProgress,
+} from './parallel-activities'
+import {
   assertFormSourcesAvailable,
   requireFormSourceRead,
   projectRecordSourceOptions,
@@ -60,9 +64,14 @@ const detail = async (db: Database, actor: Actor, id: string) => {
     [actor.tenantId, id]
   )
   const tasks = instances[0]
-    ? await rows<{ id: string; revision: number; status: string }>(
+    ? await rows<{
+        id: string
+        revision: number
+        status: string
+        nodeName: string
+      }>(
         db,
-        "SELECT id,revision,status FROM workflow_tasks WHERE tenant_id=$1 AND instance_id=$2 AND assignee_id=$3 AND status='pending'",
+        `SELECT id,revision,status,node_name AS "nodeName" FROM workflow_tasks WHERE tenant_id=$1 AND instance_id=$2 AND assignee_id=$3 AND status='pending' ORDER BY created_at,id`,
         [actor.tenantId, instances[0].id, actor.userId]
       )
     : []
@@ -82,6 +91,16 @@ const detail = async (db: Database, actor: Actor, id: string) => {
       ),
     },
     tasks,
+    ...(instances[0] && release.workflowSnapshot.version === 3
+      ? {
+          activities: await parallelActivityProgress(
+            db,
+            actor,
+            instances[0].id,
+            release.workflowSnapshot
+          ),
+        }
+      : {}),
     computedFields: computeBusinessFields(release.formSnapshot, row.fields),
     history: instances[0]
       ? await history(db, actor.tenantId, instances[0].id)
@@ -391,11 +410,10 @@ export const registerBusinessRecords = (
             current.userId,
             routeValues
           )
-          const next = advanceWorkflow(
-            release.workflowSnapshot,
-            undefined,
-            routeValues
-          )
+          const parallel = release.workflowSnapshot.version === 3
+          const next = parallel
+            ? { approval: null, routes: [], copiedUserIds: [] }
+            : advanceWorkflow(release.workflowSnapshot, undefined, routeValues)
           const instanceId = randomUUID()
           await client.query(
             "INSERT INTO workflow_instances(tenant_id,id,request_id,release_id,status,current_node_id) VALUES ($1,$2,$3,$4,'running',$5)",
@@ -421,6 +439,18 @@ export const registerBusinessRecords = (
               'generic'
             )
           await appendHistory(client, current, instanceId, 'start')
+          if (parallel)
+            await startParallelActivities({
+              db: client,
+              actor: current,
+              instanceId,
+              requestId: id,
+              applicantId: current.userId,
+              businessKind: 'generic',
+              schema: release.workflowSnapshot,
+              values: routeValues,
+              fault,
+            })
           await appendRouteHistory(client, current, instanceId, next.routes)
           await sequential(next.copiedUserIds, async (recipient) =>
             enqueue(

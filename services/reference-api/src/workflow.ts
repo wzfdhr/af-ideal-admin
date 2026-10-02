@@ -11,6 +11,10 @@ import {
   requirePermission,
   hasPermission,
 } from '@af-admin/workflow-core'
+import {
+  continueParallelActivity,
+  cancelParallelActivities,
+} from './parallel-activities'
 import { readRecordRow, visibleRecord } from './record-access'
 import { readRelease } from './application'
 import {
@@ -50,6 +54,7 @@ interface InstanceRow {
 interface TaskRow {
   tenant_id: string
   id: string
+  activity_id?: string | null
   instance_id: string
   request_id: string
   node_id: string
@@ -65,6 +70,7 @@ interface TaskRow {
 }
 const taskDto = (row: TaskRow): WorkflowTask => ({
   tenantId: row.tenant_id,
+  ...(row.activity_id ? { activityId: row.activity_id } : {}),
   id: row.id,
   instanceId: row.instance_id,
   requestId: row.request_id,
@@ -184,7 +190,7 @@ export const decideTask = (
       )
       if (
         request.status !== 'running' ||
-        instance.current_node_id !== task.node_id
+        (!task.activity_id && instance.current_node_id !== task.node_id)
       )
         throw new DomainError(
           409,
@@ -211,7 +217,36 @@ export const decideTask = (
       let instanceStatus: InstanceStatus = 'rejected'
       let requestStatus = 'rejected'
       let nextNode: string | null = null
-      if (action === 'approve') {
+      if (release.workflowSnapshot.version === 3) {
+        if (!task.activity_id)
+          throw new DomainError(409, 'STATE_CONFLICT', '并行任务缺少耐久活动')
+        const fields = request.fields as unknown as JsonObject
+        const outcome = await continueParallelActivity(
+          {
+            db: client,
+            actor: current,
+            instanceId: instance.id,
+            requestId: request.id,
+            applicantId: request.applicant_id,
+            businessKind: request.record_kind,
+            schema: release.workflowSnapshot,
+            values: {
+              ...fields,
+              ...(request.record_kind === 'generic'
+                ? computeBusinessFields(release.formSnapshot, fields)
+                : {}),
+            },
+            fault,
+          },
+          task.activity_id
+        )
+        instanceStatus = 'running'
+        if (outcome.completed) instanceStatus = 'completed'
+        if (outcome.rejected) instanceStatus = 'rejected'
+        requestStatus = 'running'
+        if (outcome.completed) requestStatus = 'approved'
+        if (outcome.rejected) requestStatus = 'rejected'
+      } else if (action === 'approve') {
         const fields = request.fields as unknown as JsonObject
         const next = advanceWorkflow(release.workflowSnapshot, task.node_id, {
           ...fields,
@@ -380,6 +415,7 @@ export const withdrawInstance = async (
         "UPDATE workflow_tasks SET status='cancelled',revision=revision+1,completed_at=now() WHERE tenant_id=$1 AND instance_id=$2 AND status='pending'",
         [current.tenantId, id]
       )
+      await cancelParallelActivities(client, current, id)
       await appendHistory(
         client,
         current,

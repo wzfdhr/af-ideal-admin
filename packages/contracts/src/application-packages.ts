@@ -21,6 +21,7 @@ export interface ApplicationPackage {
       | 'form-contract'
       | 'serial-workflow'
       | 'conditional-workflow'
+      | 'parallel-workflow'
       | 'registered-sources'
     version: 1 | 2
   }[]
@@ -71,9 +72,10 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
   )
     throw new DomainError(422, 'PACKAGE_DEPENDENCY_INVALID', '依赖清单无效')
   const workflow = parseWorkflow(body.workflow)
-  const workflowDependency =
-    workflow.version === 2 ? 'conditional-workflow' : 'serial-workflow'
-  if (body.version === 1 && workflow.version === 2)
+  let workflowDependency = 'serial-workflow'
+  if (workflow.version === 2) workflowDependency = 'conditional-workflow'
+  if (workflow.version === 3) workflowDependency = 'parallel-workflow'
+  if (body.version === 1 && workflow.version >= 2)
     throw new DomainError(
       422,
       'PACKAGE_DEPENDENCY_INVALID',
@@ -101,6 +103,7 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
         | 'form-contract'
         | 'serial-workflow'
         | 'conditional-workflow'
+        | 'parallel-workflow'
         | 'registered-sources',
       version: item.version as 1 | 2,
     }

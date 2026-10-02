@@ -48,6 +48,8 @@ export const workflowNodeTypeOptions: WorkflowNodeTypeOption[] = [
     label: '并行',
     description: '并行处理',
   },
+  { type: 'sign', label: '会签', description: '按固定票数规则多人签署' },
+  { type: 'join', label: '汇合', description: '配对并行分支汇合' },
   {
     type: 'end',
     label: '结束',
@@ -56,7 +58,7 @@ export const workflowNodeTypeOptions: WorkflowNodeTypeOption[] = [
 ]
 
 export const workflowPaletteNodes = workflowNodeTypeOptions.filter(
-  (item) => item.type !== 'start' && item.type !== 'end'
+  (item) => item.type !== 'start' && item.type !== 'end' && item.type !== 'join'
 )
 
 export const getWorkflowNodeTypeLabel = (type: WorkflowNodeType) =>
@@ -97,6 +99,15 @@ const createWorkflowNode = (
 ): WorkflowNode => {
   const label = getWorkflowNodeTypeLabel(type)
 
+  if (structuredConditions && type === 'sign')
+    return {
+      id: `sign-${sequence}`,
+      type,
+      name: '会签节点',
+      config: { approvers: [], voting: { mode: 'all' } },
+      x: position.x ?? 340,
+      y: position.y ?? 240,
+    }
   return {
     id: `${type}-${sequence}`,
     type,
@@ -184,6 +195,33 @@ export const useWorkflowDesigner = (
       )
     }
     nodeSequence += 1
+    if (type === 'parallel' && structuredConditions) {
+      const joinId = `join-${node.id}`
+      node.config = { joinId }
+      const endId =
+        schema.value.nodes.find((item) => item.type === 'end')?.id || 'end'
+      const incoming = schema.value.edges.find((edge) => edge.target === endId)
+      const join: WorkflowNode = {
+        id: joinId,
+        type: 'join',
+        name: '并行汇合',
+        config: { forkId: node.id },
+        x: 620,
+        y: node.y,
+      }
+      schema.value = validateWorkflowSchema({
+        ...schema.value,
+        version: 3,
+        nodes: [...schema.value.nodes, node, join],
+        edges: [
+          ...schema.value.edges.filter((edge) => edge.id !== incoming?.id),
+          ...(incoming ? [{ ...incoming, target: node.id }] : []),
+          { id: `next-${joinId}`, source: joinId, target: endId, label: '' },
+        ],
+      })
+      selectedNodeId.value = node.id
+      return node
+    }
 
     const endNode = schema.value.nodes.find((item) => item.type === 'end')
     const edgeToEnd = schema.value.edges.find(
@@ -196,10 +234,13 @@ export const useWorkflowDesigner = (
     )
     const insertIndex = endIndex >= 0 ? endIndex : schema.value.nodes.length
 
+    let { version } = schema.value
+    if (type === 'condition' && structuredConditions)
+      version = Math.max(2, version)
+    if (type === 'sign' && structuredConditions) version = 3
     schema.value = validateWorkflowSchema({
       ...schema.value,
-      version:
-        type === 'condition' && structuredConditions ? 2 : schema.value.version,
+      version,
       nodes: [
         ...schema.value.nodes.slice(0, insertIndex),
         node,

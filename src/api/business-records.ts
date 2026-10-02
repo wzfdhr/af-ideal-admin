@@ -27,7 +27,23 @@ export interface BusinessDetail extends BusinessRecord {
   release: Release
   computedFields: JsonObject
   history: HistoryRecord[]
-  tasks: { id: string; revision: number; status: string }[]
+  tasks: { id: string; revision: number; status: string; nodeName?: string }[]
+  activities?: {
+    id: string
+    nodeId: string
+    nodeName: string
+    kind: string
+    status: string
+    parentGroupId: string | null
+    branchKey: string | null
+    threshold: number | null
+    expectedBranches: number | null
+    arrivedBranches: number
+    approved: number
+    pending: number
+    rejected: number
+    revision: number
+  }[]
 }
 export const businessApplication = async (id: string) =>
   (

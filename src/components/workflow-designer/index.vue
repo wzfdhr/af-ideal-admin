@@ -127,6 +127,7 @@
               v-if="
                 dataMode === 'reference' &&
                 selectedNode.type !== 'condition' &&
+                selectedNode.type !== 'parallel' &&
                 selectedNode.type !== 'end'
               "
               class="field-label"
@@ -224,6 +225,54 @@
               :form-schema="formSchema"
               @update="schema = $event"
             />
+            <ParallelNodeEditor
+              v-if="
+                dataMode === 'reference' && selectedNode.type === 'parallel'
+              "
+              :node="selectedNode"
+              :workflow="schema"
+              @update="schema = $event"
+            />
+            <section
+              v-if="dataMode === 'reference' && selectedNode.type === 'sign'"
+              aria-label="会签配置"
+            >
+              <label class="field-label">签署人</label>
+              <a-select
+                v-model="selectedSignPeople"
+                multiple
+                aria-label="会签签署人"
+              >
+                <a-option
+                  v-for="person in members.filter((item) => item.canApprove)"
+                  :key="person.id"
+                  :value="person.id"
+                >
+                  {{ person.name }}
+                </a-option>
+              </a-select>
+              <label class="field-label">
+                通过规则
+                <select v-model="signMode" aria-label="会签通过规则">
+                  <option value="all">全部同意</option>
+                  <option value="any">任一同意</option>
+                  <option value="quorum">指定票数</option>
+                </select>
+              </label>
+              <label v-if="signMode === 'quorum'" class="field-label">
+                批准票数
+                <input
+                  v-model.number="signQuorum"
+                  type="number"
+                  min="1"
+                  :max="selectedSignPeople.length"
+                  aria-label="会签批准票数"
+                />
+              </label>
+              <p>
+                达到批准票数后取消其余签署；剩余可能批准数不足时驳回整个流程。
+              </p>
+            </section>
           </template>
           <div v-else class="empty-state">请选择节点</div>
         </div>
@@ -237,6 +286,7 @@ import { computed, onMounted, watch } from 'vue'
 import { dataMode } from '../../../config/data-mode'
 import WorkflowCanvas from './workflow-canvas.vue'
 import ConditionNodeEditor from './condition-node-editor.vue'
+import ParallelNodeEditor from './parallel-node-editor.vue'
 import {
   getWorkflowNodeTypeLabel,
   useWorkflowDesigner,
@@ -268,9 +318,13 @@ const palette = computed(() => {
       (item) =>
         item.type === 'approval' ||
         item.type === 'copy' ||
-        item.type === 'condition'
+        item.type === 'condition' ||
+        item.type === 'parallel' ||
+        item.type === 'sign'
     )
-  return workflowPaletteNodes
+  return dataMode === 'mock'
+    ? workflowPaletteNodes.filter((item) => item.type !== 'sign')
+    : workflowPaletteNodes
 })
 
 const {
@@ -350,6 +404,33 @@ const selectedApprovers = computed({
 const selectedCopyPeople = computed({
   get: () => selectedNode.value?.config.ccUsers || [],
   set: (value: string[]) => updateSelectedNodeConfig('ccUsers', value),
+})
+const selectedSignPeople = computed({
+  get: () => selectedNode.value?.config.approvers || [],
+  set: (value: string[]) => updateSelectedNodeConfig('approvers', value),
+})
+const signMode = computed({
+  get: () => selectedNode.value?.config.voting?.mode || 'all',
+  set: (mode: 'all' | 'any' | 'quorum') =>
+    updateSelectedNodeConfig('voting', {
+      mode,
+      ...(mode === 'quorum' ? { quorum: 1 } : {}),
+    }),
+})
+const signQuorum = computed({
+  get: () => selectedNode.value?.config.voting?.quorum ?? 1,
+  set: (quorum: number) => {
+    schema.value = {
+      ...schema.value,
+      nodes: schema.value.nodes.map((node) => {
+        if (node.id !== selectedNodeId.value) return node
+        return {
+          ...node,
+          config: { ...node.config, voting: { mode: 'quorum', quorum } },
+        }
+      }),
+    }
+  },
 })
 
 const selectedCondition = computed({

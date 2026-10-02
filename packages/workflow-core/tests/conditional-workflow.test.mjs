@@ -30,7 +30,7 @@ test('conditional all/any evaluates typed operands, treats missing optional valu
  assert.throws(()=>c.evaluateWorkflowCondition({mode:'all',predicates:[{field:'day',valueType:'date',operator:'eq',value:'2026-02-29'}]},{day:'2026-02-28'}),error=>error.status===422)
 })
 test('graph and typed binding reject bypasses, loops, missing fallback, wrong types and scripts',()=>{
- for(const alter of [g=>g.edges[2].branch='matched',g=>g.edges.splice(2,1),g=>g.edges[2].target='end',g=>g.edges[3].target='check',g=>g.nodes[1].config.condition.predicates[0].field='unknown',g=>g.nodes[1].config.condition.predicates[0].valueType='integer',g=>g.nodes[1].config.condition='amount>0',g=>g.nodes[1].config.condition.predicates[0].script='eval',g=>g.nodes[2].type='parallel',g=>g.version=3]){
+ for(const alter of [g=>g.edges[2].branch='matched',g=>g.edges.splice(2,1),g=>g.edges[2].target='end',g=>g.edges[3].target='check',g=>g.nodes[1].config.condition.predicates[0].field='unknown',g=>g.nodes[1].config.condition.predicates[0].valueType='integer',g=>g.nodes[1].config.condition='amount>0',g=>g.nodes[1].config.condition.predicates[0].script='eval',g=>g.nodes[2].type='parallel',g=>g.version=4]){
   const g=graph();alter(g);assert.throws(()=>core.validateExecutableWorkflow(g,c.EQUIPMENT_FORM),error=>error.status===422)
  }
  const old={...graph(),version:1};delete old.nodes[1].config.condition;old.edges.forEach(edge=>delete edge.branch)

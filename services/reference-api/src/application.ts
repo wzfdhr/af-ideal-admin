@@ -16,6 +16,7 @@ import {
   hasPermission,
   validateExecutableWorkflow,
   selectedConditionalNodeIds,
+  selectedParallelNodeIds,
 } from '@af-admin/workflow-core'
 import {
   validateDraftSources,
@@ -154,15 +155,16 @@ export const validatePeople = async (
   applicantId?: string,
   values?: Record<string, unknown>
 ) => {
-  const selected =
-    workflow.version === 2 && values
-      ? selectedConditionalNodeIds(workflow, values)
-      : undefined
+  let selected: Set<string> | undefined
+  if (values && workflow.version === 3)
+    selected = selectedParallelNodeIds(workflow, values)
+  else if (values && workflow.version === 2)
+    selected = selectedConditionalNodeIds(workflow, values)
   const participantNodes = selected
     ? workflow.nodes.filter((node) => selected.has(node.id))
     : workflow.nodes
   const approvers = participantNodes.flatMap((node) =>
-    node.type === 'approval' ? node.config.approvers || [] : []
+    ['approval', 'sign'].includes(node.type) ? node.config.approvers || [] : []
   )
   if (applicantId && approvers.includes(applicantId))
     throw new DomainError(422, 'SELF_APPROVAL', '申请人不能审批自己的申请')

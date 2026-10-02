@@ -164,7 +164,7 @@ export const migrateWorkflowSchema = (schema: unknown): WorkflowSchema => {
   const version = normalizeVersion(legacySchema.version)
   if (version > MAX_WORKFLOW_SCHEMA_VERSION)
     throw new Error('不支持的流程schema版本')
-  if (version === 2) return parseWorkflow(JSON.parse(JSON.stringify(schema)))
+  if (version >= 2) return parseWorkflow(JSON.parse(JSON.stringify(schema)))
 
   return {
     version,

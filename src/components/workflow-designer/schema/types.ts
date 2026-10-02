@@ -1,5 +1,5 @@
 export const CURRENT_WORKFLOW_SCHEMA_VERSION = 1
-export const MAX_WORKFLOW_SCHEMA_VERSION = 2
+export const MAX_WORKFLOW_SCHEMA_VERSION = 3
 
 export const WORKFLOW_NODE_TYPES = [
   'start',
@@ -7,6 +7,8 @@ export const WORKFLOW_NODE_TYPES = [
   'copy',
   'condition',
   'parallel',
+  'join',
+  'sign',
   'end',
 ] as const
 
@@ -18,6 +20,9 @@ export interface WorkflowNodeConfig {
   condition?: string | import('@af-admin/contracts').WorkflowCondition
   formId?: string
   parallelApprovers?: string[]
+  joinId?: string
+  forkId?: string
+  voting?: { mode: 'all' | 'any' | 'quorum'; quorum?: number }
   [key: string]: unknown
 }
 
@@ -36,6 +41,7 @@ export interface WorkflowEdge {
   target: string
   label: string
   branch?: 'matched' | 'fallback'
+  channel?: string
 }
 
 export interface WorkflowSchema {

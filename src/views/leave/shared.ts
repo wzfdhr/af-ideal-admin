@@ -15,6 +15,10 @@ export const actionLabels: Record<string, string> = {
   withdraw: '撤回',
   copy: '抄送',
   route: '条件分支',
+  fork: '并行分叉',
+  join: '分支汇合',
+  sign: '会签结果',
+  cancel: '取消剩余任务',
 }
 export const errorMessage = (error: unknown) => {
   if (error instanceof ApiRequestError) return error.context.displayMessage

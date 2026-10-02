@@ -27,13 +27,24 @@ export interface Command {
 }
 export interface WorkflowNode {
   id: string
-  type: 'start' | 'approval' | 'copy' | 'end' | 'condition' | 'parallel'
+  type:
+    | 'start'
+    | 'approval'
+    | 'copy'
+    | 'end'
+    | 'condition'
+    | 'parallel'
+    | 'join'
+    | 'sign'
   name: string
   config: {
     approvers?: string[]
     ccUsers?: string[]
     formId?: string
     condition?: WorkflowCondition
+    joinId?: string
+    forkId?: string
+    voting?: { mode: 'all' | 'any' | 'quorum'; quorum?: number }
   }
   x?: number
   y?: number
@@ -57,6 +68,7 @@ export interface WorkflowSchema {
     target: string
     label: string
     branch?: 'matched' | 'fallback'
+    channel?: string
   }[]
 }
 export interface FormWidget {
@@ -126,6 +138,7 @@ export interface LeaveRequest extends LeaveFields {
   tasks?: WorkflowTask[]
 }
 export interface WorkflowTask {
+  activityId?: string
   businessKind?: 'leave' | 'generic'
   recordLink?: string
   id: string
@@ -331,12 +344,15 @@ const strings = (input: unknown, field: string): string[] => {
 export const parseWorkflow = (input: unknown): WorkflowSchema => {
   const body = record(input, 'schema')
   onlyKeys(body, ['version', 'nodes', 'edges'])
-  const version = body.version === 2 ? 2 : formatVersion(body.version)
+  let version = 1
+  if (body.version === 3) version = 3
+  else if (body.version === 2) version = 2
+  else version = formatVersion(body.version)
   if (
     !Array.isArray(body.nodes) ||
     !Array.isArray(body.edges) ||
     body.nodes.length > 100 ||
-    body.edges.length > 100
+    body.edges.length > (version === 3 ? 200 : 100)
   )
     return invalid('nodes', '流程节点和连线必须是有限的数组')
   const nodes = body.nodes.map((item): WorkflowNode => {
@@ -347,13 +363,22 @@ export const parseWorkflow = (input: unknown): WorkflowSchema => {
       'approvers',
       'ccUsers',
       'formId',
-      ...(version === 2 ? ['condition'] : []),
+      ...(version >= 2 ? ['condition'] : []),
+      ...(version === 3 ? ['joinId', 'forkId', 'voting'] : []),
     ])
     const parsed: WorkflowNode = {
       id: text(node.id, 'node.id', 100),
       type: enumValue(
         node.type,
-        ['start', 'approval', 'copy', 'end', 'condition', 'parallel'],
+        [
+          'start',
+          'approval',
+          'copy',
+          'end',
+          'condition',
+          'parallel',
+          ...(version === 3 ? (['join', 'sign'] as const) : []),
+        ],
         'node.type'
       ),
       name: text(node.name, 'node.name', 100),
@@ -365,6 +390,19 @@ export const parseWorkflow = (input: unknown): WorkflowSchema => {
       parsed.config.ccUsers = strings(config.ccUsers, 'ccUsers')
     if (config.formId !== undefined)
       parsed.config.formId = text(config.formId, 'formId', 100)
+    if (config.joinId !== undefined)
+      parsed.config.joinId = text(config.joinId, 'joinId', 100)
+    if (config.forkId !== undefined)
+      parsed.config.forkId = text(config.forkId, 'forkId', 100)
+    if (config.voting !== undefined) {
+      const voting = record(config.voting, 'voting')
+      onlyKeys(voting, ['mode', 'quorum'])
+      parsed.config.voting = {
+        mode: enumValue(voting.mode, ['all', 'any', 'quorum'], 'voting.mode'),
+      }
+      if (voting.quorum !== undefined)
+        parsed.config.voting.quorum = positiveInteger(voting.quorum, 'quorum')
+    }
     if (config.condition !== undefined) {
       if (parsed.type !== 'condition')
         invalid(parsed.id, '仅条件节点可定义判断')
@@ -432,13 +470,17 @@ export const parseWorkflow = (input: unknown): WorkflowSchema => {
       'source',
       'target',
       'label',
-      ...(version === 2 ? ['branch'] : []),
+      ...(version >= 2 ? ['branch'] : []),
+      ...(version === 3 ? ['channel'] : []),
     ])
     return {
       id: text(edge.id, 'edge.id', 100),
       source: text(edge.source, 'edge.source', 100),
       target: text(edge.target, 'edge.target', 100),
       label: typeof edge.label === 'string' ? edge.label.slice(0, 100) : '',
+      ...(edge.channel === undefined
+        ? {}
+        : { channel: text(edge.channel, 'channel', 30) }),
       ...(edge.branch === undefined
         ? {}
         : {

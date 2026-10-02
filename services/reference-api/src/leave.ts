@@ -13,6 +13,8 @@ import {
   requirePermission,
   hasPermission,
 } from '@af-admin/workflow-core'
+import { appendHistory, appendRouteHistory, addTask } from './workflow-effects'
+import { startParallelActivities } from './parallel-activities'
 import { assertFilesReady } from './file-policy'
 import { readRelease, validatePeople } from './application'
 import {
@@ -25,7 +27,6 @@ import {
   enqueue,
   sequential,
 } from './support'
-import type { WorkflowRouteDecision } from '@af-admin/workflow-core'
 import type { Actor } from './auth'
 import type { Database, FaultInjector } from './support'
 import type { Pool, PoolClient } from 'pg'
@@ -35,8 +36,9 @@ import type {
   LeaveStatus,
   HistoryRecord,
   WorkflowTask,
-  WorkflowNode,
 } from '@af-admin/contracts'
+
+export { appendHistory, appendRouteHistory, addTask } from './workflow-effects'
 
 export interface LeaveRow {
   tenant_id: string
@@ -123,57 +125,6 @@ export const history = async (
     sequence: item.sequence,
     createdAt: item.created_at.toISOString(),
   }))
-}
-export const appendHistory = async (
-  db: Database,
-  actor: Actor,
-  instanceId: string,
-  action: string,
-  taskId: string | null = null,
-  comment = ''
-) => {
-  await db.query(
-    'INSERT INTO workflow_history (tenant_id,id,instance_id,task_id,action,operator_id,operator_name,comment,sequence) SELECT $1,$2,$3,$4,$5,$6,$7,$8,COALESCE(max(sequence),0)+1 FROM workflow_history WHERE tenant_id=$1 AND instance_id=$3',
-    [
-      actor.tenantId,
-      randomUUID(),
-      instanceId,
-      taskId,
-      action,
-      actor.userId,
-      actor.name,
-      comment,
-    ]
-  )
-}
-export const appendRouteHistory = async (
-  db: Database,
-  actor: Actor,
-  instanceId: string,
-  routes?: WorkflowRouteDecision[]
-) => {
-  await sequential(routes || [], async (route) => {
-    await appendHistory(
-      db,
-      actor,
-      instanceId,
-      'route',
-      null,
-      `${route.nodeName}（${route.nodeId}）：${
-        route.branch === 'matched' ? '匹配分支' : '默认分支'
-      }`
-    )
-    await audit(
-      db,
-      actor,
-      'workflow',
-      'route',
-      'workflow-instance',
-      instanceId,
-      'success',
-      { nodeId: route.nodeId, branch: route.branch }
-    )
-  })
 }
 export const readLeaveRow = async (
   db: Database,
@@ -430,36 +381,6 @@ export const updateLeave = (
     }
   )
 }
-export const addTask = async (
-  db: Database,
-  actor: Actor,
-  instanceId: string,
-  requestId: string,
-  node: WorkflowNode,
-  businessKind: 'leave' | 'generic' = 'leave'
-) => {
-  const id = randomUUID()
-  await db.query(
-    'INSERT INTO workflow_tasks (tenant_id,id,instance_id,node_id,node_name,assignee_id) VALUES ($1,$2,$3,$4,$5,$6)',
-    [
-      actor.tenantId,
-      id,
-      instanceId,
-      node.id,
-      node.name,
-      node.config.approvers?.[0],
-    ]
-  )
-  await enqueue(
-    db,
-    actor,
-    node.config.approvers?.[0] as string,
-    requestId,
-    businessKind === 'generic' ? '有新的业务审批待办' : '有新的请假审批待办',
-    'todo'
-  )
-  return id
-}
 export const submitLeave = (
   pool: Pool,
   actor: Actor,
@@ -497,11 +418,14 @@ export const submitLeave = (
         current.userId,
         draft.fields as unknown as Record<string, unknown>
       )
-      const next = advanceWorkflow(
-        release.workflowSnapshot,
-        undefined,
-        draft.fields as unknown as Record<string, unknown>
-      )
+      const parallel = release.workflowSnapshot.version === 3
+      const next = parallel
+        ? { approval: null, routes: [], copiedUserIds: [] }
+        : advanceWorkflow(
+            release.workflowSnapshot,
+            undefined,
+            draft.fields as unknown as Record<string, unknown>
+          )
       const instanceId = randomUUID()
       await client.query(
         "INSERT INTO workflow_instances (tenant_id,id,request_id,release_id,status,current_node_id) VALUES ($1,$2,$3,$4,'running',$5)",
@@ -520,6 +444,18 @@ export const submitLeave = (
       if (next.approval)
         await addTask(client, current, instanceId, id, next.approval)
       await appendHistory(client, current, instanceId, 'start')
+      if (parallel)
+        await startParallelActivities({
+          db: client,
+          actor: current,
+          instanceId,
+          requestId: id,
+          applicantId: current.userId,
+          businessKind: 'leave',
+          schema: release.workflowSnapshot,
+          values: draft.fields as unknown as Record<string, unknown>,
+          fault,
+        })
       await appendRouteHistory(client, current, instanceId, next.routes)
       await sequential(next.copiedUserIds, async (recipient) => {
         await enqueue(

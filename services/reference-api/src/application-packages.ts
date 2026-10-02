@@ -214,8 +214,14 @@ export const registerApplicationPackages = (
             )
         })
         const packageV2 =
-          sources.length > 0 || form.version === 2 || workflow.version === 2
+          sources.length > 0 || form.version === 2 || workflow.version >= 2
         if (packageV2) form.version = 2
+        let workflowDependency:
+          | 'serial-workflow'
+          | 'conditional-workflow'
+          | 'parallel-workflow' = 'serial-workflow'
+        if (workflow.version === 2) workflowDependency = 'conditional-workflow'
+        if (workflow.version === 3) workflowDependency = 'parallel-workflow'
         const pkg: ApplicationPackage = {
           format: 'af-admin-application',
           version: packageV2 ? 2 : 1,
@@ -223,10 +229,7 @@ export const registerApplicationPackages = (
           dependencies: [
             { key: 'form-contract', version: packageV2 ? 2 : 1 },
             {
-              key:
-                workflow.version === 2
-                  ? 'conditional-workflow'
-                  : 'serial-workflow',
+              key: workflowDependency,
               version: 1,
             },
             ...(packageV2

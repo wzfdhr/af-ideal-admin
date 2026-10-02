@@ -29,7 +29,7 @@
 | FP-011 | 复杂表单校验/联动、安全数据源登记、映射、超时及恢复 | FP-008/010 | T-301/303 | 进行中 |
 | FP-012 | 表单编辑重开、比较、发布运行一致、格式迁移和回滚 | FP-011 | T-304/LA-040 | 进行中 |
 | FP-013 | 结构化条件 AST 的真实流程运行，确定路由、拒绝脚本和错误恢复 | FP-010 | LA-044 | 进行中 |
-| FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 未开始 |
+| FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 进行中 |
 | FP-015 | 转交、无效身份、异常处理、授权/审计/任务幂等 | FP-014 | LA-044 | 未开始 |
 | FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 未开始 |
 | FP-017 | query/submit/navigate/openModal/refreshBlock/受控发起流程实际执行 | FP-010/012 | LA-038 | 未开始 |
@@ -348,3 +348,20 @@
 
 - 1622e2527d3e4e58ca65e65b7c8ac785cd652f1a提交后边界复核发现：自定义表单允许数量及单价各1000000并生成合法精确总额1000000000000.00，旧条件操作数十位整数位限制却拒绝该结果。修正运行操作数为最多14位整数位并检查安全整数分位，不缩窄既有计算范围；条件定义字面值仍按有界契约验证，超出9007199254740991分的操作数明确拒绝。新增领域和真实API用例保证大额计算总值进入实际高额任务；这项后续修复需独立证据及远端CI。
 - conditions-money-range-build.log共享构建通过，conditions-money-domain.log19领域/Mock通过，conditions-money-http.log128项数据库/API通过，conditions-money-lint.log无错误/6既有警告。大额修复没有更改Schema版本、图或UI；最终提交仍需完整远端CI确认。
+
+### 条件流程远端验证
+
+- c34f718c80c399d0cfdf6572e7ab66bdc24f832d（含1622e252条件流程及大额边界修复）的实际CI37072155362已通过，verify/real-business均success；归档ci-37072155362及conditions-remote-ci.json。远端443单测、36契约+19领域/Mock、128项数据库/API与36条真实浏览器通过；本条不包含后续并行与会签。
+
+### FP-014 耐久并行活动、配对汇合及会签增量
+
+- 实施/阶段自检：Codex，2026-10-03。方案full-product-parallel-workflow-design.md。工作流v3明确parallel/join配对、branch-N通道及sign的all/any/quorum规则；保留v1串行/v2条件义，未知未来v4拒绝。最大100节点/200边、每fork2至10分支、每sign2至20名不同签署人。静态拒绝循环/悬空/不配对/分支交叉或提前结束，条件互斥合流及嵌套并行有明确活动归属，不把一份多人列表称作多个执行分支。
+- 新迁移017_parallel_activities.sql保存每个审批/会签/分叉活动、父组与分支、实际到达集合、阈值、状态和revision，复合租户/实例FK。新任务绑定activity_id；遗留activity_id空值保留单节点唯一部分索引，新节点按签署人唯一，旧不可变release不重写。001至016校验和不修改，只应用专属demo（parallel-demo-migrate.log）；原R1包/环境/卷保留。
+- 提交创建实际同时活动的分支及待办；票、活动、汇合、业务、任务、history/outbox/审计同事务。all/any/quorum按批准及剩余可能票数判断，达到批准阈值取消剩余签署，不可能达到阈值则整个实例拒绝并取消其他活动/待办。撤回取消所有活动。所有分支到达配对join才推进，嵌套join保留父分支归属；实例/记录锁及任务CAS/幂等确保一次效果，恢复读取数据库和原快照，不依赖内存计数。
+- 事实写入抽取为workflow-effects.ts以避免leave与活动执行器的依赖环，沿用原通知/历史/审计写入；API详情提供实际活动进度及各签署计数，只给本人可处理任务。同一人多任务提供显式选择。设计器增加分叉+自动配对join、入口/下一节点、会签参与者及阈值；v3保存重开和包parallel-workflow依赖/目标人员重绑保留结构，旧v1/v2不冒充支持新格式。
+- parallel-concurrency-http.log的137项数据库/API通过，包含同时创建多待办、all等待/any部分拒绝仍可批准/quorum精确票数、剩余取消/整流程拒绝/撤回、初始半分叉及最后汇合故障回滚/恢复、同一签署竞争key仅一次计票、最后票并发单join及单后续任务、真实子API进程替换、原快照保持、嵌套分叉到各自join、跨租户应用包重绑后独立活动及双租户拒绝。此前parallel-http.log133项、parallel-nested-http.log135项、parallel-package-http.log136项为渐进证据，不能替代最新137项。
+- parallel-contracts-final.log36契约+22领域/Mock通过；新v3正向、all/any/quorum、嵌套/交叉/提前结束/环/阈值/缺配对拒绝。仅将已支持的workflow未来格式断言移到v4，form和package的未知版本仍保持各自门禁，不删负向。parallel-unit-release.log444项通过，含自定义结束ID的配对生成、v3添加条件不降版本、保存格式不丢channel以及未知版本拒绝。
+- parallel-browser.log真实UI两分支与会签通过，parallel-browser-negative.log增加零票阈值→真实保存拒绝/原输入保留/发布禁用→修正后保存重开及实际三次签署完成再通过，无成功响应注入。两个审批人同时看见真实待办，先完成一分支保持1/2，签署1/2继续等待，最后署名才join/抄送完成；外租户详情/活动拒绝。parallel-approved-runtime.png已检查，完成状态及活动计数可读。parallel-build-all.log首次helper嵌套返回格式失败，修正普通if；parallel-build-recovery.log一度自定义endId未声明，补正确引用后parallel-build-all-final.log完整构建通过。parallel-all-types.log全workspace通过，parallel-lint-all.log无错误/6既有警告。
+- 并行/会签完整Mock运行、更多原生文件包往返/容量/压力、所有分辨率/主题/键盘、数据库服务重启、新部署/备份恢复/兼容回退及正式环境交付仍开放；FP-014保持进行中，FP-015转交/异常、FP-016耐久调度不删除。本批37条全量真实浏览器及新提交远端CI仍须确认，先前提交绿色不能代替。
+
+- parallel-full-browser.log的37项完整真实回归通过，原R1/条件/包/权限/文件均保留；parallel-mock-browser.log与parallel-smoke-browser.log各3项通过。旧smoke依然有10888未运行代理报错，不替代真实后台证据。parallel-schema-unit-final.log补直接channel重开保留断言通过；本批整体仍须新提交远端CI，正式模块部署/恢复等门禁保持开放。

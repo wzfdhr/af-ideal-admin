@@ -37,7 +37,7 @@ test('command revisions and rejection comment are checked', () => {
 test('schemas migrate absent legacy format version and reject future versions', () => {
   const wf = serialWorkflow('manager-1', 'manager-2')
   assert.equal(parseWorkflow({ ...wf, version: undefined }).version, 1)
-  assert.throws(() => parseWorkflow({ ...wf, version: 3 }), /版本/)
+  assert.throws(() => parseWorkflow({ ...wf, version: 4 }), /版本/)
   assert.equal(parseForm(LEAVE_FORM).version, 1)
   assert.throws(() => parseForm({ ...LEAVE_FORM, version: 99 }), /版本/)
 })

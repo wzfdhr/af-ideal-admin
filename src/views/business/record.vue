@@ -59,6 +59,19 @@
       </div>
     </section>
     <section v-if="pendingTask && current?.status === 'running'">
+      <label v-if="(current?.tasks.length || 0) > 1">
+        选择待办任务
+        <select v-model="selectedTaskId" aria-label="选择待办任务">
+          <option
+            v-for="task in current?.tasks"
+            :key="task.id"
+            :value="task.id"
+          >
+            {{ task.nodeName || '审批任务' }}
+          </option>
+        </select>
+      </label>
+      <p>{{ pendingTask.nodeName || '当前审批任务' }}</p>
       <label>
         处理意见
         <textarea v-model="comment" aria-label="处理意见" maxlength="500" />
@@ -79,6 +92,33 @@
       >
         驳回
       </a-button>
+    </section>
+    <section
+      v-if="current?.activities?.length"
+      aria-label="并行与会签进度"
+      data-testid="parallel-progress"
+    >
+      <h2>并行与会签进度</h2>
+      <ul>
+        <li
+          v-for="activity in current.activities"
+          :key="activity.id"
+          :data-activity-node="activity.nodeId"
+        >
+          {{ activity.nodeName }} ·
+          {{ activityLabels[activity.status] || activity.status }}
+          <span v-if="activity.kind === 'fork'">
+            · 已汇合 {{ activity.arrivedBranches }}/{{
+              activity.expectedBranches
+            }}
+            条分支
+          </span>
+          <span v-else>
+            · 已批准 {{ activity.approved }}/{{ activity.threshold }} 票 · 待签
+            {{ activity.pending }} 人 · 已拒绝 {{ activity.rejected }} 人
+          </span>
+        </li>
+      </ul>
     </section>
     <section v-if="current?.history.length">
       <h2>处理历史</h2>
@@ -163,7 +203,18 @@ const ast = computed<VersionedFormSchema | undefined>(() => {
     })
   return schema
 })
-const pendingTask = computed(() => current.value?.tasks[0])
+const selectedTaskId = ref('')
+const pendingTask = computed(
+  () =>
+    current.value?.tasks.find((task) => task.id === selectedTaskId.value) ||
+    current.value?.tasks[0]
+)
+const activityLabels: Record<string, string> = {
+  waiting: '等待处理',
+  completed: '已完成',
+  cancelled: '已取消',
+  rejected: '已拒绝',
+}
 const computedFields = computed(() => {
   if (!release.value) return {}
   try {
@@ -239,6 +290,8 @@ const load = async () => {
       const data = await businessRecord(String(route.params.id))
       if (path !== route.fullPath) return
       current.value = data
+      if (!data.tasks.some((task) => task.id === selectedTaskId.value))
+        selectedTaskId.value = data.tasks[0]?.id || ''
       release.value = data.release
       values.value = { ...data.fields }
       data.release.formSnapshot.widgetsConfig.forEach((widget) => {
