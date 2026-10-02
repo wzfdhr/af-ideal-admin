@@ -10,6 +10,7 @@ import {
   FILE_PERMISSIONS,
   PACKAGE_PERMISSIONS,
   DICTIONARY_PERMISSIONS,
+  FORM_DATA_SOURCE_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -48,6 +49,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(FILE_PERMISSIONS),
           ...Object.values(PACKAGE_PERMISSIONS),
           ...Object.values(DICTIONARY_PERMISSIONS),
+          ...Object.values(FORM_DATA_SOURCE_PERMISSIONS),
         ]),
       ]
     )

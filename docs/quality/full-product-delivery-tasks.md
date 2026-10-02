@@ -26,7 +26,7 @@
 | FP-008 | 字典和项目持久化、版本、租户范围及缓存失效 | FP-005 | T-203/T-204 | 进行中 |
 | FP-009 | 应用创建/复制/配置/发布/归档，独立 ID 和版本 | FP-005 | LA-037 | 进行中 |
 | FP-010 | 通用业务记录、提交/详情/权限/快照/历史和 R1 适配 | FP-006/009 | LA-037/042 | 进行中 |
-| FP-011 | 复杂表单校验/联动、安全数据源登记、映射、超时及恢复 | FP-008/010 | T-301/303 | 未开始 |
+| FP-011 | 复杂表单校验/联动、安全数据源登记、映射、超时及恢复 | FP-008/010 | T-301/303 | 进行中 |
 | FP-012 | 表单编辑重开、比较、发布运行一致、格式迁移和回滚 | FP-011 | T-304/LA-040 | 未开始 |
 | FP-013 | 结构化条件 AST 的真实流程运行，确定路由、拒绝脚本和错误恢复 | FP-010 | LA-044 | 未开始 |
 | FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 未开始 |
@@ -243,5 +243,20 @@
 - dictionaries-http-final.log的112项真实数据库/API通过，新增双租户相同类型隔离、停用/墓碑、跨租户FK/重复值/越界序号/对象值拒绝、并发同key一次、过期版本、撤权和失败恢复；服务实例关闭重建后使用原会话重读持久化选项。dictionaries-http-restart.log保留重建测试实例忘记重装失败注入器所致的失败，修正夹具后dictionaries-http-restart-final.log及最终全量通过，未削弱事务断言。
 - dictionaries-browser.log真实复现旧reference页面白名单拒绝新字典页；补入口规则与独立正负向回归后继续验收。dictionaries-browser-route-fixed.log保留测试错误假定冲突文案包含“版本”的失败，改为同时断言真实409/REVISION_CONFLICT及实际提示，仍验证输入保留。dictionaries-browser-final.log保留查询/隐藏编辑表单共用placeholder导致的严格定位失败，改为定位真实查询区域并等待实际搜索响应。
 - dictionaries-browser-complete.log完成真实创建、文本选项/停用过滤、保存、页面刷新/重开、实际并发版本冲突、本地值保留、显式重读恢复和另一租户不可见。dictionaries-full-real-browser.log的30条真实页面回归全部通过，包含R1、应用包、设备及真实ClamAV附件；未注入成功响应。dictionaries-options-runtime.png已检查，修正标签换行和控件边界布局。
-- dictionaries-unit-final.log为433单测通过，dictionaries-contracts.log为21契约+15领域/Mock通过；dictionaries-all-types.log、dictionaries-all-build-final.log、最终页面重构建dictionaries-visual-build.log通过。dictionaries-final-lint-all.log无错误/6警告，其中2项为新选项编辑的明确丢弃确认。旧smoke3条和独立Mock2条分别通过，证据dictionaries-smoke-browser.log/dictionaries-mock-browser.log。
+- dictionaries-unit-final.log为433单测通过，dictionaries-contracts.log为21契约+15领域/Mock通过；dictionaries-all-types.log、dictionaries-all-build-final.log、最终页面重构建dictionaries-visual-build.log通过。dictionaries-final-lint-all.log无错误/6警告，其中2项为新选项编辑的明确丢弃确认。旧smoke3条和独立Mock3条分别通过，证据dictionaries-smoke-browser.log/dictionaries-mock-browser.log。
 - 013仅应用专属开发演示库、API10890/网关4189。原R1包/卷/部署保留。引用保护与发布绑定、进程/数据库重启专项、完整字典项Mock、多分辨率/键盘及部署/备份恢复/兼容回退仍须继续，FP-008保持进行中。方案及回滚边界见full-product-dictionary-design.md，当前结果不替代新提交远端CI或全产品最终门禁。
+
+### 字典远端验证
+
+- f4aa56ded4ecf0285f1a4c1f47b6c64eba9f37d3的实际CI37007788125已通过，verify/real-business均success；归档ci-37007788125及dictionaries-remote-ci.json。远端112项数据库/API与30条真实浏览器通过。本结果不包含后续数据源登记增量，FP-008仍保留发布引用、恢复和部署等门禁。
+
+### FP-011 受控数据源登记与查询首批
+
+- 实施/阶段自检：Codex，2026-10-02。014新增form_data_sources独立登记表和四项权限，租户/字典组合FK、固定code/关联、版本、启停、幂等、失败回滚和事务事实审计。查询必须同时持有form-source:read及system:dict:read；只返回真实启用字典项的label/value与来源版本，不接受URL、脚本、任意查询参数或凭据。
+- 内置字典查询设置5秒数据库语句超时及200项边界；外部HTTP白名单、响应适配和真实网络超时仍未实施，不以此内置查询替代。登记与编辑需要现有底层读取权，不能通过登记转授数据访问。应用配置页中的设计器现已提供真实登记、维护和查询预览；reference不回退旧裸URL Mock编辑器，无登记权限的R1账号不会自动请求该模块。
+- form-sources-http-final.log的114项真实数据库/API通过，含双租户来源/底层引用拒绝、来源和字典停用、源编码/引用不可更换、未知参数/URL/类型拒绝、底层权限撤销、同key并发一次、失败回滚/恢复及服务实例关闭重建后重读。跨租户登记FK另由真实PostgreSQL约束验证。
+- form-sources-application-browser.log及form-sources-context-browser.log完成实际应用配置中的登记、查询真实字典并过滤停用项、刷新重开、真实并发修改后的409/REVISION_CONFLICT、输入保留/显式重读恢复、启停与另一租户不可读；未注入成功响应。form-source-manager-runtime.png已检查实际界面。form-sources-full-real-browser.log的31条全量真实页面通过。
+- 额外阻止旧查询覆盖新预览，并在账号/租户切换时清空编辑信息、预览和字典选择、重读当前列表；form-sources-context-unit-final.log用前一租户迟到响应验证不会显示旧标签。该单测使用模拟响应，仅证明客户端状态保护，不代替浏览器/数据库链路。保护后专属浏览器再验通过；新提交远端CI仍须覆盖完整回归。
+- form-sources-unit-final.log为434单测通过，form-sources-contracts.log为22契约+15领域/Mock通过，form-sources-all-types-final.log、form-sources-all-build.log及后续form-sources-context-build.log通过。form-sources-lint-final.log无错误/6项既有警告，旧smoke3条/独立Mock3条分别通过（form-sources-smoke-browser.log/form-sources-mock-browser.log）。
+- 首次类型检查发现DTO接口不符合ProTable的Record行类型，改为投影实际DTO字段后类型/构建通过，未使用any放过类型问题。form-sources-browser.log曾在旧独立设计器路径验证登记，截图暴露原Mock示例ID在真实服务不存在；正式路径改接实际应用配置的嵌入设计器。该独立设计器的草稿选择、真实版本保存与组合发布缺口列入FP-012，不能将本次数据源登记称作其修复。
+- 014只应用专属开发演示库、API10890/网关4189，原R1包/卷/环境保留。本次尚未把登记ID写入表单字段/发布快照或执行业务提交选项校验；这些是下一步FP-011/012工作。复杂校验/联动、远程HTTP、包重绑、数据源Mock、真实进程/数据库重启、完整键盘/分辨率、备份/新部署/回退均保持开放；FP-011不勾完成。方案见full-product-form-data-source-design.md。

@@ -1,57 +1,63 @@
 <template>
-  <div class="text-right">
-    <a-button size="small" type="primary" @click="addDataSource">
-      新增数据源
-    </a-button>
-    <a-button
-      size="small"
-      type="primary"
-      status="danger"
-      class="ml-4"
-      @click="deleteSource"
-    >
-      删除数据源
-    </a-button>
-  </div>
-  <div v-if="config.length > 0" class="flex">
-    <div class="w-1/4">
-      <ul>
-        <li
-          v-for="(src, i) in sources"
-          :key="i"
-          class="list-item"
-          :class="{ active: selectedIndex === i }"
-          @click="selectedIndex = i"
-        >
-          {{ src.name }}
-        </li>
-      </ul>
-    </div>
-    <div class="w-3/4 pl-6">
-      <a-form
-        v-if="selectedIndex > -1"
-        :model="selectedConfig"
-        layout="vertical"
+  <FormDataSourceManager v-if="realMode" />
+  <template v-else>
+    <div class="text-right">
+      <a-button size="small" type="primary" @click="addDataSource">
+        新增数据源
+      </a-button>
+      <a-button
+        size="small"
+        type="primary"
+        status="danger"
+        class="ml-4"
+        @click="deleteSource"
       >
-        <a-form-item label="数据源名称">
-          <a-input v-model="selectedConfig.name" />
-        </a-form-item>
-        <a-form-item label="数据源请求地址">
-          <a-input v-model="selectedConfig.url">
-            <template #prepend>GET</template>
-          </a-input>
-        </a-form-item>
-      </a-form>
+        删除数据源
+      </a-button>
     </div>
-  </div>
-  <a-empty v-else />
+    <div v-if="config.length > 0" class="flex">
+      <div class="w-1/4">
+        <ul>
+          <li
+            v-for="(src, i) in sources"
+            :key="i"
+            class="list-item"
+            :class="{ active: selectedIndex === i }"
+            @click="selectedIndex = i"
+          >
+            {{ src.name }}
+          </li>
+        </ul>
+      </div>
+      <div class="w-3/4 pl-6">
+        <a-form
+          v-if="selectedIndex > -1"
+          :model="selectedConfig"
+          layout="vertical"
+        >
+          <a-form-item label="数据源名称">
+            <a-input v-model="selectedConfig.name" />
+          </a-form-item>
+          <a-form-item label="数据源请求地址">
+            <a-input v-model="selectedConfig.url">
+              <template #prepend>GET</template>
+            </a-input>
+          </a-form-item>
+        </a-form>
+      </div>
+    </div>
+    <a-empty v-else />
+  </template>
 </template>
 
 <script lang="ts" setup>
 import { ref, computed, PropType } from 'vue'
+import FormDataSourceManager from '@/components/form-data-source-manager.vue'
 import { generateUID } from '@/utils'
+import { dataMode } from '../../../config/data-mode'
 import type { AST } from './types'
 
+const realMode = dataMode === 'reference'
 const props = defineProps({
   config: {
     type: Object as PropType<AST['dataSources']>,

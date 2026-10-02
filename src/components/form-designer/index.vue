@@ -63,7 +63,7 @@
               导入 schema JSON
             </a-button>
             <a-button
-              v-if="!embedded"
+              v-if="!embedded || dataMode === 'reference'"
               type="outline"
               long
               @click="showDataSourceEditor"
@@ -146,7 +146,7 @@
       </template>
     </a-modal>
 
-    <a-modal v-model:visible="dataSourceEditorVisible">
+    <a-modal v-model:visible="dataSourceEditorVisible" :width="900">
       <template #title>数据源编辑</template>
       <data-src-editor v-model:config="ast.dataSources" />
     </a-modal>
@@ -172,6 +172,7 @@
 import { onMounted, ref, watch } from 'vue'
 import Draggable from 'vuedraggable'
 import { FormRenderer } from '@/components/form-runtime'
+import { dataMode } from '../../../config/data-mode'
 import { fields, useWidgetActions } from './use-widgets'
 import WidgetForm from './widget-form.vue'
 import ConfigPanelForm from './config-panel-form.vue'

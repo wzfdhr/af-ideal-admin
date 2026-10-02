@@ -32,7 +32,7 @@ test('migrations are checksum verified and repeatable against real PostgreSQL', 
   await migrations.migrate(pool)
   await migrations.migrate(pool)
   const result=await pool.query('SELECT name FROM schema_migrations ORDER BY name')
-  assert.deepEqual(result.rows.map((row)=>row.name),['001_leave_approval.sql','002_audit_and_telemetry.sql','003_organization.sql','004_positions.sql','005_member_profiles.sql','006_credential_revisions.sql','007_roles_and_permissions.sql','008_member_data_scopes.sql','009_application_lifecycle.sql','010_business_records.sql','011_file_storage.sql','012_application_packages.sql','013_dictionaries.sql'])
+  assert.deepEqual(result.rows.map((row)=>row.name),['001_leave_approval.sql','002_audit_and_telemetry.sql','003_organization.sql','004_positions.sql','005_member_profiles.sql','006_credential_revisions.sql','007_roles_and_permissions.sql','008_member_data_scopes.sql','009_application_lifecycle.sql','010_business_records.sql','011_file_storage.sql','012_application_packages.sql','013_dictionaries.sql','014_form_data_sources.sql'])
 })
 test('database rejects cross-tenant references and published release mutation', async () => {
   await isolated(async(client)=>{
@@ -48,6 +48,7 @@ test('dictionary options have tenant-qualified references, unique typed values a
  await isolated(async client=>{
   const {a,b}=await fixtures(client)
   await client.query("INSERT INTO dictionaries(tenant_id,id,dict_name,dict_type) VALUES($1,'dictionary','设备类型','equipment-type')",[a])
+  await rejected(client,"INSERT INTO form_data_sources(tenant_id,id,code,name,dictionary_id) VALUES($1,'source','source','越权来源','dictionary')",[b],'23503')
   await rejected(client,"INSERT INTO dictionary_items(tenant_id,dictionary_id,ordinal,label,value) VALUES($1,'dictionary',0,'越权','\"private\"')",[b],'23503')
   await client.query("INSERT INTO dictionary_items(tenant_id,dictionary_id,ordinal,label,value) VALUES($1,'dictionary',0,'笔记本','\"laptop\"')",[a])
   await rejected(client,"INSERT INTO dictionary_items(tenant_id,dictionary_id,ordinal,label,value) VALUES($1,'dictionary',1,'重复','\"laptop\"')",[a],'23505')

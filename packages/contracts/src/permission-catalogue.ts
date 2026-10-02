@@ -5,6 +5,16 @@ export interface PermissionDefinition {
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
   ...[
+    ['list', '查看数据源登记'],
+    ['create', '登记受控数据源'],
+    ['update', '维护与启停数据源'],
+    ['read', '查询授权数据源'],
+  ].map(([action, title]) => ({
+    code: `form-source:${action}`,
+    title,
+    module: '表单数据源',
+  })),
+  ...[
     ['list', '查看字典列表'],
     ['detail', '查看字典详情及选项'],
     ['create', '创建字典'],
