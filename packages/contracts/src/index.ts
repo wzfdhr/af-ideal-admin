@@ -12,3 +12,5 @@ export * from './applications'
 export * from './business-records'
 
 export * from './files'
+
+export * from './application-packages'

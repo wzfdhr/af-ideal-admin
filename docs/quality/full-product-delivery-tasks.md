@@ -34,7 +34,7 @@
 | FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 未开始 |
 | FP-017 | query/submit/navigate/openModal/refreshBlock/受控发起流程实际执行 | FP-010/012 | LA-038 | 未开始 |
 | FP-018 | 低代码权限、保存重开、发布/灰度/回滚及真实管理页生成或渲染 | FP-017 | LA-039/T-610 | 未开始 |
-| FP-019 | 包格式/依赖/校验/引用迁移，新租户导入运行；无凭据/业务数据 | FP-012/018 | LA-040 | 未开始 |
+| FP-019 | 包格式/依赖/校验/引用迁移，新租户导入运行；无凭据/业务数据 | FP-012/018 | LA-040 | 进行中 |
 | FP-020 | 对象存储、真实附件 bytes、上传/下载/预览/分片与授权绑定 | FP-004/010 | LA-041 | 进行中 |
 | FP-021 | 扫描、隔离、失败/孤立清理和文件审计 | FP-020 | LA-041 | 进行中 |
 | FP-022 | 设备领用第二模板，复用配置/审批/附件/通知/审计及记录增量 | FP-019/021 | LA-042 | 进行中 |
@@ -221,3 +221,13 @@
 - files-unit.log的430前端单测通过，含真实ArrayBuffer保持字节与响应头的边界；files-final-build.log完整workspace构建通过，files-lint.log无错误。新CLI和二进制解析的早期类型/格式失败保留，未绕过病毒扫描把文件默认标ready。
 - 专属演示库应用011并启用私有存储目录、API10890/网关4189及独立扫描器；原R1环境/卷/包保留。病毒库维护/告警、完整分片浏览器断点恢复、预览格式深度检查、扫描/清理容量及完整备份/新实例恢复/部署回退仍未完成。FP-020/021保持进行中，CI必须新增实际扫描服务，不以跳过文件用例获得绿色。
 - files-final-real-browser.log新增文件后27项通过、登录恢复失败，实因IP窗口先返回Retry-After而账号窗口更晚。后端头改为相关已耗尽窗口的最大截止时间，阈值仍30/IP、10/账号。新增API真实注入双窗口及可控时钟回归，files-combined-throttle-http.log的105项通过；files-auth-fixed-real-browser.log完整28项真实页面最终全部通过，files-commit-unit.log的430单测与files-commit-lint.log无错误。本轮远端CI新增真实ClamAV服务，结果仍须运行核实。
+
+### FP-019 应用定义包首批
+
+- 实施/阶段自检：Codex。86776ab9c245f11c2017aa09faf4a7b709b96dd4的实际CI36995403479已通过，verify/real-business均success，105项数据库/API与28条真实浏览器通过；含远端官方ClamAV服务的真实文件扫描，证据ci-36995403479及files-remote-ci.json。本轮应用包需要新提交/CI。
+- 012权限迁移、v1闭合包契约、依赖/格式检查、符号引用、明确默认值脱敏及SHA256；人员按目标租户重新绑定，表单引用生成新的独立草稿ID。包不含源租户/人员对象ID、发布者、会话、业务数据或真实附件。导入只创建独立草稿，不自动发布或执行。
+- application-package-reference-http.log的108项真实数据库/API通过，含真实源设备定义导出、另一租户重绑/导入/发布/完成两级业务、原租户不可见、篡改摘要、未来格式、未知依赖、包外身份和默认数据拒绝、源/目标租户人员边界、失败注入事务回滚及同key恢复一次。
+- application-package-browser.log真实浏览器闭环通过：下载实际定义JSON、目标租户选择文件、绑定B主管/审计员、导入后刷新重开、自有设计器保存/独立发布v1，B员工真实业务提交。未注入成功响应或复用原租户身份。
+- application-package-final-real-browser.log有28通过、1失败：旧保存冲突用例在已登录后又额外登录，触发真实账号限流。改为用当前真实浏览器会话认证另一API客户端的真实更新，保留乐观版本冲突、输入不丢和显式重载断言；application-package-conflict-session-browser.log通过，完整application-package-complete-real-browser.log的29项全部通过。没有放宽限流或删减冲突断言。
+- application-package-unit.log的430项单测通过，application-package-contracts.log为19契约+15领域/Mock通过；application-package-page-types.log和application-package-page-build.log通过，application-package-final-lint.log无错误。application-package-mock-browser.log的3条旧开发路径通过，不证明新定义包Mock完成。
+- 012只应用专属演示库、API10890/网关4189，原R1包/卷/环境保留。低代码页面/物料/插件与数据源依赖的包扩展、完整新部署导入、兼容格式迁移、容量与最终备份/回退仍未完成。FP-019保持进行中，v1表单/串行流程包不替代冻结全产品包要求。

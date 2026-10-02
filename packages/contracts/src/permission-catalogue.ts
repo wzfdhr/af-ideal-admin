@@ -4,6 +4,8 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  { code: 'application:export', title: '导出脱敏应用定义包', module: '应用' },
+  { code: 'application:import', title: '校验并导入应用定义包', module: '应用' },
   { code: 'file:list', title: '查看授权文件和附件', module: '文件' },
   { code: 'file:upload', title: '上传真实文件', module: '文件' },
   { code: 'file:download', title: '下载授权文件', module: '文件' },

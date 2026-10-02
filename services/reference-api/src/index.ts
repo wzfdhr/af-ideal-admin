@@ -12,6 +12,7 @@ import { registerPositions } from './positions'
 import { registerUsers } from './users'
 import { registerCredentials } from './credentials'
 import { registerRoles } from './roles'
+import { registerApplicationPackages } from './application-packages'
 import { registerFiles } from './files'
 import { registerBusinessRecords } from './business-records'
 import { registerApplicationCenter } from './application-center'
@@ -116,6 +117,7 @@ export const createServer = (
   registerApplicationCenter(server, pool)
   registerBusinessRecords(server, pool, fault)
   registerFiles(server, pool, files)
+  registerApplicationPackages(server, pool, fault)
   if (!database)
     server.addHook('onClose', async () => {
       await pool.end()

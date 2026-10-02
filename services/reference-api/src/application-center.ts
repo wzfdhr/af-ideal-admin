@@ -101,7 +101,7 @@ const blankWorkflow = (): WorkflowSchema => ({
   ],
   edges: [{ id: 'start-end', source: 'start', target: 'end', label: '' }],
 })
-const provision = async (
+export const provisionApplication = async (
   client: PoolClient,
   actor: Actor,
   metadata: { code: string; name: string; description: string },
@@ -248,7 +248,7 @@ export const registerApplicationCenter = (
                 : release.formSnapshot
             workflow = release.workflowSnapshot
           }
-          const created = await provision(
+          const created = await provisionApplication(
             client,
             current,
             input,
@@ -387,7 +387,7 @@ export const registerApplicationCenter = (
             form = f.schema
             workflow = w.schema
           }
-          const created = await provision(
+          const created = await provisionApplication(
             client,
             current,
             input,

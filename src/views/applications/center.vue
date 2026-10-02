@@ -1,6 +1,7 @@
 <template>
   <main class="application-center" data-testid="application-center">
     <h1>应用中心</h1>
+    <ApplicationPackageImport @imported="table?.reload()" />
     <p v-if="error" role="alert">{{ error }}</p>
     <PermissionButton :permission="P.create" type="primary" @click="open()">
       创建应用
@@ -52,6 +53,8 @@
 <script setup lang="ts">
 import { h, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import ApplicationPackageImport from '@/components/application-package-import.vue'
+import { exportApplicationPackage } from '@/api/application-packages'
 import {
   listApplications,
   createApplication,
@@ -194,6 +197,21 @@ const state = async (app: ManagedApplication) => {
     error.value = message(failure)
   }
 }
+const exportPackage = async (app: ManagedApplication) => {
+  try {
+    const pkg = await exportApplicationPackage(app)
+    const url = URL.createObjectURL(
+      new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' })
+    )
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${app.code}.af-application.json`
+    link.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  } catch (failure) {
+    error.value = message(failure)
+  }
+}
 const action = (permission: string, label: string, run: () => void) =>
   h(
     PermissionButton,
@@ -256,6 +274,9 @@ const columns = [
             })
           )
         )
+      actions.push(
+        action('application:export', '导出定义包', () => exportPackage(app))
+      )
       return h('div', actions)
     },
   },

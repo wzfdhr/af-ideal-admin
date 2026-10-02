@@ -396,11 +396,11 @@ test('real save conflict keeps local input and permits an explicit reload', asyn
     'false'
   )
   const id = page.url().split('/').pop()
-  const auth = await request.post(`${apiUrl}/api/user/login`, {
-    data: { username: 'a-employee', password: 'a-employee' },
-  })
-  expect(auth.ok()).toBe(true)
-  const token = (await auth.json()).data.token as string
+  const token = await page.evaluate(() => localStorage.getItem('token'))
+  expect(
+    token,
+    'the actual browser session must authenticate the concurrent API update'
+  ).toBeTruthy()
   const headers = { 'X-Access-Token': token, 'X-Tenant-Id': 'tenant-a' }
   const loaded = await request.get(`${apiUrl}/api/leave-requests/${id}`, {
     headers,
