@@ -8,7 +8,11 @@ import {
   onlyKeys,
   text,
 } from '@af-admin/contracts'
-import { assertRevision, requirePermission } from '@af-admin/workflow-core'
+import {
+  assertRevision,
+  requirePermission,
+  hasPermission,
+} from '@af-admin/workflow-core'
 import { authenticate, scalarHeader } from './auth'
 import {
   authorizedTransaction,
@@ -109,9 +113,17 @@ export const registerFormDataSources = (
     return authorizedTransaction(
       pool,
       actor,
-      P.read,
+      undefined,
       async (client, current) => {
-        requirePermission(current.permissions, DICTIONARY_PERMISSIONS.read)
+        if (
+          !hasPermission(current.permissions, P.read) ||
+          !hasPermission(current.permissions, DICTIONARY_PERMISSIONS.read)
+        )
+          throw new DomainError(
+            403,
+            'DATA_SOURCE_FORBIDDEN',
+            '缺少数据源及底层字典读取权限'
+          )
         await client.query("SET LOCAL statement_timeout='5000ms'")
         const source = await read(client, current.tenantId, id)
         if (source.status !== 'enabled')

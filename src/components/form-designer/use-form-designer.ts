@@ -1,12 +1,16 @@
 import { ref, computed, Ref } from 'vue'
 import { useClipboard } from '@vueuse/core'
+import { createCommandRetry } from '@/services/command-retry'
 import {
   createFormSchema,
+  fetchFormSchemas,
+  getFormApplication,
   getFormSchemaDetail,
   publishFormSchema,
   saveFormSchema,
   submitFormRuntime,
 } from '@/api/form-schema'
+import { dataMode } from '../../../config/data-mode'
 import {
   applyImportedFormSchema,
   exportFormSchema,
@@ -24,6 +28,11 @@ export const useFormDesignerActions = (
   ast: Ref<VersionedFormSchema>,
   formId: Ref<string>
 ) => {
+  const retry = createCommandRetry()
+  const draftChoices = ref<
+    Awaited<ReturnType<typeof fetchFormSchemas>>['list']
+  >([])
+  const draftRevision = ref<number>()
   const source = computed(() => exportFormSchema(ast.value))
   const actionMessage = ref('')
   const actionError = ref('')
@@ -66,7 +75,21 @@ export const useFormDesignerActions = (
     actionError.value = ''
 
     try {
-      const result = await getFormSchemaDetail(id)
+      let target = id
+      if (dataMode === 'reference') {
+        const page = await fetchFormSchemas({ current: 1, pageSize: 100 })
+        draftChoices.value = page.list
+        target = target || page.list[0]?.id || ''
+        if (!target) {
+          formId.value = ''
+          draftRevision.value = undefined
+          ast.value = migrateFormSchema({})
+          return
+        }
+      }
+      const result = await getFormSchemaDetail(target)
+      draftRevision.value = result.revision
+      retry.clear()
       formId.value = result.id
       ast.value = migrateFormSchema(result.schema)
       actionMessage.value = '加载成功'
@@ -103,15 +126,20 @@ export const useFormDesignerActions = (
     actionError.value = ''
 
     try {
-      const result = await createFormSchema({
-        name,
-        schema: ast.value,
-      })
+      const input = { name, schema: ast.value }
+      const result =
+        dataMode === 'reference'
+          ? await createFormSchema(input, retry.key('create', input))
+          : await createFormSchema(input)
+      draftRevision.value = result.revision
+      retry.complete('create')
       formId.value = result.id
       if (result.schema) {
         ast.value = result.schema
       }
       actionMessage.value = '创建成功'
+    } catch (failure) {
+      actionError.value = getErrorMessage(failure, '创建失败，输入已保留')
     } finally {
       creating.value = false
     }
@@ -123,8 +151,25 @@ export const useFormDesignerActions = (
     actionError.value = ''
 
     try {
-      await saveFormSchema(formId.value, ast.value)
+      if (dataMode === 'reference') {
+        if (!formId.value || !draftRevision.value)
+          throw new Error('请先选择或创建真实草稿')
+        const input = {
+          schema: ast.value,
+          expectedRevision: draftRevision.value,
+        }
+        const result = await saveFormSchema(
+          formId.value,
+          ast.value,
+          draftRevision.value,
+          retry.key('save', input)
+        )
+        draftRevision.value = result.revision
+        retry.complete('save')
+      } else await saveFormSchema(formId.value, ast.value)
       actionMessage.value = '保存成功'
+    } catch (failure) {
+      actionError.value = getErrorMessage(failure, '保存失败，输入已保留')
     } finally {
       saving.value = false
     }
@@ -136,6 +181,19 @@ export const useFormDesignerActions = (
     actionError.value = ''
 
     try {
+      if (dataMode === 'reference') {
+        const app = await getFormApplication(formId.value)
+        if (!app)
+          throw new Error(
+            '此草稿尚未关联应用，请在应用中心配置并发布应用表单与流程'
+          )
+        window.location.assign(
+          app.id === 'leave'
+            ? '/leave/application'
+            : `/applications/${encodeURIComponent(app.id)}/configuration`
+        )
+        return
+      }
       const validatedSchema = migrateFormSchema(ast.value)
       ast.value = validatedSchema
       await publishFormSchema(formId.value, validatedSchema)
@@ -187,6 +245,7 @@ export const useFormDesignerActions = (
     importSource,
     importVisible,
     loadDraft,
+    draftChoices,
     loading,
     publishCurrent,
     publishing,
@@ -204,7 +263,9 @@ export const useFormDesignerActions = (
 
 export const useFormDesigner = () => {
   const ast = ref<VersionedFormSchema>(migrateFormSchema({}))
-  const formId = ref('form-customer-registration')
+  const formId = ref(
+    dataMode === 'reference' ? '' : 'form-customer-registration'
+  )
 
   return { ast, formId }
 }

@@ -5,8 +5,15 @@ import {
   text,
   onlyKeys,
   parseLeaveFields,
+  parseForm,
+  validateBusinessFields,
+  computeBusinessFields,
 } from '@af-admin/contracts'
 import { requirePermission } from '@af-admin/workflow-core'
+import {
+  captureFormSources,
+  assertFormSourcesAvailable,
+} from './form-source-bindings'
 import { authenticate, scalarHeader } from './auth'
 import {
   readApplication,
@@ -111,7 +118,14 @@ export const registerBusiness = (
     server.post(`/api/${path}`, async (request) =>
       ok(
         request,
-        await saveDraft(pool, await auth(request), kind, request.body)
+        await saveDraft(
+          pool,
+          await auth(request),
+          kind,
+          request.body,
+          undefined,
+          key(request)
+        )
       )
     )
     server.put(`/api/${path}/:id`, async (request) =>
@@ -122,7 +136,8 @@ export const registerBusiness = (
           await auth(request),
           kind,
           request.body,
-          parameterId(request)
+          parameterId(request),
+          key(request)
         )
       )
     )
@@ -134,6 +149,30 @@ export const registerBusiness = (
         '请假应用必须通过组合发布入口发布表单和流程'
       )
     })
+  })
+  server.get('/api/form-schemas/:id/application', async (request) => {
+    const actor = await auth(request)
+    const id = parameterId(request)
+    await readDraft(pool, actor, 'form', id)
+    const owned = await rows<{
+      id: string
+      name: string
+      business_kind: string
+    }>(
+      pool,
+      'SELECT id,name,business_kind FROM applications WHERE tenant_id=$1 AND form_draft_id=$2 ORDER BY id LIMIT 1',
+      [actor.tenantId, id]
+    )
+    return ok(
+      request,
+      owned[0]
+        ? {
+            id: owned[0].id,
+            name: owned[0].name,
+            businessKind: owned[0].business_kind,
+          }
+        : null
+    )
   })
   server.get('/api/leave-requests', async (request) =>
     ok(request, await listLeaves(pool, await auth(request), request.query))
@@ -226,16 +265,38 @@ export const registerBusiness = (
   server.post('/api/form-runtime/:id/submit', async (request) => {
     const actor = await auth(request)
     const id = parameterId(request)
-    await readDraft(pool, actor, 'form', id)
     const body = record(request.body)
     onlyKeys(body, ['values'])
-    parseLeaveFields(body.values)
-    return ok(request, {
-      id: `preview-${randomUUID()}`,
-      formId: id,
-      status: 'submitted',
-      mode: 'preview',
-    })
+    return authorizedTransaction(
+      pool,
+      actor,
+      'application:configure',
+      async (client, current) => {
+        const draft = await readDraft(client, current, 'form', id)
+        const owner = await rows<{ business_kind: string }>(
+          client,
+          'SELECT business_kind FROM applications WHERE tenant_id=$1 AND form_draft_id=$2 ORDER BY id LIMIT 1',
+          [current.tenantId, id]
+        )
+        if (owner[0]?.business_kind === 'leave') parseLeaveFields(body.values)
+        else {
+          const schema = await captureFormSources(
+            client,
+            current,
+            parseForm(draft.schema)
+          )
+          const values = validateBusinessFields(schema, body.values)
+          await assertFormSourcesAvailable(client, current, schema, values)
+          computeBusinessFields(schema, values)
+        }
+        return ok(request, {
+          id: `preview-${randomUUID()}`,
+          formId: id,
+          status: 'submitted',
+          mode: 'preview',
+        })
+      }
+    )
   })
   server.get('/api/messages/notifications', async (request) =>
     ok(

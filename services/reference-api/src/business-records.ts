@@ -11,6 +11,12 @@ import {
   computeBusinessFields,
 } from '@af-admin/contracts'
 import { assertRevision, advanceWorkflow } from '@af-admin/workflow-core'
+import {
+  assertFormSourcesAvailable,
+  requireFormSourceRead,
+  projectRecordSourceOptions,
+  canReadFormSources,
+} from './form-source-bindings'
 import { assertFilesReady } from './file-policy'
 import { authenticate, scalarHeader } from './auth'
 import { readRelease, validatePeople } from './application'
@@ -54,9 +60,21 @@ const detail = async (db: Database, actor: Actor, id: string) => {
         [actor.tenantId, instances[0].id, actor.userId]
       )
     : []
+  const dto = businessDto({ ...row, instance_id: instances[0]?.id }, actor)
+  if (release.formSnapshot.dataSources.length && !canReadFormSources(actor))
+    dto.allowedActions = dto.allowedActions.filter(
+      (action) => !['edit', 'submit'].includes(action)
+    )
   return {
-    ...businessDto({ ...row, instance_id: instances[0]?.id }, actor),
-    release,
+    ...dto,
+    release: {
+      ...release,
+      formSnapshot: projectRecordSourceOptions(
+        actor,
+        release.formSnapshot,
+        row.fields
+      ),
+    },
     tasks,
     computedFields: computeBusinessFields(release.formSnapshot, row.fields),
     history: instances[0]
@@ -120,6 +138,7 @@ export const registerBusinessRecords = (
           current.tenantId,
           app.active_release_id
         )
+        await assertFormSourcesAvailable(client, current, release.formSnapshot)
         return ok({ applicationId: id, release }, request.id)
       }
     )
@@ -198,10 +217,17 @@ export const registerBusinessRecords = (
             input.applicationReleaseId,
             'generic'
           )
+          requireFormSourceRead(current, release.formSnapshot)
           const fields = validateBusinessFields(
             release.formSnapshot,
             input.fields,
             false
+          )
+          await assertFormSourcesAvailable(
+            client,
+            current,
+            release.formSnapshot,
+            fields
           )
           computeBusinessFields(release.formSnapshot, fields)
           const id = randomUUID()
@@ -277,10 +303,17 @@ export const registerBusinessRecords = (
           )
           if (release.applicationId !== previous.applicationId)
             throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+          requireFormSourceRead(current, release.formSnapshot)
           const fields = validateBusinessFields(
             release.formSnapshot,
             input.fields,
             false
+          )
+          await assertFormSourcesAvailable(
+            client,
+            current,
+            release.formSnapshot,
+            fields
           )
           computeBusinessFields(release.formSnapshot, fields)
           await client.query(
@@ -330,7 +363,17 @@ export const registerBusinessRecords = (
             'generic'
           )
           await assertFilesReady(client, current.tenantId, id)
-          validateBusinessFields(release.formSnapshot, draft.fields)
+          requireFormSourceRead(current, release.formSnapshot)
+          const validatedFields = validateBusinessFields(
+            release.formSnapshot,
+            draft.fields
+          )
+          await assertFormSourcesAvailable(
+            client,
+            current,
+            release.formSnapshot,
+            validatedFields
+          )
           computeBusinessFields(release.formSnapshot, draft.fields)
           await validatePeople(
             client,

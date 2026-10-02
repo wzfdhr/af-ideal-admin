@@ -19,7 +19,8 @@
     <a-input-number v-model="widget.config.limit" />
     <template #extra>当数量不为0时开启多选</template>
   </a-form-item>
-  <div>
+  <RegisteredSourcePicker v-if="dataMode === 'reference'" :widget="widget" />
+  <div v-if="dataMode === 'mock' || widget.config.optionsType === 'fixed'">
     <span class="label">可选值</span>
     <a-tabs
       v-model:active-key="widget.config.optionsType"
@@ -48,7 +49,7 @@
           增加一个选项
         </a-button>
       </a-tab-pane>
-      <a-tab-pane key="remote" title="从接口获取">
+      <a-tab-pane v-if="dataMode === 'mock'" key="remote" title="从接口获取">
         <a-select
           v-model="widget.config.optionsUrl"
           placeholder="选择一个数据源"
@@ -120,6 +121,8 @@
 <script lang="ts" setup>
 import { computed, inject, PropType } from 'vue'
 import { merge } from 'lodash'
+import RegisteredSourcePicker from '../registered-source-picker.vue'
+import { dataMode } from '../../../../config/data-mode'
 import { IConfigSelect, FormDesignerContext, contextSymbol } from '../types'
 import { inputEventNames } from '../utils'
 

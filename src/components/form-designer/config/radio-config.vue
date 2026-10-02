@@ -42,7 +42,11 @@
       </a-option>
     </a-select>
   </a-form-item>
-  <div class="mb-4">
+  <RegisteredSourcePicker v-if="dataMode === 'reference'" :widget="widget" />
+  <div
+    v-if="dataMode === 'mock' || widget.config.optionsType === 'fixed'"
+    class="mb-4"
+  >
     <span class="label">可选值</span>
     <a-tabs type="line" size="mini">
       <a-tab-pane key="fixed" title="固定值">
@@ -66,7 +70,7 @@
           增加一个选项
         </a-button>
       </a-tab-pane>
-      <a-tab-pane key="remote" title="从接口获取">
+      <a-tab-pane v-if="dataMode === 'mock'" key="remote" title="从接口获取">
         <a-select
           v-model="widget.config.optionsUrl"
           placeholder="选择一个数据源"
@@ -106,6 +110,8 @@
 
 <script lang="ts" setup>
 import { inject, computed, PropType } from 'vue'
+import RegisteredSourcePicker from '../registered-source-picker.vue'
+import { dataMode } from '../../../../config/data-mode'
 import { IConfigRadio, FormDesignerContext, contextSymbol } from '../types'
 import { inputEventNames } from '../utils'
 

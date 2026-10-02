@@ -17,7 +17,11 @@ export const fetchFormDataSources = async (params: {
     )
   ).data
 export const getFormDataSource = async (id: string) =>
-  (await request.get<FormDataSource>(`/form-data-sources/${id}`)).data
+  (
+    await request.get<FormDataSource>(
+      `/form-data-sources/${encodeURIComponent(id)}`
+    )
+  ).data
 export const saveFormDataSource = async (
   input: FormDataSourceInput,
   key: string,
@@ -27,7 +31,7 @@ export const saveFormDataSource = async (
   return (
     id
       ? await request.put<FormDataSource>(
-          `/form-data-sources/${id}`,
+          `/form-data-sources/${encodeURIComponent(id)}`,
           input,
           config
         )
@@ -41,5 +45,5 @@ export const queryFormDataSource = async (id: string) =>
       sourceRevision: number
       dictionaryRevision: number
       options: Pick<DictionaryItem, 'label' | 'value'>[]
-    }>(`/form-data-sources/${id}/options`)
+    }>(`/form-data-sources/${encodeURIComponent(id)}/options`)
   ).data

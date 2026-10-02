@@ -19,6 +19,7 @@ export type {
 }
 
 export const CURRENT_FORM_SCHEMA_VERSION = 1
+export const MAX_SUPPORTED_FORM_SCHEMA_VERSION = 2
 
 export const DEFAULT_FORM_CONFIG: FormConfig = {
   size: 'medium',

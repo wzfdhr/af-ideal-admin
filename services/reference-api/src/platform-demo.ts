@@ -61,6 +61,15 @@ export const initializePlatformDemo = async (pool: Pool) => {
       "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT p) FROM jsonb_array_elements(permissions || $1::jsonb) p) WHERE user_id IN ('a-employee','b-employee','a-manager-1','a-manager-2','b-manager-1','b-manager-2')",
       [JSON.stringify(Object.values(FILE_PERMISSIONS))]
     )
+    await client.query(
+      "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT p) FROM jsonb_array_elements(permissions || $1::jsonb) p) WHERE user_id IN ('a-employee','b-employee')",
+      [
+        JSON.stringify([
+          FORM_DATA_SOURCE_PERMISSIONS.read,
+          DICTIONARY_PERMISSIONS.read,
+        ]),
+      ]
+    )
   })
 }
 if (require.main === module) {

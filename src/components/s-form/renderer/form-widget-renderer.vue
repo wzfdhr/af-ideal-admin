@@ -105,9 +105,9 @@
           </a-radio>
         </template>
         <template v-else>
-          <a-option v-for="(opt, i) in remoteData" :key="i" :value="opt.value">
+          <a-radio v-for="(opt, i) in remoteData" :key="i" :value="opt.value">
             {{ opt.label }}
-          </a-option>
+          </a-radio>
         </template>
       </a-radio-group>
     </template>
@@ -371,7 +371,10 @@ const isRemoteOptionWidget = (
     widget.type === 'radio' ||
     widget.type === 'cascader'
   ) {
-    return widget.config.optionsType === 'remote'
+    return (
+      widget.config.optionsType === 'remote' ||
+      widget.config.optionsType === 'registered'
+    )
   }
 
   return false
@@ -384,9 +387,15 @@ const sourceUrl = computed(() => {
 
   return props.widget.config.optionsUrl
 })
+const sourceKey = computed(() =>
+  isRemoteOptionWidget(props.widget) &&
+  props.widget.config.optionsType === 'registered'
+    ? props.widget.config.optionsSourceKey
+    : undefined
+)
 
 const loadWidgetRemoteOptions = async () => {
-  if (!sourceUrl.value) {
+  if (!sourceUrl.value && !sourceKey.value) {
     remoteData.value = []
     remoteError.value = ''
     return
@@ -396,6 +405,7 @@ const loadWidgetRemoteOptions = async () => {
     remoteData.value = await loadRemoteOptions({
       dataSources: dataSources.value,
       sourceUrl: sourceUrl.value,
+      sourceKey: sourceKey.value,
       formValues: ctx.value,
     })
     remoteError.value = ''
@@ -407,7 +417,7 @@ const loadWidgetRemoteOptions = async () => {
 }
 
 watch(
-  () => [sourceUrl.value, dataSources.value, ctx.value],
+  () => [sourceUrl.value, sourceKey.value, dataSources.value, ctx.value],
   () => {
     loadWidgetRemoteOptions()
   },

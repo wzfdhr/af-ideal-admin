@@ -27,7 +27,7 @@
 | FP-009 | 应用创建/复制/配置/发布/归档，独立 ID 和版本 | FP-005 | LA-037 | 进行中 |
 | FP-010 | 通用业务记录、提交/详情/权限/快照/历史和 R1 适配 | FP-006/009 | LA-037/042 | 进行中 |
 | FP-011 | 复杂表单校验/联动、安全数据源登记、映射、超时及恢复 | FP-008/010 | T-301/303 | 进行中 |
-| FP-012 | 表单编辑重开、比较、发布运行一致、格式迁移和回滚 | FP-011 | T-304/LA-040 | 未开始 |
+| FP-012 | 表单编辑重开、比较、发布运行一致、格式迁移和回滚 | FP-011 | T-304/LA-040 | 进行中 |
 | FP-013 | 结构化条件 AST 的真实流程运行，确定路由、拒绝脚本和错误恢复 | FP-010 | LA-044 | 未开始 |
 | FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 未开始 |
 | FP-015 | 转交、无效身份、异常处理、授权/审计/任务幂等 | FP-014 | LA-044 | 未开始 |
@@ -260,3 +260,21 @@
 - form-sources-unit-final.log为434单测通过，form-sources-contracts.log为22契约+15领域/Mock通过，form-sources-all-types-final.log、form-sources-all-build.log及后续form-sources-context-build.log通过。form-sources-lint-final.log无错误/6项既有警告，旧smoke3条/独立Mock3条分别通过（form-sources-smoke-browser.log/form-sources-mock-browser.log）。
 - 首次类型检查发现DTO接口不符合ProTable的Record行类型，改为投影实际DTO字段后类型/构建通过，未使用any放过类型问题。form-sources-browser.log曾在旧独立设计器路径验证登记，截图暴露原Mock示例ID在真实服务不存在；正式路径改接实际应用配置的嵌入设计器。该独立设计器的草稿选择、真实版本保存与组合发布缺口列入FP-012，不能将本次数据源登记称作其修复。
 - 014只应用专属开发演示库、API10890/网关4189，原R1包/卷/环境保留。本次尚未把登记ID写入表单字段/发布快照或执行业务提交选项校验；这些是下一步FP-011/012工作。复杂校验/联动、远程HTTP、包重绑、数据源Mock、真实进程/数据库重启、完整键盘/分辨率、备份/新部署/回退均保持开放；FP-011不勾完成。方案见full-product-form-data-source-design.md。
+
+### 数据源登记远端验证
+
+- 6b6878fe40aa9709561505c37bfe4cba08dedcdf的实际CI37012165408通过，verify/real-business均success；归档ci-37012165408/form-sources-remote-ci.json。远端114项数据库/API和31条真实浏览器通过，本结果不包含随后v2字段绑定增量。
+
+### FP-011/012 受控字段绑定与真实草稿接入
+
+- 实施/阶段自检：Codex，2026-10-02。015增加草稿/发布与登记源的租户组合FK。表单v2字段引用source key，登记ID由服务端验证，发布固定一次选项集合、来源/字典版本并进入不可变快照；v1历史继续读取，流程格式仍v1。单源发布最多100选项，规范化值冲突明确拒绝。生产业务数据、URL和凭据不作为源定义输入。
+- 新保存/提交同时验证快照选择集合、当前源/字典可用性、使用/底层权限和选项仍启用；新增加的值须重新发布后才能用。原快照标签不被字典更新改写。发布命令旧receipt重放也重新检查源读取权；无使用权的历史读取仅投影已选值，移除源引用及未选内部选项，禁用edit/submit动作。审批者仍按已授权任务读取记录，不自动获底层数据源查询权。
+- 真实草稿保存/重开、跨租户/伪造快照/无效选项/停用/撤权拒绝、当前角色与来源引用检查及事实审计已接入。复制定义去除旧源快照，重新检查并建立独立草稿引用。v1应用包明确拒绝尚未有重绑声明的来源引用；完整包来源重绑仍由FP-019继续，不能以拒绝功能代替最终交付。
+- form-bindings-http-final.log与随后form-bindings-preview-http.log的116项数据库/API通过，含实际发布/引用持久化、固定集合、新值不可用于旧发布、真实提交、旧回执撤权、历史未选值不泄漏、跨租户及伪造/停用源拒绝。服务端预览对真实草稿和来源执行校验，预览不创建业务记录；非法选择实际422。
+- 客户端保持v2来源及快照而不降级，未来v3拒绝；通过认证客户端查询登记源，发布运行仅使用快照与当前启用值的交集，保留原标签，失败不返回模拟选项。源选择配置及单选运行支持登记引用。form-bindings-runtime-unit.log/对应24契约+15领域检查验证格式、源读取/旧标签/规范化冲突与非法字段；具体文件为form-bindings-contracts-final.log。
+- 独立设计器从真实草稿列表选择/重读，不再默认请求Mock示例ID；创建/保存使用实际revision及稳定命令key，输入错误保留；已关联表单进入实际应用组合发布页，未关联草稿明确提示先配置应用，未虚构独立发布成功。兼容旧不带key的草稿调用暂保留，统一迁移及未关联草稿到通用应用的完整关联/发布、分页/检索及版本比较仍待FP-012完善。
+- form-bindings-browser.log保留Arco导入弹窗缺少测试假定dialog角色的失败，添加实际form-schema-import标识后操作继续。form-bindings-browser-import-fixed.log保留测试错误期待英文running、实际已是中文审批中的失败；改为匹配真实中文heading，不改变提交断言。form-bindings-browser-status-fixed.log及全量form-bindings-full-real-browser.log通过，后者32条；实际导入绑定/保存/刷新重开/发布、员工真实选择/保存/提交、独立草稿真实保存和进入组合发布均通过。form-binding-submitted-runtime.png已检查，显示原快照选项标签。
+- form-bindings-preview-unit.log为437单测通过，form-bindings-contracts-final.log为24契约+15领域/Mock通过；form-bindings-types-final.log、form-bindings-preview-build.log通过，form-bindings-preview-lint.log无错误/6警告。Mock3条、旧smoke3条分别通过（form-bindings-mock-browser.log/form-bindings-smoke-browser.log）。首次详情标签格式调整的prettier失败保留于form-bindings-record-display-build.log，消除条件表达式缩进冲突后重建通过。
+- 015已应用专属开发演示库，API10890/网关4189；R1原包/卷/部署保留。只在明确demo初始化中为两名合成员工授使用/字典读取权，审批者不自动授予。复杂校验/联动、外部HTTP、完整源配置Mock、包重绑、全部键盘/分辨率、真实进程/数据库恢复、部署/备份/回退仍未齐备，FP-011/012/019保持进行中。当前结果仍须新提交CI，不能替代全产品最终门禁。
+
+- 随后补真实通用草稿预览：form-bindings-preview-http.log的116项再次通过，预览读取当前来源、校验真实字段/计算值，非法选项422且业务记录数不变。form-bindings-preview-unit.log的437项通过、form-bindings-preview-build.log完整构建通过，form-bindings-preview-lint.log无错误/6警告。预览按钮在reference显示服务端校验，不再使用“提交Mock”文案。

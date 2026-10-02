@@ -13,6 +13,11 @@ import {
   positiveInteger,
 } from '@af-admin/contracts'
 import { assertRevision } from '@af-admin/workflow-core'
+import {
+  cleanDraftSourceSnapshots,
+  validateDraftSources,
+  persistDraftSources,
+} from './form-source-bindings'
 import { authenticate, scalarHeader } from './auth'
 import {
   rows,
@@ -122,7 +127,8 @@ export const provisionApplication = async (
   const id = randomUUID()
   const formId = randomUUID()
   const workflowId = randomUUID()
-  const formCopy = parseForm(form)
+  const formCopy = cleanDraftSourceSnapshots(parseForm(form))
+  await validateDraftSources(client, actor, formCopy)
   const workflowCopy = parseWorkflow(workflow)
   workflowCopy.nodes.forEach((node) => {
     if (node.config.formId) node.config.formId = formId
@@ -131,6 +137,7 @@ export const provisionApplication = async (
     'INSERT INTO form_drafts(tenant_id,id,name,schema) VALUES ($1,$2,$3,$4)',
     [actor.tenantId, formId, `${metadata.name}表单`, JSON.stringify(formCopy)]
   )
+  await persistDraftSources(client, actor.tenantId, formId, formCopy)
   await client.query(
     'INSERT INTO workflow_drafts(tenant_id,id,name,schema) VALUES ($1,$2,$3,$4)',
     [

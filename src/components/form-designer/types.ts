@@ -18,7 +18,12 @@ export interface FormConfig {
 export interface DataSourceConfig {
   key: string
   name: string
-  url: string
+  url?: string
+  kind?: 'registered'
+  registryId?: string
+  registryRevision?: number
+  dictionaryRevision?: number
+  optionsSnapshot?: { label: string; value: string }[]
   timeout?: number
   params?: Record<string, string>
   responseAdapter?: {
@@ -28,7 +33,7 @@ export interface DataSourceConfig {
   }
 }
 
-export type DataSourceType = 'fixed' | 'remote'
+export type DataSourceType = 'fixed' | 'remote' | 'registered'
 
 export interface IOptInput {
   id?: string
@@ -81,6 +86,7 @@ export interface IOptSelect {
     value?: string
   }>
   optionsUrl?: string
+  optionsSourceKey?: string
 }
 
 export interface IOptRadio {
@@ -98,6 +104,7 @@ export interface IOptRadio {
     value?: string
   }>
   optionsUrl?: string
+  optionsSourceKey?: string
 }
 
 export interface IOptSwitch {
@@ -190,6 +197,7 @@ export interface IOptCheckbox {
   indeterminate?: boolean
   optionsType: DataSourceType
   optionsUrl?: string
+  optionsSourceKey?: string
   options?: Array<{
     label?: string
     value?: string
@@ -249,6 +257,7 @@ export interface IOptCascader {
     | string
   optionsType: DataSourceType
   optionsUrl?: string
+  optionsSourceKey?: string
 }
 
 export interface IOptTextarea {

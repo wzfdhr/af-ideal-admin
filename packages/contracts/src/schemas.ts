@@ -377,16 +377,78 @@ export const parseForm = (input: unknown): FormSchema => {
   onlyKeys(fc, ['size', 'layout', 'labelAlign', 'computedFields'])
   if (!Array.isArray(body.widgetsConfig) || body.widgetsConfig.length > 50)
     return invalid('widgetsConfig', '表单控件必须是有限的数组')
+  const version = body.version === 2 ? 2 : formatVersion(body.version)
+  const rawSources = body.dataSources === undefined ? [] : body.dataSources
   if (
-    body.dataSources !== undefined &&
-    (!Array.isArray(body.dataSources) || body.dataSources.length !== 0)
+    !Array.isArray(rawSources) ||
+    rawSources.length > 10 ||
+    (version === 1 && rawSources.length)
   )
-    return invalid('dataSources', 'R1 请假表单不支持远程数据源')
+    invalid('dataSources', '此格式不支持数据源或数量超出限制')
+  const sourceKeys = new Set<string>()
+  const dataSources = (rawSources as unknown[]).map((raw) => {
+    const source = record(raw, 'dataSource')
+    onlyKeys(source, [
+      'key',
+      'name',
+      'kind',
+      'registryId',
+      'registryRevision',
+      'dictionaryRevision',
+      'optionsSnapshot',
+    ])
+    if (source.kind !== 'registered')
+      invalid('dataSources', '仅支持已登记数据源引用')
+    const key = text(source.key, 'dataSource.key', 100)
+    if (sourceKeys.has(key)) invalid('dataSources', '数据源key重复')
+    sourceKeys.add(key)
+    const result: JsonObject = {
+      key,
+      name: text(source.name, 'dataSource.name', 100),
+      kind: 'registered',
+      registryId: text(source.registryId, 'registryId', 100),
+    }
+    if (
+      source.registryRevision !== undefined ||
+      source.dictionaryRevision !== undefined
+    ) {
+      result.registryRevision = positiveInteger(source.registryRevision)
+      result.dictionaryRevision = positiveInteger(source.dictionaryRevision)
+    }
+    if (source.optionsSnapshot !== undefined) {
+      if (
+        !Array.isArray(source.optionsSnapshot) ||
+        source.optionsSnapshot.length > 100 ||
+        source.registryRevision === undefined
+      )
+        invalid('dataSources', '来源快照无效')
+      const seen = new Set<string>()
+      result.optionsSnapshot = (source.optionsSnapshot as unknown[]).map(
+        (rawOption) => {
+          const option = record(rawOption, 'option')
+          onlyKeys(option, ['label', 'value'])
+          if (
+            typeof option.value !== 'string' ||
+            !option.value.trim() ||
+            option.value.length > 100
+          )
+            invalid('dataSources', '来源快照值必须是有界非空字符串')
+          const value = option.value as string
+          if (seen.has(value)) invalid('dataSources', '来源快照选项重复')
+          seen.add(value)
+          return { label: text(option.label, 'option.label', 100), value }
+        }
+      )
+    }
+    return result
+  })
   const widgetIds = new Set<string>()
   const widgetsConfig = body.widgetsConfig.map((item): FormWidget => {
     const widget = record(item, 'widget')
     onlyKeys(widget, ['uid', 'type', 'name', 'config'])
     const uid = text(widget.uid, 'widget.uid', 100)
+    if (['__proto__', 'prototype', 'constructor'].includes(uid))
+      invalid(uid, '禁止原型字段标识')
     if (widgetIds.has(uid)) return invalid(uid, '控件标识重复')
     widgetIds.add(uid)
     const config = record(widget.config || {}, 'config')
@@ -405,6 +467,16 @@ export const parseForm = (input: unknown): FormSchema => {
       'maxLength',
       'showWordLimit',
       'optionsType',
+      ...(version === 2
+        ? [
+            'optionsSourceKey',
+            'allowSearch',
+            'allowCreate',
+            'limit',
+            'rules',
+            'trigger',
+          ]
+        : []),
       'options',
       'type',
       'direction',
@@ -437,10 +509,35 @@ export const parseForm = (input: unknown): FormSchema => {
       config.min > config.max
     )
       invalid(uid, '数值上下限无效')
+    if (
+      version === 2 &&
+      ((config.allowCreate !== undefined && config.allowCreate !== false) ||
+        (config.limit !== undefined && config.limit !== 0) ||
+        (config.rules !== undefined && config.rules !== ''))
+    )
+      invalid(uid, '当前格式不支持任意新增选项、多选或脚本校验')
     if (config.id !== undefined && config.id !== uid)
       invalid(uid, 'R1 业务字段标识不能改变')
-    if (config.optionsType !== undefined && config.optionsType !== 'fixed')
-      return invalid('optionsType', 'R1 仅支持固定选项')
+    if (
+      config.valueType !== undefined &&
+      config.valueType !== 'text' &&
+      widget.type !== 'input'
+    )
+      invalid(uid, '数值字段类型只能用于输入控件')
+    if (config.optionsType === 'registered') {
+      if (
+        version !== 2 ||
+        !['select', 'radio'].includes(String(widget.type)) ||
+        typeof config.optionsSourceKey !== 'string' ||
+        !sourceKeys.has(config.optionsSourceKey)
+      )
+        invalid(uid, '登记选项必须引用已声明数据源并用于单选控件')
+    } else {
+      if (config.optionsSourceKey !== undefined)
+        invalid(uid, '固定选项不能携带数据源引用')
+      if (config.optionsType !== undefined && config.optionsType !== 'fixed')
+        invalid('optionsType', '此格式不支持未登记远程选项')
+    }
     return {
       uid,
       type: enumValue(
@@ -452,6 +549,15 @@ export const parseForm = (input: unknown): FormSchema => {
       config: jsonValue(config) as JsonObject,
     }
   })
+  if (
+    dataSources.some(
+      (source) =>
+        !widgetsConfig.some(
+          (widget) => widget.config.optionsSourceKey === source.key
+        )
+    )
+  )
+    invalid('dataSources', '数据源没有绑定字段')
   let computedFields: ComputedMoneyField[] | undefined
   if (fc.computedFields !== undefined) {
     if (!Array.isArray(fc.computedFields) || fc.computedFields.length > 10)
@@ -480,7 +586,7 @@ export const parseForm = (input: unknown): FormSchema => {
     })
   }
   return {
-    version: formatVersion(body.version),
+    version,
     formConfig: {
       ...(computedFields === undefined ? {} : { computedFields }),
       size: enumValue(
@@ -500,10 +606,15 @@ export const parseForm = (input: unknown): FormSchema => {
       ),
     },
     widgetsConfig,
-    dataSources: [],
+    dataSources,
   }
 }
 export const validateLeaveForm = (schema: FormSchema) => {
+  if (schema.dataSources.length)
+    invalid(
+      'dataSources',
+      '固定请假业务契约不支持新增数据源字段，请使用通用业务模板'
+    )
   const choices: Record<string, string[]> = {
     leaveType: ['personal', 'sick', 'annual'],
     startSlot: ['am', 'pm'],

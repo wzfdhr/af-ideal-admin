@@ -1,5 +1,7 @@
+import { parseForm } from '@af-admin/contracts'
 import {
   CURRENT_FORM_SCHEMA_VERSION,
+  MAX_SUPPORTED_FORM_SCHEMA_VERSION,
   DEFAULT_FORM_CONFIG,
   type LegacyFormSchema,
   type NormalizedDataSources,
@@ -58,11 +60,11 @@ const normalizeVersion = (version: unknown) => {
     return CURRENT_FORM_SCHEMA_VERSION
   }
 
-  if (version > CURRENT_FORM_SCHEMA_VERSION) {
+  if (version > MAX_SUPPORTED_FORM_SCHEMA_VERSION) {
     throw new Error('不支持的表单 schema 版本')
   }
 
-  return CURRENT_FORM_SCHEMA_VERSION
+  return version
 }
 
 const normalizeFormConfig = (schema: LegacyFormSchema): FormConfig => {
@@ -275,6 +277,18 @@ const migrateFormSchema = (schema: unknown): VersionedFormSchema => {
     throw new Error('非法表单 schema')
   }
 
+  const version = normalizeVersion(schema.version)
+  if (version === 2) {
+    const parsed = parseForm(JSON.parse(JSON.stringify(schema)))
+    return {
+      version: 2,
+      formConfig: normalizeFormConfig(parsed),
+      widgetsConfig: normalizeWidgets(parsed.widgetsConfig),
+      dataSources: JSON.parse(
+        JSON.stringify(parsed.dataSources)
+      ) as DataSourceConfig[],
+    }
+  }
   const legacySchema = schema as LegacyFormSchema
 
   return {

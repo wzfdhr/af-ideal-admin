@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   CURRENT_FORM_SCHEMA_VERSION,
+  MAX_SUPPORTED_FORM_SCHEMA_VERSION,
   migrateFormSchema,
 } from '@/components/form-designer/schema'
 
@@ -60,7 +61,7 @@ describe('form schema migration', () => {
   it('rejects schemas from unsupported future versions', () => {
     expect(() =>
       migrateFormSchema({
-        version: CURRENT_FORM_SCHEMA_VERSION + 1,
+        version: MAX_SUPPORTED_FORM_SCHEMA_VERSION + 1,
         widgetsConfig: [],
       })
     ).toThrow('不支持的表单 schema 版本')

@@ -91,7 +91,14 @@ export const validateBusinessFields = (
     )
       invalid(widget.uid, `${label}文本无效或超长`)
     if (['select', 'radio'].includes(widget.type)) {
-      const options = Array.isArray(config.options) ? config.options : []
+      const source = schema.dataSources.find(
+        (binding) => binding.key === config.optionsSourceKey
+      )
+      const choices =
+        config.optionsType === 'registered'
+          ? source?.optionsSnapshot
+          : config.options
+      const options = Array.isArray(choices) ? choices : []
       if (
         !options.some(
           (option) =>

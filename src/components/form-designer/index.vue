@@ -22,6 +22,22 @@
         <a-divider />
         <div class="m-4">
           <div class="font-bold">操作</div>
+          <label v-if="!embedded && dataMode === 'reference'">
+            表单草稿
+            <select
+              v-model="formId"
+              aria-label="真实表单草稿"
+              @change="loadDraft()"
+            >
+              <option
+                v-for="draft in draftChoices"
+                :key="draft.id"
+                :value="draft.id"
+              >
+                {{ draft.name }} · 版本 {{ draft.revision }}
+              </option>
+            </select>
+          </label>
           <a-space direction="vertical" class="mt-4 w-full">
             <a-button
               v-if="!embedded"
@@ -29,7 +45,9 @@
               :loading="loading"
               @click="loadDraft()"
             >
-              加载示例表单
+              {{
+                dataMode === 'reference' ? '重新读取所选草稿' : '加载示例表单'
+              }}
             </a-button>
             <a-button
               v-if="!embedded"
@@ -54,7 +72,7 @@
               :loading="publishing"
               @click="publishCurrent"
             >
-              发布表单
+              {{ dataMode === 'reference' ? '进入应用发布' : '发布表单' }}
             </a-button>
             <a-button type="outline" long :disabled="copied" @click="copy()">
               {{ copied ? '已复制' : '导出 schema JSON' }}
@@ -140,7 +158,11 @@
             data-testid="form-designer-preview-submit"
             @click="submitPreview"
           >
-            提交 Mock
+            {{
+              dataMode === 'reference'
+                ? '服务端校验（不创建业务）'
+                : '提交 Mock'
+            }}
           </a-button>
         </a-space>
       </template>
@@ -153,6 +175,7 @@
 
     <a-modal
       v-model:visible="importVisible"
+      data-testid="form-schema-import"
       title="导入 schema JSON"
       @before-ok="applyImportSchema"
     >
@@ -208,6 +231,7 @@ const {
   importSource,
   importVisible,
   loadDraft,
+  draftChoices,
   loading,
   publishCurrent,
   publishing,

@@ -12,6 +12,7 @@ export interface FormSchemaRecord {
   schema: VersionedFormSchema
   status: FormSchemaStatus
   version: number
+  revision?: number
   createdAt: string
   updatedAt: string
   publishedAt?: string
@@ -40,6 +41,7 @@ export interface FormSchemaMutationResult {
   schema?: VersionedFormSchema
   status?: FormSchemaStatus
   version?: number
+  revision?: number
 }
 
 export interface FormRuntimeSubmitResult {
@@ -63,30 +65,42 @@ export const getFormSchemaDetail = async (id: string) => {
   return response.data
 }
 
-export const createFormSchema = async ({
-  name,
-  schema,
-}: CreateFormSchemaPayload) => {
+export const createFormSchema = async (
+  { name, schema }: CreateFormSchemaPayload,
+  key?: string
+) => {
   const validatedSchema = migrateFormSchema(schema)
-  const response = await request.post<FormSchemaMutationResult>(
-    '/form-schemas',
-    {
-      name,
-      schema: validatedSchema,
-    }
-  )
+  const response = key
+    ? await request.post<FormSchemaMutationResult>(
+        '/form-schemas',
+        { name, schema: validatedSchema },
+        { headers: { 'Idempotency-Key': key } }
+      )
+    : await request.post<FormSchemaMutationResult>('/form-schemas', {
+        name,
+        schema: validatedSchema,
+      })
 
   return response.data
 }
 
-export const saveFormSchema = async (id: string, schema: unknown) => {
+export const saveFormSchema = async (
+  id: string,
+  schema: unknown,
+  expectedRevision?: number,
+  key?: string
+) => {
   const validatedSchema = migrateFormSchema(schema)
-  const response = await request.put<FormSchemaMutationResult>(
-    `/form-schemas/${id}`,
-    {
-      schema: validatedSchema,
-    }
-  )
+  const response =
+    expectedRevision === undefined
+      ? await request.put<FormSchemaMutationResult>(`/form-schemas/${id}`, {
+          schema: validatedSchema,
+        })
+      : await request.put<FormSchemaMutationResult>(
+          `/form-schemas/${encodeURIComponent(id)}`,
+          { schema: validatedSchema, expectedRevision },
+          { headers: { 'Idempotency-Key': key } }
+        )
 
   return response.data
 }
@@ -127,3 +141,12 @@ export const submitFormRuntime = async (
 
   return response.data
 }
+
+export const getFormApplication = async (id: string) =>
+  (
+    await request.get<{
+      id: string
+      name: string
+      businessKind: string
+    } | null>(`/form-schemas/${encodeURIComponent(id)}/application`)
+  ).data

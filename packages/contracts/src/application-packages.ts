@@ -110,6 +110,12 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
   if (new Set(people.map((item) => item.key)).size !== people.length)
     throw new DomainError(422, 'PACKAGE_REFERENCE_INVALID', '人员槽位重复')
   const form = parseForm(body.form)
+  if (form.dataSources.length)
+    throw new DomainError(
+      422,
+      'PACKAGE_SOURCE_MAPPING_REQUIRED',
+      '当前包格式没有数据源重绑声明，不能携带原租户引用'
+    )
   const workflow = parseWorkflow(body.workflow)
   const used = new Set<string>()
   if (

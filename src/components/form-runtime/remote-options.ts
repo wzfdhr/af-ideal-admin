@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { queryFormDataSource } from '@/api/form-data-sources'
 import type { DataSourceConfig } from '@/components/form-designer/schema'
 
 export type RemoteOption = {
@@ -171,13 +172,30 @@ export const loadRemoteOptions = async ({
 }: LoadRemoteOptionsParams): Promise<RemoteOption[]> => {
   const dataSource = findDataSource({ dataSources, sourceKey, sourceUrl })
 
-  if (!dataSource || !isSafeDataSourceUrl(dataSource.url)) {
+  if (dataSource?.kind === 'registered') {
+    if (!dataSource.registryId) throw new Error('登记数据源引用不完整')
+    const result = await queryFormDataSource(dataSource.registryId)
+    const current = result.options.map((item) => ({
+      label: item.label,
+      value: String(item.value),
+    }))
+    if (new Set(current.map((item) => item.value)).size !== current.length)
+      throw new Error('数据源选项规范化后重复，请联系配置者')
+    if (dataSource.optionsSnapshot) {
+      const active = new Set(current.map((item) => item.value))
+      return dataSource.optionsSnapshot.filter((item) => active.has(item.value))
+    }
+    return current
+  }
+
+  const url = dataSource?.url
+  if (!dataSource || !url || !isSafeDataSourceUrl(url)) {
     throw new Error('未授权的远程数据源')
   }
 
   try {
     const response = await request({
-      url: dataSource.url,
+      url,
       params: mapParams(dataSource.params, formValues),
       timeout: dataSource.timeout || DEFAULT_TIMEOUT,
     })

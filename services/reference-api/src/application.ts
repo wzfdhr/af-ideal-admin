@@ -17,6 +17,14 @@ import {
   validateSerialWorkflow,
 } from '@af-admin/workflow-core'
 import {
+  validateDraftSources,
+  captureFormSources,
+  persistDraftSources,
+  persistReleaseSources,
+  requireFormSourceRead,
+  assertFormSourcesAvailable,
+} from './form-source-bindings'
+import {
   authorizedTransaction,
   idempotent,
   rows,
@@ -28,7 +36,7 @@ import {
 } from './support'
 import type { Actor } from './auth'
 import type { Database, FaultInjector } from './support'
-import type { Pool } from 'pg'
+import type { Pool, PoolClient } from 'pg'
 import type {
   Application,
   Draft,
@@ -133,6 +141,9 @@ export const readApplication = async (
       [actor.tenantId, id]
     )
   ).map(releaseDto)
+  app.releases?.forEach((release) =>
+    requireFormSourceRead(actor, release.formSnapshot)
+  )
   return app
 }
 export const validatePeople = async (
@@ -232,7 +243,8 @@ export const saveDraft = (
   actor: Actor,
   kind: 'form' | 'workflow',
   input: unknown,
-  id?: string
+  id?: string,
+  commandKey?: string
 ) => {
   const body = record(input)
   onlyKeys(
@@ -243,51 +255,72 @@ export const saveDraft = (
     kind === 'form' ? parseForm(body.schema) : parseWorkflow(body.schema)
   const name =
     body.name === undefined && id ? undefined : text(body.name, 'name', 100)
-  return authorizedTransaction(
-    pool,
-    actor,
-    'application:configure',
-    async (client, current) => {
-      const table = tableFor(kind)
-      if (id) {
-        const old = one(
-          await rows<DraftRow>(
-            client,
-            `SELECT * FROM ${table} WHERE tenant_id=$1 AND id=$2 FOR UPDATE`,
-            [current.tenantId, id]
-          )
+  const run = (
+    callback: (
+      client: PoolClient,
+      current: Actor
+    ) => Promise<Draft<FormSchema | WorkflowSchema>>
+  ) =>
+    commandKey
+      ? idempotent(
+          pool,
+          actor,
+          'application:configure',
+          `draft:${kind}:${id || 'create'}`,
+          commandKey,
+          { ...body, schema },
+          callback
         )
-        assertRevision(old.revision, positiveInteger(body.expectedRevision))
-        await client.query(
-          `UPDATE ${table} SET name=$3,schema=$4,revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2`,
-          [current.tenantId, id, name || old.name, JSON.stringify(schema)]
+      : authorizedTransaction(pool, actor, 'application:configure', callback)
+  return run(async (client, current) => {
+    const table = tableFor(kind)
+    if (kind === 'form')
+      await validateDraftSources(client, current, schema as FormSchema)
+    if (id) {
+      const old = one(
+        await rows<DraftRow>(
+          client,
+          `SELECT * FROM ${table} WHERE tenant_id=$1 AND id=$2 FOR UPDATE`,
+          [current.tenantId, id]
         )
-      } else {
-        id = randomUUID()
-        await client.query(
-          `INSERT INTO ${table} (tenant_id,id,name,schema) VALUES ($1,$2,$3,$4)`,
-          [current.tenantId, id, name, JSON.stringify(schema)]
-        )
-      }
-      await audit(
-        client,
-        current,
-        'application',
-        'save-draft',
-        kind,
-        id as string
       )
-      return draftDto(
-        one(
-          await rows<DraftRow>(
-            client,
-            `SELECT * FROM ${table} WHERE tenant_id=$1 AND id=$2`,
-            [current.tenantId, id]
-          )
-        )
+      assertRevision(old.revision, positiveInteger(body.expectedRevision))
+      await client.query(
+        `UPDATE ${table} SET name=$3,schema=$4,revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2`,
+        [current.tenantId, id, name || old.name, JSON.stringify(schema)]
+      )
+    } else {
+      id = randomUUID()
+      await client.query(
+        `INSERT INTO ${table} (tenant_id,id,name,schema) VALUES ($1,$2,$3,$4)`,
+        [current.tenantId, id, name, JSON.stringify(schema)]
       )
     }
-  )
+    if (kind === 'form')
+      await persistDraftSources(
+        client,
+        current.tenantId,
+        id as string,
+        schema as FormSchema
+      )
+    await audit(
+      client,
+      current,
+      'application',
+      'save-draft',
+      kind,
+      id as string
+    )
+    return draftDto(
+      one(
+        await rows<DraftRow>(
+          client,
+          `SELECT * FROM ${table} WHERE tenant_id=$1 AND id=$2`,
+          [current.tenantId, id]
+        )
+      )
+    )
+  })
 }
 export const publishApplication = (
   pool: Pool,
@@ -360,7 +393,11 @@ export const publishApplication = (
       )
       assertRevision(form.revision, payload.formRevision)
       assertRevision(workflow.revision, payload.workflowRevision)
-      const formSnapshot = parseForm(form.schema)
+      const formSnapshot = await captureFormSources(
+        client,
+        current,
+        parseForm(form.schema)
+      )
       if (app.business_kind === 'leave') validateLeaveForm(formSnapshot)
       const workflowSnapshot = validateSerialWorkflow(workflow.schema)
       workflowSnapshot.nodes.forEach((node) => {
@@ -414,7 +451,19 @@ export const publishApplication = (
         'success',
         { releaseId, releaseVersion: version }
       )
+      await persistReleaseSources(
+        client,
+        current.tenantId,
+        releaseId,
+        formSnapshot
+      )
       return readRelease(client, current.tenantId, releaseId)
+    },
+    false,
+    '',
+    async (_client, current, release) => {
+      requireFormSourceRead(current, release.formSnapshot)
+      return release
     }
   )
 }
@@ -458,6 +507,7 @@ export const activateRelease = (
         current.tenantId,
         payload.releaseId
       )
+      await assertFormSourcesAvailable(client, current, release.formSnapshot)
       if (release.applicationId !== id)
         throw new DomainError(404, 'NOT_FOUND', '资源不存在')
       await client.query(

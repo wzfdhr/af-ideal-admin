@@ -15,7 +15,7 @@
           :key="widget.uid"
         >
           <dt>{{ widget.config.label || widget.name }}</dt>
-          <dd>{{ values[widget.uid] ?? '未填写' }}</dd>
+          <dd>{{ displayValue(widget.uid) }}</dd>
         </template>
       </dl>
       <p v-for="(amount, key) in computedFields" :key="key">
@@ -175,6 +175,37 @@ const computedFields = computed(() => {
     return {}
   }
 })
+const displayValue = (id: string) => {
+  const value = values.value[id]
+  if (value === undefined || value === null || value === '') return '未填写'
+  const schema = release.value?.formSnapshot
+  const widget = schema?.widgetsConfig.find((item) => item.uid === id)
+  const source = schema?.dataSources.find(
+    (item) => item.key === widget?.config.optionsSourceKey
+  )
+  const choices =
+    widget?.config.optionsType === 'registered'
+      ? source?.optionsSnapshot
+      : widget?.config.options
+  let choice
+  if (Array.isArray(choices)) {
+    choice = choices.find(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        !Array.isArray(item) &&
+        String(item.value) === String(value)
+    )
+  }
+  if (
+    choice &&
+    typeof choice === 'object' &&
+    !Array.isArray(choice) &&
+    typeof choice.label === 'string'
+  )
+    return choice.label
+  return String(value)
+}
 const fieldName = (key: string) =>
   String(
     release.value?.formSnapshot.widgetsConfig.find(

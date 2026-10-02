@@ -27,9 +27,12 @@ const redirectToLogin = () => {
 
 const redirectToNoPermission = (context: ApiErrorContext) => {
   if (
-    ['SCOPE_DELEGATION', 'SCOPE_AUTHORITY', 'FIELD_FORBIDDEN'].includes(
-      context.businessCode || ''
-    )
+    [
+      'SCOPE_DELEGATION',
+      'SCOPE_AUTHORITY',
+      'FIELD_FORBIDDEN',
+      'DATA_SOURCE_FORBIDDEN',
+    ].includes(context.businessCode || '')
   )
     return
   retainLeaveDrafts()
