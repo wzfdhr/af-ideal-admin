@@ -142,7 +142,7 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
           USER_PERMISSIONS.list,
         ]
         const filter =
-          "WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND af_member_scope_visible($1,$5,$6,m.user_id) AND u.username ILIKE $2 AND ($2='%%' OR af_member_field_visible($1,$5,$6,m.user_id,'username')) AND ($3='' OR (m.status=$3 AND af_member_field_visible($1,$5,$6,m.user_id,'status'))) AND m.phone LIKE $4 AND ($4='%%' OR af_member_field_visible($1,$5,$6,m.user_id,'phone'))"
+          "WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND af_member_scope_visible($1,$5,$6,m.user_id) AND u.username ILIKE $2 AND ($2='%%' OR af_member_field_visible($1,$5,$6,m.user_id,'username')) AND ($3='' OR (m.status=$3 AND af_member_field_visible($1,$5,$6,m.user_id,'status'))) AND m.phone LIKE $4 AND ($4='%%' OR af_member_field_visible($1,$5,$6,m.user_id,'phone') AND af_member_field_visible($1,$5,'system:user:read-contacts',m.user_id,'phone'))"
         const count = one(
           await rows<{ total: string }>(
             client,

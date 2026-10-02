@@ -164,3 +164,6 @@
 - data-scope-current-real-full.log：23项真实浏览器路径通过，含原R1、用户、密码、角色、部门、岗位和新增范围页。最后治理保护增量编译后替换专属API进程，data-scope-final-browser.log的范围/授权两条再次通过；配置保存重开、字段隐藏、同一会话即时收紧、实际预览和第二租户隔离均执行真实服务，未注入成功响应。截图data-scope-real-preview.png已检查。
 - 008只应用到专属开发演示数据库、API10890/网关4189，保留原R1卷与交付包。范围规则的专项进程恢复、并发、完整键盘/分辨率、组织调动、选择器字段投影、业务记录/报表/附件/审计范围、Mock生命周期及部署/备份/兼容回退仍未完。FP-006保持进行中，完整边界和回滚风险见full-product-data-scope-design.md。此次本地结果不替代本轮远端CI或全产品交付。
 - 随后补充预览与访问者选择器同时受配置者本人字段权限约束，禁止通过查看别人的预览恢复自己隐藏的姓名。data-scope-preview-http.log的77项数据库/API全部通过；范围页访问者目录已投影，其他组织/授权选择器仍待完成。独立Mock回归data-scope-final-mock-browser.log的3项及旧smoke data-scope-final-smoke.log的3项通过，Mock范围生命周期尚未实现。
+- 源码检查点b757ce09868d88f47221f3262b1db18b7146a200已推送；手动触发CI36966746115，结果须等运行结束核实。额外专属API进程替换检查data-scope-process-persistence.log通过：3条已保存规则、字段与版本一致，旧会话有效。data-scope-keyboard-compact.log通过1280x720的原生选择器焦点、Tab进入字段选项、Escape取消和弹窗边界；不代表完整多分辨率/辅助技术验收。
+- b757ce0的实际CI36966746115已通过，verify/real-business均success；下载证据ci-36966746115，状态data-scope-remote-ci.json。远端77项数据库/API和23条真实浏览器通过。
+- 随后新增联系方式功能授权自身也必须覆盖目标成员行/字段的回归。data-scope-contact-boundary-red.log真实复现：仅本人read-contacts角色与全租户查询角色拼接后返回他人原始电话。服务端投影改为再次检查read-contacts目标行/字段，原始电话筛选也需要同样授权。data-scope-contact-boundary-green.log的78项通过，lint无错误及全部workspace类型通过；此修复不包含在b757ce0的CI结果里，必须以新提交重新运行CI。

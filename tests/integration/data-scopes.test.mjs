@@ -178,3 +178,13 @@ test('preview and bound-member directory also respect the configurator own field
  const preview=ok(await call('/permissions/data-scopes/preview',{user:subject.username,method:'POST',body:{roleId:receiver.id,subjectUserId:target.id}}))
  assert.ok(preview.visibleRows.length>0);assert.ok(preview.visibleRows.every(row=>!('name' in row)))
 })
+test('raw contact authority scoped to self cannot unmask another role full tenant member rows or infer their phone filters',async()=>{
+ const dept=await createDepartment('contact-authority'),subject=await createMember(dept),target=await createMember(dept)
+ const broad=await roleFor(['system:user:list','system:user:detail']),own=await roleFor(['system:user:list','system:user:detail','system:user:read-contacts'])
+ await configure(broad,'all');await configure(own,'self')
+ ok(await call(`/system/users/${subject.id}/authorization`,{method:'POST',body:{roleIds:[broad.id,own.id],directPermissions:[],expectedRevision:subject.revision}}))
+ assert.equal(ok(await call(`/system/users/${subject.id}`,{user:subject.username})).phone,'15000000001')
+ const hidden=ok(await call(`/system/users/${target.id}`,{user:subject.username}));assert.equal(hidden.phone,contracts.maskPhone('15000000001'));assert.equal(hidden.contactsMasked,true)
+ const filtered=ok(await call('/system/users?phone=15000000001',{user:subject.username})).list
+ assert.ok(!filtered.some(value=>value.id===target.id))
+})
