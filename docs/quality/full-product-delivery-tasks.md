@@ -309,3 +309,18 @@
 - 随后加入“隐藏字段配置默认值”的回归，在form-behavior-default-browser.log发现保存路由切换时编辑值被默认值重新填入并触发未保存提示，失败截图/上下文归档form-behavior-default-failure。修复运行时：已有modelValue使用其准确字段集；默认值只在未提供编辑数据时初始化，各控件不再次按default-value回填。form-behavior-unit-final.log的439单测通过，新增schema重建保留明确空值/省略字段的回归。最终默认值回归和源码提交的远端CI须单独确认，首次34项结果不代替最终变更验证。
 
 - 默认值与modelValue恢复修复后，form-behavior-full-browser-final.log的34项完整真实页面重新全部通过，包含配置默认值后隐藏/再显示保持空值、保存无虚假未保存弹窗、缺条件必填被真实服务拒绝、修正并刷新后提交。form-behavior-default-central-build.log重建通过；form-behavior-central-runtime-unit.log的10项运行表单回归通过；form-behavior-lint-final2.log无错误/6既有警告；form-behavior-smoke-browser-final.log的旧3项再次通过。待本批提交对应远端CI确认。
+
+### 表单规则与联动远端验证
+
+- eac1e3481ff30fd87902c1b6ec6ced4422dbb21c的实际CI37061251992已通过，verify/real-business均success；归档ci-37061251992（实际数据库/API与浏览器报告，以及workflow.log）及form-behavior-remote-ci.json。远端439单测、30契约+15领域/Mock、119项数据库/API、34条真实浏览器通过。该提交不包含后续版本对比，仍非全产品最终交付。
+
+### FP-012 发布版本对比与绑定草稿重开
+
+- 实施/阶段自检：Codex，2026-10-03。方案见full-product-form-version-design.md。应用配置新增只读表单版本对比，支持发布版本→当前编辑/已保存草稿以及发布版本→发布版本；未保存状态、空历史、非法定义错误态明确。按字段uid对齐增删、控件/标签/顺序/必填/数值/选项/规则/联动/来源引用变化，独立比较布局/公式/格式以及登记来源和生成快照。对象键序不当成变化，字段和选项数组顺序保留；实际文本值不因碰巧等于枚举名被翻译。比较不执行脚本、不写定义/活动版本/业务数据。
+- 沿用带租户条件及实时权限检查的真实应用/草稿API。配置页按应用实际绑定formDraftId/workflowDraftId直接读取，不再因首100条目录缺少旧草稿而无法配置，也不自动选其他应用草稿。R1保留目录选择并显式包含当前绑定；不存在/无权限明确错误。上下文变化/读取失败清除旧定义，加载ticket及账号/租户/应用匹配阻止旧响应覆盖。非法待编辑规则的预览用错误态保留输入，修正规则可恢复，不让异常渲染中断页面。对比tab固定注册，异步加载时只切换内容。
+- form-versions-http.log的120项数据库/API通过，新增真实两次发布及旧快照保持、超过100条表单/流程目录后按绑定ID读取、跨租户/配置撤权拒绝；使用隔离测试库合成目录，不重置已有开发或R1数据。form-versions-contract-test.log的35契约通过，涵盖键序、增删改/位置、规则/选项顺序/来源快照/公式、输入不变、非法未来定义明确拒绝；form-versions-contracts-final.log还含15领域/Mock通过。form-versions-unit.log的441单测通过，包含版本选择、未保存标识、真实文本保持、非法定义错误且不伪称无变化。
+- form-versions-browser-selector.log真实版本路径通过，随后form-versions-browser-final.log增加非法最小长度→明确对比/预览错误→输入保留→修正恢复后再次通过。真实API创建101条后续草稿，确认原绑定不在首100条仍重开；保存发布v2、比较v1/v2、刷新重开、1280键盘焦点、旧在途设备领用仍显示原标签、双租户拒绝均通过，无成功响应注入。form-version-comparison-runtime.png已检查，基准/目标及变化表格可读。form-versions-browser.log保留首次tab文字与标题重名的测试定位失败，改精确tab标题定位后重验。
+- form-versions-shared-build.log保留首次ComputedMoneyField接口缺Json索引的类型失败，改显式投影合法JSON字段后form-versions-shared-build-final.log通过，未使用any绕过。form-versions-build.log完整构建、form-versions-preview-build-final.log后续前端构建、form-versions-all-types-final.log全部workspace类型通过；form-versions-lint.log无错误/6既有警告。首次嵌套返回的格式错误保留form-versions-style-next.log，改普通if后修复。
+- 本次无新增迁移，版本与旧业务快照不改写；原R1包/环境/卷保留。多级联动、更多控件、受控HTTP参数源、完整格式迁移、独立设计器目录分页/关联发布、全套键盘/分辨率、新部署/备份/恢复/回退及全产品交付仍开放，FP-011/012保持进行中。本批完整回归及对应提交的远端CI仍须逐项确认，不能用此前提交绿色结果代替。
+
+- form-versions-full-browser.log的35项完整真实页面回归通过，新增比较旧版本后活动版本选择仍为v2；R1在超过100条新增目录后仍完整通过。form-versions-unit-final.log的441单测通过；form-versions-smoke-browser.log及form-versions-mock-browser.log分别3项通过。旧smoke依然有10888未运行的代理报错，不视为真实后端证据。当前阶段仍需本批新提交对应远端CI，完整模块的部署/恢复等门禁保持开放。

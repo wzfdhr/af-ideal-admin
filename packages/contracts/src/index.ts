@@ -20,3 +20,4 @@ export * from './dictionaries'
 export * from './form-data-sources'
 
 export * from './form-behavior'
+export * from './form-diff'

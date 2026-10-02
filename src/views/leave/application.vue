@@ -172,7 +172,14 @@
         <a-tab-pane key="preview" title="预览发布内容">
           <section class="leave-panel">
             <h2>表单预览</h2>
-            <FormRenderer v-if="editedForm" :ast="previewSchema" />
+            <p
+              v-if="preview.error"
+              role="alert"
+              data-testid="application-preview-error"
+            >
+              {{ preview.error }}
+            </p>
+            <FormRenderer v-else-if="preview.schema" :ast="preview.schema" />
           </section>
           <section class="leave-panel">
             <h2>流程配置</h2>
@@ -180,6 +187,17 @@
               JSON.stringify(editedWorkflow, null, 2)
             }}</pre>
           </section>
+        </a-tab-pane>
+        <a-tab-pane key="compare" title="表单版本对比">
+          <FormVersionComparison
+            v-if="app"
+            :key="app.id"
+            :releases="app.releases || []"
+            :active-release-id="app.activeReleaseId"
+            :draft="editedForm"
+            :draft-revision="formDraft?.revision"
+            :dirty="formDirty"
+          />
         </a-tab-pane>
       </a-tabs>
     </a-spin>
@@ -191,6 +209,7 @@ import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
 import { confirmR1Action } from '@/services/r1-confirm'
 import FormDesigner from '@/components/form-designer/index.vue'
 import WorkflowDesigner from '@/components/workflow-designer/index.vue'
+import FormVersionComparison from '@/components/form-version-comparison.vue'
 import { FormRenderer } from '@/components/form-runtime'
 import { migrateFormSchema } from '@/components/form-designer/schema'
 import useUserStore from '@/store/modules/user'
@@ -201,6 +220,7 @@ import {
 } from '@/api/leave'
 import {
   fetchConfigurationDrafts,
+  fetchConfigurationDraft,
   saveConfigurationDraft,
   fetchConfigurationMembers,
 } from '@/api/leave-configuration'
@@ -261,7 +281,14 @@ const workflowDirty = computed(
 )
 const dirty = computed(() => formDirty.value || workflowDirty.value)
 const unregister = registerDirtyCheck(() => dirty.value || busy.value)
-const previewSchema = computed(() => migrateFormSchema(editedForm.value))
+const preview = computed(() => {
+  if (!editedForm.value) return { schema: undefined, error: '' }
+  try {
+    return { schema: migrateFormSchema(editedForm.value), error: '' }
+  } catch (failure) {
+    return { schema: undefined, error: errorMessage(failure) }
+  }
+})
 const activeRelease = computed(() =>
   app.value?.releases?.find((item) => item.id === app.value?.activeReleaseId)
 )
@@ -271,50 +298,71 @@ const selectForm = () => {
 const selectWorkflow = () => {
   editedWorkflow.value = workflowDraft.value?.schema
 }
+let loadSequence = 0
 const load = async () => {
+  const ticket = ++loadSequence
   const requestedId = applicationId.value
+  const requestedTenant = user.tenantId
+  const requestedUser = user.id
+  const current = () =>
+    ticket === loadSequence &&
+    requestedId === applicationId.value &&
+    requestedTenant === user.tenantId &&
+    requestedUser === user.id
   validation.value = {}
   loading.value = true
   error.value = ''
+  message.value = ''
+  app.value = undefined
+  forms.value = []
+  workflows.value = []
+  members.value = []
+  formId.value = ''
+  workflowId.value = ''
+  editedForm.value = undefined
+  editedWorkflow.value = undefined
   try {
-    const [application, formData, workflowData, people] = await Promise.all([
-      getLeaveApplication(requestedId),
-      fetchConfigurationDrafts('form'),
-      fetchConfigurationDrafts('workflow'),
-      fetchConfigurationMembers(user.tenantId || ''),
-    ])
-    if (requestedId !== applicationId.value) return
+    const application = await getLeaveApplication(requestedId)
+    if (!current()) return
+    const boundFormId =
+      application.formDraftId || (requestedId === 'leave' ? 'form-leave' : '')
+    const boundWorkflowId =
+      application.workflowDraftId ||
+      (requestedId === 'leave' ? 'workflow-leave' : '')
+    if (!boundFormId || !boundWorkflowId)
+      throw new Error('应用缺少绑定的表单或流程草稿')
+    const [boundForm, boundWorkflow, people, formData, workflowData] =
+      await Promise.all([
+        fetchConfigurationDraft('form', boundFormId),
+        fetchConfigurationDraft('workflow', boundWorkflowId),
+        fetchConfigurationMembers(requestedTenant || ''),
+        requestedId === 'leave'
+          ? fetchConfigurationDrafts('form')
+          : Promise.resolve({ list: [] }),
+        requestedId === 'leave'
+          ? fetchConfigurationDrafts('workflow')
+          : Promise.resolve({ list: [] }),
+      ])
+    if (!current()) return
     app.value = application
-    forms.value = formData.list
-    workflows.value = workflowData.list
-    if (requestedId !== 'leave') {
-      forms.value = forms.value.filter(
-        (item) => item.id === application.formDraftId
-      )
-      workflows.value = workflows.value.filter(
-        (item) => item.id === application.workflowDraftId
-      )
-    }
+    forms.value = [
+      boundForm,
+      ...formData.list.filter((item) => item.id !== boundForm.id),
+    ]
+    workflows.value = [
+      boundWorkflow,
+      ...workflowData.list.filter((item) => item.id !== boundWorkflow.id),
+    ]
     members.value = people
-    formId.value =
-      forms.value.find(
-        (item) => item.id === (application.formDraftId || 'form-leave')
-      )?.id ||
-      forms.value[0]?.id ||
-      ''
-    workflowId.value =
-      workflows.value.find(
-        (item) => item.id === (application.workflowDraftId || 'workflow-leave')
-      )?.id ||
-      workflows.value[0]?.id ||
-      ''
+    formId.value = boundForm.id
+    workflowId.value = boundWorkflow.id
     selectForm()
     selectWorkflow()
     rollbackId.value = application.activeReleaseId || ''
   } catch (failure) {
-    error.value = errorMessage(failure)
+    if (current()) error.value = errorMessage(failure)
   } finally {
-    loading.value = false
+    if (current()) loading.value = false
   }
 }
 const perform = async (action: () => Promise<void>) => {
@@ -421,15 +469,21 @@ onBeforeRouteUpdate(
   async () =>
     !dirty.value || confirmR1Action('切换应用将丢弃未保存修改，是否继续？')
 )
-watch(applicationId, () => {
-  app.value = undefined
-  forms.value = []
-  workflows.value = []
-  retry.clear()
-  load()
-})
+watch(
+  () => [applicationId.value, user.tenantId, user.id],
+  () => {
+    app.value = undefined
+    forms.value = []
+    workflows.value = []
+    retry.clear()
+    load()
+  }
+)
 onMounted(load)
-onBeforeUnmount(unregister)
+onBeforeUnmount(() => {
+  loadSequence += 1
+  unregister()
+})
 </script>
 <style src="./style.css"></style>
 <style scoped>

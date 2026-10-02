@@ -19,6 +19,17 @@ export const fetchConfigurationDrafts = async (kind: 'form' | 'workflow') =>
       { params: { current: 1, pageSize: 100 } }
     )
   ).data
+export const fetchConfigurationDraft = async (
+  kind: 'form' | 'workflow',
+  id: string
+) =>
+  (
+    await request.get<ConfigurationDraft>(
+      `${kind === 'form' ? '/form-schemas' : '/workflows'}/${encodeURIComponent(
+        id
+      )}`
+    )
+  ).data
 export const saveConfigurationDraft = async (
   kind: 'form' | 'workflow',
   id: string,

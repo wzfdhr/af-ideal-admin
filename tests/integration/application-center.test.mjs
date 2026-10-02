@@ -120,3 +120,36 @@ test('a catalogue reader and copier can duplicate unpublished configuration usin
   assert.notEqual(copied.id,source.id);assert.notEqual(copied.formDraftId,visible.formDraftId)
  }finally{await pool.query("UPDATE memberships SET permissions=$1::jsonb WHERE tenant_id='tenant-a' AND user_id='a-auditor'",[JSON.stringify(original)])}
 })
+
+test('bound definitions remain readable beyond the first catalogue page and real published snapshots compare without changing history',async()=>{
+ const application=await create('equipment'),first=await publish(application)
+ const draft=ok(await call(`/form-schemas/${application.formDraftId}`)),changed=structuredClone(draft.schema)
+ changed.version=2;changed.widgetsConfig[0].config.label='资产名称';changed.widgetsConfig[0].config.validation={minLength:2}
+ const saved=ok(await call(`/form-schemas/${draft.id}`,{method:'PUT',body:{schema:changed,expectedRevision:draft.revision}}))
+ const current=ok(await call(`/application-center/${application.id}`)),second=await publish(current)
+ const prefix=`later-${randomUUID().slice(0,8)}-`
+ try{
+  for(const table of ['form_drafts','workflow_drafts']){
+   const source=ok(await call(`/${table==='form_drafts'?'form-schemas':'workflows'}/${table==='form_drafts'?application.formDraftId:application.workflowDraftId}`))
+   await pool.query(`INSERT INTO ${table}(tenant_id,id,name,schema,revision,updated_at) SELECT 'tenant-a',$1 || n::text,'后续目录验收', $2::jsonb,1,now()+interval '1 minute' FROM generate_series(1,101) AS n`,[prefix,JSON.stringify(source.schema)])
+  }
+  assert.ok(!ok(await call('/form-schemas?current=1&pageSize=100')).list.some(item=>item.id===draft.id))
+  assert.ok(!ok(await call('/workflows?current=1&pageSize=100')).list.some(item=>item.id===application.workflowDraftId))
+  assert.equal(ok(await call(`/form-schemas/${draft.id}`)).revision,saved.revision)
+  assert.equal(ok(await call(`/workflows/${application.workflowDraftId}`)).id,application.workflowDraftId)
+  const detail=ok(await call(`/applications/${application.id}`))
+  const contracts=(await import('@af-admin/contracts')).default
+  const diff=contracts.compareFormDefinitions(detail.releases.find(item=>item.id===first.id).formSnapshot,detail.releases.find(item=>item.id===second.id).formSnapshot)
+  assert.equal(diff.fields[0].key,'itemName');assert.ok(diff.fields[0].properties.some(item=>item.property==='validation'))
+  assert.equal(detail.releases.find(item=>item.id===first.id).formSnapshot.widgetsConfig[0].config.label,'设备名称')
+  assert.equal((await call(`/applications/${application.id}`,{user:'b-admin'})).status,404)
+  assert.equal((await call(`/form-schemas/${draft.id}`,{user:'b-admin'})).status,404)
+  assert.equal((await call(`/form-schemas/${draft.id}`,{user:'a-employee'})).status,403)
+  const original=(await pool.query("SELECT permissions FROM memberships WHERE tenant_id='tenant-a' AND user_id='a-admin'")).rows[0].permissions
+  await pool.query("UPDATE memberships SET permissions=permissions-'application:configure' WHERE tenant_id='tenant-a' AND user_id='a-admin'")
+  try{assert.equal((await call(`/form-schemas/${draft.id}`)).status,403)}finally{await pool.query("UPDATE memberships SET permissions=$1::jsonb WHERE tenant_id='tenant-a' AND user_id='a-admin'",[JSON.stringify(original)])}
+ }finally{
+  await pool.query('DELETE FROM form_drafts WHERE tenant_id=$1 AND id LIKE $2',['tenant-a',`${prefix}%`])
+  await pool.query('DELETE FROM workflow_drafts WHERE tenant_id=$1 AND id LIKE $2',['tenant-a',`${prefix}%`])
+ }
+})
