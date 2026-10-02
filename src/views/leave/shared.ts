@@ -14,6 +14,7 @@ export const actionLabels: Record<string, string> = {
   reject: '驳回',
   withdraw: '撤回',
   copy: '抄送',
+  route: '条件分支',
 }
 export const errorMessage = (error: unknown) => {
   if (error instanceof ApiRequestError) return error.context.displayMessage

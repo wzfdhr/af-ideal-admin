@@ -1,4 +1,8 @@
-import { DomainError, parseCommand } from '@af-admin/contracts'
+import {
+  DomainError,
+  parseCommand,
+  computeBusinessFields,
+} from '@af-admin/contracts'
 import {
   assertTaskAction,
   assertWithdraw,
@@ -9,7 +13,13 @@ import {
 } from '@af-admin/workflow-core'
 import { readRecordRow, visibleRecord } from './record-access'
 import { readRelease } from './application'
-import { leaveDto, history, appendHistory, addTask } from './leave'
+import {
+  leaveDto,
+  history,
+  appendHistory,
+  appendRouteHistory,
+  addTask,
+} from './leave'
 import {
   rows,
   one,
@@ -19,11 +29,15 @@ import {
   enqueue,
   audit,
 } from './support'
+import type {
+  JsonObject,
+  WorkflowTask,
+  InstanceStatus,
+} from '@af-admin/contracts'
 import type { LeaveRow } from './leave'
 import type { Actor } from './auth'
 import type { Database, FaultInjector } from './support'
 import type { Pool } from 'pg'
-import type { WorkflowTask, InstanceStatus } from '@af-admin/contracts'
 
 interface InstanceRow {
   id: string
@@ -198,7 +212,13 @@ export const decideTask = (
       let requestStatus = 'rejected'
       let nextNode: string | null = null
       if (action === 'approve') {
-        const next = advanceWorkflow(release.workflowSnapshot, task.node_id)
+        const fields = request.fields as unknown as JsonObject
+        const next = advanceWorkflow(release.workflowSnapshot, task.node_id, {
+          ...fields,
+          ...(request.record_kind === 'generic'
+            ? computeBusinessFields(release.formSnapshot, fields)
+            : {}),
+        })
         instanceStatus = next.completed ? 'completed' : 'running'
         requestStatus = next.completed ? 'approved' : 'running'
         nextNode = next.approval?.id || null
@@ -228,6 +248,8 @@ export const decideTask = (
             request.record_kind
           )
         }
+        await appendRouteHistory(client, current, instance.id, next.routes)
+        if (next.routes?.length) fault('decision:condition-recorded')
         await sequential(next.copiedUserIds, async (recipient) => {
           await enqueue(
             client,

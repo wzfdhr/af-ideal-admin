@@ -14,7 +14,8 @@ import {
   assertRevision,
   requirePermission,
   hasPermission,
-  validateSerialWorkflow,
+  validateExecutableWorkflow,
+  selectedConditionalNodeIds,
 } from '@af-admin/workflow-core'
 import {
   validateDraftSources,
@@ -150,9 +151,17 @@ export const validatePeople = async (
   db: Database,
   tenantId: string,
   workflow: WorkflowSchema,
-  applicantId?: string
+  applicantId?: string,
+  values?: Record<string, unknown>
 ) => {
-  const approvers = workflow.nodes.flatMap((node) =>
+  const selected =
+    workflow.version === 2 && values
+      ? selectedConditionalNodeIds(workflow, values)
+      : undefined
+  const participantNodes = selected
+    ? workflow.nodes.filter((node) => selected.has(node.id))
+    : workflow.nodes
+  const approvers = participantNodes.flatMap((node) =>
     node.type === 'approval' ? node.config.approvers || [] : []
   )
   if (applicantId && approvers.includes(applicantId))
@@ -160,7 +169,7 @@ export const validatePeople = async (
   const people = [
     ...new Set([
       ...approvers,
-      ...workflow.nodes.flatMap((node) => node.config.ccUsers || []),
+      ...participantNodes.flatMap((node) => node.config.ccUsers || []),
     ]),
   ]
   await sequential(people, async (userId) => {
@@ -399,7 +408,10 @@ export const publishApplication = (
         parseForm(form.schema)
       )
       if (app.business_kind === 'leave') validateLeaveForm(formSnapshot)
-      const workflowSnapshot = validateSerialWorkflow(workflow.schema)
+      const workflowSnapshot = validateExecutableWorkflow(
+        workflow.schema,
+        formSnapshot
+      )
       workflowSnapshot.nodes.forEach((node) => {
         if (node.config.formId && node.config.formId !== payload.formDraftId)
           throw new DomainError(

@@ -28,7 +28,7 @@
 | FP-010 | 通用业务记录、提交/详情/权限/快照/历史和 R1 适配 | FP-006/009 | LA-037/042 | 进行中 |
 | FP-011 | 复杂表单校验/联动、安全数据源登记、映射、超时及恢复 | FP-008/010 | T-301/303 | 进行中 |
 | FP-012 | 表单编辑重开、比较、发布运行一致、格式迁移和回滚 | FP-011 | T-304/LA-040 | 进行中 |
-| FP-013 | 结构化条件 AST 的真实流程运行，确定路由、拒绝脚本和错误恢复 | FP-010 | LA-044 | 未开始 |
+| FP-013 | 结构化条件 AST 的真实流程运行，确定路由、拒绝脚本和错误恢复 | FP-010 | LA-044 | 进行中 |
 | FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 未开始 |
 | FP-015 | 转交、无效身份、异常处理、授权/审计/任务幂等 | FP-014 | LA-044 | 未开始 |
 | FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 未开始 |
@@ -324,3 +324,24 @@
 - 本次无新增迁移，版本与旧业务快照不改写；原R1包/环境/卷保留。多级联动、更多控件、受控HTTP参数源、完整格式迁移、独立设计器目录分页/关联发布、全套键盘/分辨率、新部署/备份/恢复/回退及全产品交付仍开放，FP-011/012保持进行中。本批完整回归及对应提交的远端CI仍须逐项确认，不能用此前提交绿色结果代替。
 
 - form-versions-full-browser.log的35项完整真实页面回归通过，新增比较旧版本后活动版本选择仍为v2；R1在超过100条新增目录后仍完整通过。form-versions-unit-final.log的441单测通过；form-versions-smoke-browser.log及form-versions-mock-browser.log分别3项通过。旧smoke依然有10888未运行的代理报错，不视为真实后端证据。当前阶段仍需本批新提交对应远端CI，完整模块的部署/恢复等门禁保持开放。
+
+### 表单版本对比远端验证
+
+- 7a1168201d122da7aca6668fc1eb74441770af76的实际CI37064739337已通过，verify/real-business均success；归档ci-37064739337及form-versions-remote-ci.json。远端441单测、35契约+15领域/Mock、120项数据库/API与35条真实浏览器通过，未包含后续条件流程。
+
+### FP-013 条件流程真实执行增量
+
+- 实施/阶段自检：Codex，2026-10-03。方案full-product-conditional-workflow-design.md。工作流v2增加闭合all/any谓词、文本相等/不等及整数/精确分位金额/真实按日日期比较，发布绑定同批表单字段及已登记计算结果。未知引用/类型、脚本/多余属性/未来v3拒绝；v1串行保持原义，旧condition/parallel仍拒绝，真实parallel/会签不伪装已支持。
+- 条件精确两条matched/fallback边，非条件单出边；拒绝循环/不可达/悬空/重复/缺默认分支/无审批路径。互斥路径可汇合，实例只有一条活动路径。服务端提交和审批后推进读取已固定业务字段及服务端计算结果；未填可选值不匹配，所有谓词先校验再组合。条件事件、history/outbox/任务/业务状态与审计在同一事务；审计及历史只记录节点/所选分支，不记录判断操作数原文。
+- 新迁移016_conditional_history.sql扩展route事实类型，001至015不改写。只应用专属开发demo（conditions-demo-migrate.log），原R1包/部署/卷保留。先前数据库门禁精确名单未包含016，在conditions-http.log失败；更新明确预期迁移名单后conditions-http-fixed.log的124项通过，未删测试/降低断言。下一处理人停用或故障时原任务和分支均回滚；恢复并发重试只有一个下一任务及一次route。真实子API进程替换后按旧release阈值继续，后续草稿变化不改原实例，撤回取消已选分支任务。
+- 真实设计器提供节点选择、下一节点、关联字段/操作数/组合及两个目标选择，保存重开后保留结构化规则。reference不展示任意表达式输入；Mock旧可视配置保持兼容，结构化迁移v2不丢分支且未来v3拒绝。用户可实际配置起点→条件→不同处理人→共同抄送→结束，非仅导入JSON模拟。
+- 应用包v2明确conditional-workflow v1依赖、保留条件和表单字段引用，重绑所有分支处理人后目标租户独立发布运行；无来源槽位时不额外请求或要求字典来源权限。旧v1/v2串行包保留，v2表单或流程不能冒充v1依赖。conditions-package-http-fixed.log的125项数据库/API通过，含跨租户目标真实审批、两路金额边界、路由事实去重/无原值、越权拒绝、故障回滚/恢复/并发、进程替换、固定快照/撤回及发布拒绝且旧活动版本不变。
+- conditions-contracts-corrected.log的36契约+18领域/Mock通过，新增DAG互斥汇合、顺序独立、all/any、缺值和错误操作数不被短路隐藏、真实日期/精确金额、脚本/错类型/绕过审批/缺边拒绝，以及条件包显式依赖。原未来格式测试从已支持v2改为未知v3，并新增v2正向，仍拒绝未知版本。conditions-unit-final.log的443单测通过，含结构化迁移、未来格式拒绝及新增节点不删其他分支连线。
+- conditions-browser.log保留首次Arco输入wrapper不可fill的测试定位失败；精确到实际input后conditions-browser-selector.log通过。真实UI设计/保存重开/发布、99.99元普通与100.00元高额各实际审批通过、未选处理人不能处理、跨租户拒绝，无成功响应注入。condition-approved-runtime.png已检查，正确route与审批/抄送历史可读。condition-editor-runtime.png首版检查发现X6自动尺寸与最小布局循环将属性撑至15244px，改固定有界布局、侧栏滚动；conditions-browser-layout.log通过新增1280焦点及属性高度<1000检查。分支目标滚动/可见/键盘检查随后纳入全量回归，尚需确认最终结果。
+- conditions-final-build.log完整构建、conditions-all-types.log全部workspace类型通过；conditions-lint.log无错误/6既有警告。conditions-shared-build.log保留Mock平铺DTO被误读成fields的类型失败，按真实DTO修复后构建通过。conditions-contracts-final.log保留新增断言误读DomainError字段的失败，依据实际businessCode修正后conditions-contracts-corrected.log通过。
+- 条件运行中的完整Mock页面、更多包原生文件往返与容量/压力、全套键盘/主题/分辨率、新部署/备份/数据库恢复/兼容回退及正式交付仍开放，FP-013保持进行中。并行/会签、转交与异常/调度分别留在FP-014/015/016，不删除。当前36条全量真实浏览器及新提交远端CI仍待结果，先前绿色提交不能替代本批门禁。
+
+- conditions-full-browser.log的36项完整真实页面通过，含侧栏分支目标滚动进入视口及1280键盘焦点；condition-editor-branches-runtime.png补齐目标选择证据。随后明确提示可选空值按不匹配处理，整数判断值清空/非法文本不被默认为0；错误草稿保留于实际编辑状态，服务端保存422且发布禁用，修正字段/值后保存发布恢复。conditions-browser-invalid-recovery.log的真实负向恢复通过，完整后续回归仍需确认。
+- 进一步修正运行时人员语义：发布仍检查全部配置人员；已有固定记录按实际选中路径检查人员及自审，未选分支停用或包含申请人不会错误阻断有效分支，选中的停用/自审路径仍拒绝且无实例副作用。与数据库实现一致调整领域Mock的路径选择及route历史。conditions-selected-path-http.log的126项通过，随后conditions-self-route-http.log的127项通过，覆盖未选分支停用以及选中路径SELF_APPROVAL拒绝。conditions-release-build.log完整构建、conditions-all-types-release.log全workspace类型、conditions-unit-release-final.log443项、conditions-contracts-release.log36契约+18领域/Mock通过；conditions-lint-release.log无错误/6既有警告。
+
+- 最后完成conditions-full-browser-final.log的36项全量真实回归（包含错误规则真实保存拒绝/输入保留/发布禁用及修正恢复），conditions-mock-browser-release.log/conditions-smoke-browser-release.log各3项通过，原Mock/权限回归保留。conditions-unit-release-final.log443项通过，conditions-release-build.log和conditions-all-types-release.log通过。本批仍须对应新提交远端CI；整个Goal及FP-013正式模块交付保持开放。

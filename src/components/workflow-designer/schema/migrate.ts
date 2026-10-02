@@ -1,5 +1,7 @@
+import { parseWorkflow } from '@af-admin/contracts'
 import {
   CURRENT_WORKFLOW_SCHEMA_VERSION,
+  MAX_WORKFLOW_SCHEMA_VERSION,
   WORKFLOW_NODE_TYPES,
   type LegacyWorkflowEdge,
   type LegacyWorkflowNode,
@@ -159,9 +161,13 @@ export const migrateWorkflowSchema = (schema: unknown): WorkflowSchema => {
   }
 
   const legacySchema = schema as LegacyWorkflowSchema
+  const version = normalizeVersion(legacySchema.version)
+  if (version > MAX_WORKFLOW_SCHEMA_VERSION)
+    throw new Error('不支持的流程schema版本')
+  if (version === 2) return parseWorkflow(JSON.parse(JSON.stringify(schema)))
 
   return {
-    version: normalizeVersion(legacySchema.version),
+    version,
     nodes: normalizeNodes(legacySchema.nodes),
     edges: normalizeEdges(legacySchema.edges),
   }

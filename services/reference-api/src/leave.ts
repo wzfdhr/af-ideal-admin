@@ -25,6 +25,7 @@ import {
   enqueue,
   sequential,
 } from './support'
+import type { WorkflowRouteDecision } from '@af-admin/workflow-core'
 import type { Actor } from './auth'
 import type { Database, FaultInjector } from './support'
 import type { Pool, PoolClient } from 'pg'
@@ -144,6 +145,35 @@ export const appendHistory = async (
       comment,
     ]
   )
+}
+export const appendRouteHistory = async (
+  db: Database,
+  actor: Actor,
+  instanceId: string,
+  routes?: WorkflowRouteDecision[]
+) => {
+  await sequential(routes || [], async (route) => {
+    await appendHistory(
+      db,
+      actor,
+      instanceId,
+      'route',
+      null,
+      `${route.nodeName}（${route.nodeId}）：${
+        route.branch === 'matched' ? '匹配分支' : '默认分支'
+      }`
+    )
+    await audit(
+      db,
+      actor,
+      'workflow',
+      'route',
+      'workflow-instance',
+      instanceId,
+      'success',
+      { nodeId: route.nodeId, branch: route.branch }
+    )
+  })
 }
 export const readLeaveRow = async (
   db: Database,
@@ -464,9 +494,14 @@ export const submitLeave = (
         client,
         current.tenantId,
         release.workflowSnapshot,
-        current.userId
+        current.userId,
+        draft.fields as unknown as Record<string, unknown>
       )
-      const next = advanceWorkflow(release.workflowSnapshot)
+      const next = advanceWorkflow(
+        release.workflowSnapshot,
+        undefined,
+        draft.fields as unknown as Record<string, unknown>
+      )
       const instanceId = randomUUID()
       await client.query(
         "INSERT INTO workflow_instances (tenant_id,id,request_id,release_id,status,current_node_id) VALUES ($1,$2,$3,$4,'running',$5)",
@@ -485,6 +520,7 @@ export const submitLeave = (
       if (next.approval)
         await addTask(client, current, instanceId, id, next.approval)
       await appendHistory(client, current, instanceId, 'start')
+      await appendRouteHistory(client, current, instanceId, next.routes)
       await sequential(next.copiedUserIds, async (recipient) => {
         await enqueue(
           client,

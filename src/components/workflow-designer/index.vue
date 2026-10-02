@@ -94,6 +94,22 @@
           data-testid="workflow-property-panel"
         >
           <div class="panel-title">属性</div>
+          <label v-if="dataMode === 'reference'" class="field-label">
+            选择流程节点
+            <select
+              :value="selectedNodeId"
+              aria-label="选择流程节点"
+              @change="selectFromList"
+            >
+              <option
+                v-for="node in schema.nodes"
+                :key="node.id"
+                :value="node.id"
+              >
+                {{ node.name }} · {{ node.id }}
+              </option>
+            </select>
+          </label>
           <template v-if="selectedNode">
             <div class="property-row">
               <span>类型</span>
@@ -107,6 +123,29 @@
               v-model="selectedNodeName"
               data-testid="workflow-node-name"
             />
+            <label
+              v-if="
+                dataMode === 'reference' &&
+                selectedNode.type !== 'condition' &&
+                selectedNode.type !== 'end'
+              "
+              class="field-label"
+            >
+              下一节点
+              <select v-model="nextNodeId" aria-label="下一节点">
+                <option value="">未连接</option>
+                <option
+                  v-for="target in schema.nodes.filter(
+                    (item) =>
+                      item.id !== selectedNodeId && item.type !== 'start'
+                  )"
+                  :key="target.id"
+                  :value="target.id"
+                >
+                  {{ target.name }} · {{ target.id }}
+                </option>
+              </select>
+            </label>
             <label
               v-if="!embedded"
               class="field-label"
@@ -164,17 +203,26 @@
               </a-select>
             </template>
             <label
-              v-if="!embedded"
+              v-if="!embedded && dataMode === 'mock'"
               class="field-label"
               for="workflow-node-condition"
             >
               条件表达式
             </label>
             <a-input
-              v-if="!embedded"
+              v-if="!embedded && dataMode === 'mock'"
               id="workflow-node-condition"
               v-model="selectedCondition"
               placeholder="days > 3"
+            />
+            <ConditionNodeEditor
+              v-if="
+                dataMode === 'reference' && selectedNode.type === 'condition'
+              "
+              :node="selectedNode"
+              :workflow="schema"
+              :form-schema="formSchema"
+              @update="schema = $event"
             />
           </template>
           <div v-else class="empty-state">请选择节点</div>
@@ -186,7 +234,9 @@
 
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
+import { dataMode } from '../../../config/data-mode'
 import WorkflowCanvas from './workflow-canvas.vue'
+import ConditionNodeEditor from './condition-node-editor.vue'
 import {
   getWorkflowNodeTypeLabel,
   useWorkflowDesigner,
@@ -200,8 +250,14 @@ const props = withDefaults(
     embedded?: boolean
     initialSchema?: object
     members?: { id: string; name: string; canApprove: boolean }[]
+    formSchema?: object
   }>(),
-  { embedded: false, initialSchema: undefined, members: () => [] }
+  {
+    embedded: false,
+    initialSchema: undefined,
+    members: () => [],
+    formSchema: undefined,
+  }
 )
 const emit = defineEmits<{
   (event: 'update:schema', schema: WorkflowSchema): void
@@ -209,7 +265,10 @@ const emit = defineEmits<{
 const palette = computed(() => {
   if (props.embedded)
     return workflowPaletteNodes.filter(
-      (item) => item.type === 'approval' || item.type === 'copy'
+      (item) =>
+        item.type === 'approval' ||
+        item.type === 'copy' ||
+        item.type === 'condition'
     )
   return workflowPaletteNodes
 })
@@ -258,6 +317,25 @@ const selectedNodeName = computed({
   get: () => selectedNode.value?.name || '',
   set: (value: string) => updateSelectedNode({ name: value }),
 })
+const selectFromList = (event: Event) =>
+  selectNode((event.target as HTMLSelectElement).value)
+const nextNodeId = computed({
+  get: () =>
+    schema.value.edges.find((edge) => edge.source === selectedNodeId.value)
+      ?.target || '',
+  set: (target: string) => {
+    const source = selectedNodeId.value
+    schema.value = {
+      ...schema.value,
+      edges: [
+        ...schema.value.edges.filter((edge) => edge.source !== source),
+        ...(target
+          ? [{ id: `next-${source}`, source, target, label: '' }]
+          : []),
+      ],
+    }
+  },
+})
 
 const selectedFormId = computed({
   get: () => selectedNode.value?.config.formId || '',
@@ -275,7 +353,10 @@ const selectedCopyPeople = computed({
 })
 
 const selectedCondition = computed({
-  get: () => selectedNode.value?.config.condition || '',
+  get: () =>
+    typeof selectedNode.value?.config.condition === 'string'
+      ? selectedNode.value.config.condition
+      : '',
   set: (value: string) => updateSelectedNodeConfig('condition', value),
 })
 
@@ -305,12 +386,13 @@ const handleCanvasDrop = ({
 }
 
 .workflow-layout {
-  min-height: calc(100vh - 96px);
+  height: max(640px, calc(100vh - 96px));
+  min-height: 0;
   background: #f7f8fa;
 }
 
 .workflow-panel {
-  overflow: hidden;
+  overflow-y: auto;
   background: #ffffff;
   border-right: 1px solid #e5e6eb;
 }
@@ -346,6 +428,7 @@ const handleCanvasDrop = ({
   flex-direction: column;
   gap: 12px;
   min-width: 0;
+  min-height: 0;
   padding: 16px;
 }
 
@@ -370,7 +453,7 @@ const handleCanvasDrop = ({
 }
 
 .property-panel {
-  height: 100%;
+  min-height: 100%;
 }
 
 .property-row {

@@ -18,9 +18,10 @@ import {
   positiveInteger,
   text,
 } from '@af-admin/contracts'
+import { selectedConditionalNodeIds } from './conditional-workflow'
 import {
   advanceWorkflow,
-  validateSerialWorkflow,
+  validateExecutableWorkflow,
   assertRevision,
   assertTaskAction,
   assertWithdraw,
@@ -332,43 +333,50 @@ export class R1DemoStore {
   private people(
     tenantId: string,
     workflow: WorkflowSchema,
-    applicantId?: string
+    applicantId?: string,
+    values?: Record<string, unknown>
   ) {
-    workflow.nodes.forEach((node) => {
-      const ids =
-        node.type === 'approval'
-          ? node.config.approvers || []
-          : node.config.ccUsers || []
-      ids.forEach((id) => {
-        const person = this.identities.find(
-          (item) => item.id === id && item.tenantIds.includes(tenantId)
-        )
-        if (!person)
-          throw new DomainError(
-            422,
-            'INACTIVE_APPROVER',
-            '流程引用了无效的租户成员'
+    const selected =
+      workflow.version === 2 && values
+        ? selectedConditionalNodeIds(workflow, values)
+        : undefined
+    workflow.nodes
+      .filter((node) => !selected || selected.has(node.id))
+      .forEach((node) => {
+        const ids =
+          node.type === 'approval'
+            ? node.config.approvers || []
+            : node.config.ccUsers || []
+        ids.forEach((id) => {
+          const person = this.identities.find(
+            (item) => item.id === id && item.tenantIds.includes(tenantId)
           )
-        if (node.type === 'approval') {
-          if (id === applicantId)
+          if (!person)
             throw new DomainError(
               422,
-              'SELF_APPROVAL',
-              '申请人不能审批自己的申请'
+              'INACTIVE_APPROVER',
+              '流程引用了无效的租户成员'
             )
-          if (
-            !['workflow:approve', 'workflow:reject'].every((code) =>
-              hasPermission(this.actor(person.id, tenantId).permissions, code)
+          if (node.type === 'approval') {
+            if (id === applicantId)
+              throw new DomainError(
+                422,
+                'SELF_APPROVAL',
+                '申请人不能审批自己的申请'
+              )
+            if (
+              !['workflow:approve', 'workflow:reject'].every((code) =>
+                hasPermission(this.actor(person.id, tenantId).permissions, code)
+              )
             )
-          )
-            throw new DomainError(
-              422,
-              'INVALID_APPROVER',
-              '流程处理人缺少审批权限'
-            )
-        }
+              throw new DomainError(
+                422,
+                'INVALID_APPROVER',
+                '流程处理人缺少审批权限'
+              )
+          }
+        })
       })
-    })
   }
 
   private requestRow(tenantId: string, id: string) {
@@ -515,7 +523,19 @@ export class R1DemoStore {
     const next = advanceWorkflow(
       this.release(request.tenantId, request.applicationReleaseId)
         .workflowSnapshot,
-      afterNode
+      afterNode,
+      request as unknown as Record<string, unknown>
+    )
+    next.routes?.forEach((route) =>
+      this.history(
+        user,
+        request,
+        'route',
+        null,
+        `${route.nodeName}（${route.nodeId}）：${
+          route.branch === 'matched' ? '匹配分支' : '默认分支'
+        }`
+      )
     )
     instance.currentNodeId = next.approval?.id || null
     if (next.approval) {
@@ -716,7 +736,10 @@ export class R1DemoStore {
             assertRevision(form.revision, body.formRevision)
             assertRevision(workflow.revision, body.workflowRevision)
             const formSnapshot = parseForm(form.schema)
-            const workflowSnapshot = validateSerialWorkflow(workflow.schema)
+            const workflowSnapshot = validateExecutableWorkflow(
+              workflow.schema,
+              form.schema
+            )
             validateLeaveForm(formSnapshot)
             this.people(tenantId, workflowSnapshot)
             workflowSnapshot.nodes.forEach((node) => {
@@ -1003,7 +1026,12 @@ export class R1DemoStore {
               endSlot: request.endSlot,
               reason: request.reason,
             })
-            this.people(tenantId, release.workflowSnapshot, user.id)
+            this.people(
+              tenantId,
+              release.workflowSnapshot,
+              user.id,
+              request as unknown as Record<string, unknown>
+            )
             const instance: Instance = {
               id: this.newId(),
               tenantId,

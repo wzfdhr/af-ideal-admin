@@ -1,4 +1,9 @@
 import { DomainError, invalid, parseWorkflow } from '@af-admin/contracts'
+import {
+  validateConditionalWorkflow,
+  advanceConditionalWorkflow,
+} from './conditional-workflow'
+import type { WorkflowRouteDecision } from './conditional-workflow'
 import type {
   WorkflowSchema,
   WorkflowNode,
@@ -97,11 +102,26 @@ export interface AdvanceResult {
   approval: WorkflowNode | null
   copiedUserIds: string[]
   completed: boolean
+  routes?: WorkflowRouteDecision[]
+}
+export const validateExecutableWorkflow = (
+  input: unknown,
+  form?: unknown
+): WorkflowSchema => {
+  const schema = parseWorkflow(input)
+  return schema.version === 2
+    ? validateConditionalWorkflow(schema, form)
+    : validateSerialWorkflow(schema)
 }
 export const advanceWorkflow = (
   input: WorkflowSchema,
-  afterNodeId?: string
+  afterNodeId?: string,
+  values?: Record<string, unknown>
 ): AdvanceResult => {
+  if (input.version === 2) {
+    if (!values) return invalid('fields', '条件流程需要真实固定业务字段')
+    return advanceConditionalWorkflow(input, afterNodeId, values)
+  }
   const schema = validateSerialWorkflow(input)
   const nodes = new Map(schema.nodes.map((node) => [node.id, node]))
   const next = new Map(schema.edges.map((edge) => [edge.source, edge.target]))

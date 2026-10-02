@@ -20,7 +20,13 @@ import {
 import { assertFilesReady } from './file-policy'
 import { authenticate, scalarHeader } from './auth'
 import { readRelease, validatePeople } from './application'
-import { activeRelease, addTask, appendHistory, history } from './leave'
+import {
+  activeRelease,
+  addTask,
+  appendHistory,
+  appendRouteHistory,
+  history,
+} from './leave'
 import { readRecordRow, visibleRecord, businessDto } from './record-access'
 import { withdrawInstance } from './workflow'
 import {
@@ -374,14 +380,22 @@ export const registerBusinessRecords = (
             release.formSnapshot,
             validatedFields
           )
-          computeBusinessFields(release.formSnapshot, draft.fields)
+          const routeValues = {
+            ...validatedFields,
+            ...computeBusinessFields(release.formSnapshot, validatedFields),
+          }
           await validatePeople(
             client,
             current.tenantId,
             release.workflowSnapshot,
-            current.userId
+            current.userId,
+            routeValues
           )
-          const next = advanceWorkflow(release.workflowSnapshot)
+          const next = advanceWorkflow(
+            release.workflowSnapshot,
+            undefined,
+            routeValues
+          )
           const instanceId = randomUUID()
           await client.query(
             "INSERT INTO workflow_instances(tenant_id,id,request_id,release_id,status,current_node_id) VALUES ($1,$2,$3,$4,'running',$5)",
@@ -407,6 +421,7 @@ export const registerBusinessRecords = (
               'generic'
             )
           await appendHistory(client, current, instanceId, 'start')
+          await appendRouteHistory(client, current, instanceId, next.routes)
           await sequential(next.copiedUserIds, async (recipient) =>
             enqueue(
               client,

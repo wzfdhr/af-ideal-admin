@@ -166,6 +166,7 @@
             embedded
             :initial-schema="workflowDraft.schema"
             :members="members"
+            :form-schema="preview.schema"
             @update:schema="editedWorkflow = $event"
           />
         </a-tab-pane>

@@ -125,7 +125,9 @@ const choose = async (event: Event) => {
     sourceBindings.value = Object.fromEntries(
       (pkg.value.sources || []).map((slot) => [slot.key, ''])
     )
-    sources.value = pkg.value.version === 2 ? await packageBindingSources() : []
+    sources.value = pkg.value.sources?.length
+      ? await packageBindingSources()
+      : []
     people.value = await packageBindingPeople()
   } catch (failure) {
     error.value = failure instanceof Error ? failure.message : '包文件读取失败'

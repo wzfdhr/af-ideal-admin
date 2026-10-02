@@ -1,4 +1,5 @@
 export const CURRENT_WORKFLOW_SCHEMA_VERSION = 1
+export const MAX_WORKFLOW_SCHEMA_VERSION = 2
 
 export const WORKFLOW_NODE_TYPES = [
   'start',
@@ -14,7 +15,7 @@ export type WorkflowNodeType = typeof WORKFLOW_NODE_TYPES[number]
 export interface WorkflowNodeConfig {
   approvers?: string[]
   ccUsers?: string[]
-  condition?: string
+  condition?: string | import('@af-admin/contracts').WorkflowCondition
   formId?: string
   parallelApprovers?: string[]
   [key: string]: unknown
@@ -34,6 +35,7 @@ export interface WorkflowEdge {
   source: string
   target: string
   label: string
+  branch?: 'matched' | 'fallback'
 }
 
 export interface WorkflowSchema {

@@ -6,6 +6,7 @@ import {
   publishWorkflowDefinition,
   saveWorkflowDefinition,
 } from '@/api/workflow'
+import { dataMode } from '../../../config/data-mode'
 import {
   WORKFLOW_NODE_TYPES,
   validateWorkflowSchema,
@@ -91,7 +92,8 @@ export const createInitialWorkflowSchema = (): WorkflowSchema =>
 const createWorkflowNode = (
   type: WorkflowNodeType,
   sequence: number,
-  position: AddWorkflowNodePosition = {}
+  position: AddWorkflowNodePosition = {},
+  structuredConditions = false
 ): WorkflowNode => {
   const label = getWorkflowNodeTypeLabel(type)
 
@@ -99,7 +101,22 @@ const createWorkflowNode = (
     id: `${type}-${sequence}`,
     type,
     name: `${label}节点`,
-    config: {},
+    config:
+      type === 'condition' && structuredConditions
+        ? {
+            condition: {
+              mode: 'all',
+              predicates: [
+                {
+                  field: 'quantity',
+                  valueType: 'integer',
+                  operator: 'gte',
+                  value: 1,
+                },
+              ],
+            },
+          }
+        : {},
     x: position.x ?? 340,
     y: position.y ?? 180 + (sequence - 3) * 24,
   }
@@ -111,7 +128,10 @@ const splitUserIds = (value: string) =>
     .map((item) => item.trim())
     .filter(Boolean)
 
-export const useWorkflowDesigner = (initialSchema?: unknown) => {
+export const useWorkflowDesigner = (
+  initialSchema?: unknown,
+  structuredConditions = dataMode === 'reference'
+) => {
   const schema = ref<WorkflowSchema>(
     initialSchema
       ? validateWorkflowSchema(initialSchema)
@@ -147,11 +167,21 @@ export const useWorkflowDesigner = (initialSchema?: unknown) => {
       }
     }
 
-    let node = createWorkflowNode(type, nodeSequence, position)
+    let node = createWorkflowNode(
+      type,
+      nodeSequence,
+      position,
+      structuredConditions
+    )
     const usedIds = new Set(schema.value.nodes.map((item) => item.id))
     while (usedIds.has(node.id)) {
       nodeSequence += 1
-      node = createWorkflowNode(type, nodeSequence, position)
+      node = createWorkflowNode(
+        type,
+        nodeSequence,
+        position,
+        structuredConditions
+      )
     }
     nodeSequence += 1
 
@@ -168,22 +198,27 @@ export const useWorkflowDesigner = (initialSchema?: unknown) => {
 
     schema.value = validateWorkflowSchema({
       ...schema.value,
+      version:
+        type === 'condition' && structuredConditions ? 2 : schema.value.version,
       nodes: [
         ...schema.value.nodes.slice(0, insertIndex),
         node,
         ...schema.value.nodes.slice(insertIndex),
       ],
       edges: [
-        ...schema.value.edges.filter((edge) => edge.target !== endNodeId),
+        ...schema.value.edges.filter((edge) => edge.id !== edgeToEnd?.id),
         {
           id: `edge-${previousNodeId}-${node.id}`,
           source: previousNodeId,
           target: node.id,
+          label: edgeToEnd?.label || '',
+          ...(edgeToEnd?.branch ? { branch: edgeToEnd.branch } : {}),
         },
         {
           id: `edge-${node.id}-${endNodeId}`,
           source: node.id,
           target: endNodeId,
+          label: '',
         },
       ],
     })

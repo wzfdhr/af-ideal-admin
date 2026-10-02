@@ -15,7 +15,7 @@ import {
 } from '@af-admin/contracts'
 import {
   assertRevision,
-  validateSerialWorkflow,
+  validateExecutableWorkflow,
   requirePermission,
 } from '@af-admin/workflow-core'
 import { authenticate, scalarHeader } from './auth'
@@ -213,14 +213,23 @@ export const registerApplicationPackages = (
               slot(member, 'copy')
             )
         })
+        const packageV2 =
+          sources.length > 0 || form.version === 2 || workflow.version === 2
+        if (packageV2) form.version = 2
         const pkg: ApplicationPackage = {
           format: 'af-admin-application',
-          version: sources.length ? 2 : 1,
-          ...(sources.length ? { sources } : {}),
+          version: packageV2 ? 2 : 1,
+          ...(packageV2 ? { sources } : {}),
           dependencies: [
-            { key: 'form-contract', version: sources.length ? 2 : 1 },
-            { key: 'serial-workflow', version: 1 },
-            ...(sources.length
+            { key: 'form-contract', version: packageV2 ? 2 : 1 },
+            {
+              key:
+                workflow.version === 2
+                  ? 'conditional-workflow'
+                  : 'serial-workflow',
+              version: 1,
+            },
+            ...(packageV2
               ? [{ key: 'registered-sources' as const, version: 1 as const }]
               : []),
           ],
@@ -382,7 +391,7 @@ export const registerApplicationPackages = (
                   (key) => people[key]
                 )
             })
-            validateSerialWorkflow(workflow)
+            validateExecutableWorkflow(workflow, form)
             await validatePeople(client, current.tenantId, workflow)
             if (pkg.application.businessKind === 'leave')
               validateLeaveForm(pkg.form)

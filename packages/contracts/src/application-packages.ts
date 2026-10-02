@@ -17,7 +17,11 @@ export interface ApplicationPackage {
   version: 1 | 2
   sources?: { key: string; name: string; kind: 'dictionary' }[]
   dependencies: {
-    key: 'form-contract' | 'serial-workflow' | 'registered-sources'
+    key:
+      | 'form-contract'
+      | 'serial-workflow'
+      | 'conditional-workflow'
+      | 'registered-sources'
     version: 1 | 2
   }[]
   application: {
@@ -66,13 +70,22 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
     body.dependencies.length !== (body.version === 2 ? 3 : 2)
   )
     throw new DomainError(422, 'PACKAGE_DEPENDENCY_INVALID', '依赖清单无效')
+  const workflow = parseWorkflow(body.workflow)
+  const workflowDependency =
+    workflow.version === 2 ? 'conditional-workflow' : 'serial-workflow'
+  if (body.version === 1 && workflow.version === 2)
+    throw new DomainError(
+      422,
+      'PACKAGE_DEPENDENCY_INVALID',
+      '条件流程需要v2包与明确依赖'
+    )
   const dependencies = body.dependencies.map((raw) => {
     const item = record(raw)
     onlyKeys(item, ['key', 'version'])
     if (
       ![
         'form-contract',
-        'serial-workflow',
+        workflowDependency,
         ...(body.version === 2 ? ['registered-sources'] : []),
       ].includes(String(item.key)) ||
       item.version !==
@@ -87,6 +100,7 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
       key: item.key as
         | 'form-contract'
         | 'serial-workflow'
+        | 'conditional-workflow'
         | 'registered-sources',
       version: item.version as 1 | 2,
     }
@@ -135,6 +149,12 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
   if (new Set(people.map((item) => item.key)).size !== people.length)
     throw new DomainError(422, 'PACKAGE_REFERENCE_INVALID', '人员槽位重复')
   const form = parseForm(body.form)
+  if (body.version === 1 && form.version !== 1)
+    throw new DomainError(
+      422,
+      'PACKAGE_DEPENDENCY_INVALID',
+      'v2表单需要明确的v2包依赖'
+    )
   if (body.version === 1 && form.dataSources.length)
     throw new DomainError(
       422,
@@ -145,7 +165,6 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
   if (body.version === 2) {
     if (
       !Array.isArray(body.sources) ||
-      !body.sources.length ||
       body.sources.length > 10 ||
       form.version !== 2
     )
@@ -215,7 +234,6 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
         '包不允许携带登记选项数据'
       )
   }
-  const workflow = parseWorkflow(body.workflow)
   const used = new Set<string>()
   if (
     form.widgetsConfig.some(

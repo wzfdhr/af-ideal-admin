@@ -29,14 +29,35 @@ export interface WorkflowNode {
   id: string
   type: 'start' | 'approval' | 'copy' | 'end' | 'condition' | 'parallel'
   name: string
-  config: { approvers?: string[]; ccUsers?: string[]; formId?: string }
+  config: {
+    approvers?: string[]
+    ccUsers?: string[]
+    formId?: string
+    condition?: WorkflowCondition
+  }
   x?: number
   y?: number
+}
+export interface WorkflowPredicate {
+  field: string
+  valueType: 'text' | 'integer' | 'decimal' | 'date'
+  operator: 'eq' | 'neq' | 'gt' | 'gte' | 'lt' | 'lte'
+  value: string | number
+}
+export interface WorkflowCondition {
+  mode: 'all' | 'any'
+  predicates: WorkflowPredicate[]
 }
 export interface WorkflowSchema {
   version: number
   nodes: WorkflowNode[]
-  edges: { id: string; source: string; target: string; label: string }[]
+  edges: {
+    id: string
+    source: string
+    target: string
+    label: string
+    branch?: 'matched' | 'fallback'
+  }[]
 }
 export interface FormWidget {
   uid: string
@@ -310,6 +331,7 @@ const strings = (input: unknown, field: string): string[] => {
 export const parseWorkflow = (input: unknown): WorkflowSchema => {
   const body = record(input, 'schema')
   onlyKeys(body, ['version', 'nodes', 'edges'])
+  const version = body.version === 2 ? 2 : formatVersion(body.version)
   if (
     !Array.isArray(body.nodes) ||
     !Array.isArray(body.edges) ||
@@ -321,7 +343,12 @@ export const parseWorkflow = (input: unknown): WorkflowSchema => {
     const node = record(item, 'node')
     onlyKeys(node, ['id', 'type', 'name', 'config', 'x', 'y'])
     const config = record(node.config || {}, 'config')
-    onlyKeys(config, ['approvers', 'ccUsers', 'formId'])
+    onlyKeys(config, [
+      'approvers',
+      'ccUsers',
+      'formId',
+      ...(version === 2 ? ['condition'] : []),
+    ])
     const parsed: WorkflowNode = {
       id: text(node.id, 'node.id', 100),
       type: enumValue(
@@ -338,21 +365,92 @@ export const parseWorkflow = (input: unknown): WorkflowSchema => {
       parsed.config.ccUsers = strings(config.ccUsers, 'ccUsers')
     if (config.formId !== undefined)
       parsed.config.formId = text(config.formId, 'formId', 100)
+    if (config.condition !== undefined) {
+      if (parsed.type !== 'condition')
+        invalid(parsed.id, '仅条件节点可定义判断')
+      const condition = record(config.condition, 'condition')
+      onlyKeys(condition, ['mode', 'predicates'])
+      if (
+        !Array.isArray(condition.predicates) ||
+        !condition.predicates.length ||
+        condition.predicates.length > 10
+      )
+        invalid(parsed.id, '条件必须包含1至10条规则')
+      parsed.config.condition = {
+        mode: enumValue(condition.mode, ['all', 'any'], 'condition.mode'),
+        predicates: (condition.predicates as unknown[]).map((raw) => {
+          const rule = record(raw, 'predicate')
+          onlyKeys(rule, ['field', 'valueType', 'operator', 'value'])
+          const valueType = enumValue(
+            rule.valueType,
+            ['text', 'integer', 'decimal', 'date'],
+            'valueType'
+          )
+          const operator = enumValue(
+            rule.operator,
+            ['eq', 'neq', 'gt', 'gte', 'lt', 'lte'],
+            'operator'
+          )
+          if (valueType === 'text' && !['eq', 'neq'].includes(operator))
+            invalid(parsed.id, '文本仅支持相等与不等')
+          if (
+            valueType === 'integer'
+              ? typeof rule.value !== 'number' ||
+                !Number.isSafeInteger(rule.value) ||
+                rule.value < 0 ||
+                rule.value > 999999999
+              : typeof rule.value !== 'string' || rule.value.length > 2000
+          )
+            invalid(parsed.id, '条件字面值类型或范围无效')
+          if (
+            valueType === 'decimal' &&
+            !/^\d{1,10}(?:\.\d{1,2})?$/.test(String(rule.value))
+          )
+            invalid(parsed.id, '金额字面值需为非负两位小数')
+          if (
+            valueType === 'date' &&
+            !/^\d{4}-\d{2}-\d{2}$/.test(String(rule.value))
+          )
+            invalid(parsed.id, '日期字面值需按日填写')
+          return {
+            field: text(rule.field, 'condition.field', 100),
+            valueType,
+            operator,
+            value: rule.value as string | number,
+          }
+        }),
+      }
+    }
     if (typeof node.x === 'number' && Number.isFinite(node.x)) parsed.x = node.x
     if (typeof node.y === 'number' && Number.isFinite(node.y)) parsed.y = node.y
     return parsed
   })
   const edges = body.edges.map((item) => {
     const edge = record(item, 'edge')
-    onlyKeys(edge, ['id', 'source', 'target', 'label'])
+    onlyKeys(edge, [
+      'id',
+      'source',
+      'target',
+      'label',
+      ...(version === 2 ? ['branch'] : []),
+    ])
     return {
       id: text(edge.id, 'edge.id', 100),
       source: text(edge.source, 'edge.source', 100),
       target: text(edge.target, 'edge.target', 100),
       label: typeof edge.label === 'string' ? edge.label.slice(0, 100) : '',
+      ...(edge.branch === undefined
+        ? {}
+        : {
+            branch: enumValue(
+              edge.branch,
+              ['matched', 'fallback'],
+              'edge.branch'
+            ),
+          }),
     }
   })
-  return { version: formatVersion(body.version), nodes, edges }
+  return { version, nodes, edges }
 }
 const jsonValue = (input: unknown, depth = 0): Json => {
   if (depth > 12) return invalid('schema', '配置嵌套过深')
