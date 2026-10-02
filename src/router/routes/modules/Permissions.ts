@@ -1,6 +1,7 @@
 import { defaultLayout, routeGroupLayout } from '@/router/constants'
 import { DATA_PERMISSION_PERMISSIONS } from '@/constants/data-permission'
 import { AppRouteRecordRaw } from '../../types'
+import { dataMode } from '../../../../config/data-mode'
 
 const dashboardRoutes: AppRouteRecordRaw = {
   path: '/permissions',
@@ -90,8 +91,11 @@ const dashboardRoutes: AppRouteRecordRaw = {
         {
           path: 'data-scope',
           name: 'dataPermissionCenter',
-          component: () =>
-            import('@/views/backendPermissions/data-scope/index.vue'),
+          component:
+            dataMode === 'reference'
+              ? () =>
+                  import('@/views/backendPermissions/data-scope/reference.vue')
+              : () => import('@/views/backendPermissions/data-scope/index.vue'),
           meta: {
             locale: 'menu.permissions.backend.dataScope',
             requireAuth: true,

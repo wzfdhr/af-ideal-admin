@@ -5,6 +5,17 @@ export interface PermissionDefinition {
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
   {
+    code: 'data-permission:view',
+    title: '查看数据范围配置',
+    module: '数据权限',
+  },
+  { code: 'data-permission:update', title: '配置数据范围', module: '数据权限' },
+  {
+    code: 'data-permission:preview',
+    title: '预览授权成员',
+    module: '数据权限',
+  },
+  {
     code: 'leave:read:self',
     title: '查看本人申请',
     module: '请假',

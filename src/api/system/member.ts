@@ -37,7 +37,12 @@ export const createMember = async (body: UserCreate, key: string) =>
   ).data
 export const updateMember = async (id: string, body: UserUpdate, key: string) =>
   (
-    await request.put<MemberRecord>(`/system/users/${id}`, body, {
+    await request.put<{
+      id: string
+      revision: number
+      contactsMasked: boolean
+      status?: 'enabled' | 'disabled'
+    }>(`/system/users/${id}`, body, {
       headers: { 'Idempotency-Key': key },
     })
   ).data

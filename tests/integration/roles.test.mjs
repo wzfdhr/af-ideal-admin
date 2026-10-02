@@ -25,7 +25,11 @@ const call=async(path,{user='a-admin',tenant=user.startsWith('b-')?'tenant-b':'t
   assert.equal(response.status,200);tokens.set(user,(await response.json()).data.token)
  }
  const response=await fetch(`${base}/api${path}`,{method,headers:{'x-access-token':tokens.get(user),'x-tenant-id':tenant,'idempotency-key':key,...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined})
- return {status:response.status,...await response.json()}
+ const result={status:response.status,...await response.json()}
+ // These pre-data-scope governor scenarios require complete tenant management, not the new self default.
+ if(path==='/system/roles'&&method==='POST'&&result.status===200&&body.permissions.includes('system:role:assign'))
+  await pool.query("UPDATE role_member_scopes SET data_scope='all',field_permissions=$3::jsonb WHERE tenant_id=$1 AND role_id=$2",[tenant,result.data.id,JSON.stringify(contracts.MEMBER_SCOPE_FIELDS)])
+ return result
 }
 const ok=value=>{assert.equal(value.status,200,value.businessCode);return value.data}
 const role=(permissions=[],name='合成角色')=>({roleName:name,roleKey:`role-${randomUUID().slice(0,8)}`,roleSort:1,status:'enabled',remark:'合成验收',permissions})

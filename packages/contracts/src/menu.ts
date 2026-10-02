@@ -1,3 +1,15 @@
+interface CapabilityMenuNode {
+  path: string
+  name: string
+  componentKey: string
+  meta: {
+    requireAuth: boolean
+    locale: string
+    order?: number
+    access?: { permissions: string[]; mode?: 'any' | 'all' }
+  }
+  children?: CapabilityMenuNode[]
+}
 export const createR1Menu = (permissions: string[]) => {
   const pages = [
     {
@@ -27,7 +39,7 @@ export const createR1Menu = (permissions: string[]) => {
       access: { permissions: [page.permission] },
     },
   }))
-  const entries = [
+  const entries: CapabilityMenuNode[] = [
     {
       path: '/dashboard',
       name: 'dashboard',
@@ -152,7 +164,7 @@ export const createR1Menu = (permissions: string[]) => {
         },
       },
     }
-    if (system) system.children.push(page)
+    if (system) system.children?.push(page)
     else
       entries.push({
         path: '/system',
@@ -174,7 +186,7 @@ export const createR1Menu = (permissions: string[]) => {
         access: { permissions: ['system:user:list'] },
       },
     }
-    if (system) system.children.push(page)
+    if (system) system.children?.push(page)
     else
       entries.push({
         path: '/system',
@@ -196,7 +208,7 @@ export const createR1Menu = (permissions: string[]) => {
         access: { permissions: ['system:role:list'] },
       },
     }
-    if (system) system.children.push(page)
+    if (system) system.children?.push(page)
     else
       entries.push({
         path: '/system',
@@ -225,6 +237,33 @@ export const createR1Menu = (permissions: string[]) => {
             locale: 'menu.user.password',
             access: { permissions: ['account:password:update'] },
           },
+        },
+      ],
+    })
+  if (permissions.includes('data-permission:view') || permissions.includes('*'))
+    entries.push({
+      path: '/permissions',
+      name: 'permissions',
+      componentKey: 'DefaultLayout',
+      meta: { requireAuth: true, locale: 'menu.permissions', order: 4 },
+      children: [
+        {
+          path: 'backend',
+          name: 'backend',
+          componentKey: 'RouteGroupLayout',
+          meta: { requireAuth: true, locale: 'menu.permissions.backend' },
+          children: [
+            {
+              path: 'data-scope',
+              name: 'dataPermissionCenter',
+              componentKey: 'DataPermissionCenter',
+              meta: {
+                requireAuth: true,
+                locale: 'menu.permissions.backend.dataScope',
+                access: { permissions: ['data-permission:view'] },
+              },
+            },
+          ],
         },
       ],
     })

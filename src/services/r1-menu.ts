@@ -16,6 +16,7 @@ const pagePermissions: Record<string, string[]> = {
   positionSystem: ['system:position:list', 'system:organization:assign'],
   userSystem: ['system:user:list'],
   roleSystem: ['system:role:list'],
+  dataPermissionCenter: ['data-permission:view'],
 }
 export const canVisitR1Page = (
   name: string | symbol | null | undefined,

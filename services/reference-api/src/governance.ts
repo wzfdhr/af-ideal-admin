@@ -2,6 +2,7 @@ import {
   DomainError,
   USER_PERMISSIONS,
   ROLE_PERMISSIONS,
+  DATA_SCOPE_PERMISSIONS,
 } from '@af-admin/contracts'
 import { hasPermission } from '@af-admin/workflow-core'
 import { rows, one } from './support'
@@ -18,13 +19,19 @@ export const governors = async (client: PoolClient, tenantId: string) => {
     [ROLE_PERMISSIONS.assign],
     [ROLE_PERMISSIONS.update, ROLE_PERMISSIONS.permissions],
   ]
-  return groups.map((required) =>
+  const capabilityGroups = groups.map((required) =>
     candidates
       .filter((member) =>
         required.every((code) => hasPermission(member.permissions, code))
       )
       .map((member) => member.user_id)
   )
+  const scopeGovernors = await rows<{ user_id: string }>(
+    client,
+    "SELECT m.user_id FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.status='enabled' AND m.deleted_at IS NULL AND u.status='enabled' AND af_effective_permissions(m.tenant_id,m.user_id) ? $2 AND ((m.permissions ? $3 OR m.permissions ? '*') OR EXISTS(SELECT 1 FROM member_roles mr JOIN roles r ON r.tenant_id=mr.tenant_id AND r.id=mr.role_id JOIN role_permissions rp ON rp.tenant_id=r.tenant_id AND rp.role_id=r.id JOIN role_member_scopes s ON s.tenant_id=r.tenant_id AND s.role_id=r.id WHERE mr.tenant_id=m.tenant_id AND mr.user_id=m.user_id AND r.status='enabled' AND r.deleted_at IS NULL AND rp.permission_code=$3 AND s.data_scope IN ('all','tenant')))",
+    [tenantId, DATA_SCOPE_PERMISSIONS.update, USER_PERMISSIONS.list]
+  )
+  return [...capabilityGroups, scopeGovernors.map((member) => member.user_id)]
 }
 export const assertGovernorTransition = async (
   client: PoolClient,

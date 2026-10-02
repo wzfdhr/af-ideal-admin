@@ -15,6 +15,7 @@ import {
 } from '@af-admin/workflow-core'
 import { authenticate, scalarHeader } from './auth'
 import { audit, idempotent, one, pageQuery, rows } from './support'
+import { assertMemberScope } from './member-scope'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { Pool, PoolClient } from 'pg'
 import type { Position } from '@af-admin/contracts'
@@ -249,14 +250,20 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
       status: string
     }>(
       pool,
-      'SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,m.department_id AS "departmentId",m.position_id AS "positionId",p.position_name AS "positionName",m.revision,m.status FROM memberships m JOIN users u ON m.user_id=u.id LEFT JOIN positions p ON p.tenant_id=m.tenant_id AND p.id=m.position_id WHERE m.tenant_id=$1 AND m.deleted_at IS NULL ORDER BY m.user_id LIMIT $2 OFFSET $3',
-      [actor.tenantId, page.pageSize, page.offset]
+      'SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,m.department_id AS "departmentId",m.position_id AS "positionId",p.position_name AS "positionName",m.revision,m.status FROM memberships m JOIN users u ON m.user_id=u.id LEFT JOIN positions p ON p.tenant_id=m.tenant_id AND p.id=m.position_id WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND af_member_scope_visible($1,$2,$3,m.user_id) ORDER BY m.user_id LIMIT $4 OFFSET $5',
+      [
+        actor.tenantId,
+        actor.userId,
+        POSITION_PERMISSIONS.assign,
+        page.pageSize,
+        page.offset,
+      ]
     )
     const count = one(
       await rows<{ total: string }>(
         pool,
-        'SELECT count(*) AS total FROM memberships WHERE tenant_id=$1 AND deleted_at IS NULL',
-        [actor.tenantId]
+        'SELECT count(*) AS total FROM memberships WHERE tenant_id=$1 AND deleted_at IS NULL AND af_member_scope_visible($1,$2,$3,user_id)',
+        [actor.tenantId, actor.userId, POSITION_PERMISSIONS.assign]
       )
     )
     return ok({ list: result, total: Number(count.total) }, request.id)
@@ -291,6 +298,12 @@ export const registerPositions = (server: FastifyInstance, pool: Pool) => {
                 'SELECT revision,status FROM memberships WHERE tenant_id=$1 AND user_id=$2 AND deleted_at IS NULL FOR UPDATE',
                 [current.tenantId, id]
               )
+            )
+            await assertMemberScope(
+              client,
+              current,
+              POSITION_PERMISSIONS.assign,
+              id
             )
             assertRevision(member.revision, input.expectedRevision)
             if (member.status !== 'enabled')

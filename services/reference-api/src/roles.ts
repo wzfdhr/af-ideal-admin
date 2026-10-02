@@ -26,6 +26,8 @@ import {
   pageQuery,
 } from './support'
 import { governors, assertGovernorTransition } from './governance'
+import { assertMemberScope } from './member-scope'
+import { assertDataDelegation } from './scope-delegation'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { Pool, PoolClient } from 'pg'
 import type { Actor } from './auth'
@@ -208,6 +210,23 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
           await validateCodes(client, input.permissions)
           assertDelegation(current.permissions, input.permissions)
           const resource = id || randomUUID()
+          if (old && input.status === 'enabled') {
+            const bound = await rows<{ user_id: string }>(
+              client,
+              'SELECT user_id FROM member_roles WHERE tenant_id=$1 AND role_id=$2',
+              [current.tenantId, resource]
+            )
+            await bound.reduce(async (previous, member) => {
+              await previous
+              await assertDataDelegation(
+                client,
+                current,
+                input.permissions,
+                resource,
+                member.user_id
+              )
+            }, Promise.resolve())
+          }
           const before = await governors(client, current.tenantId)
           if (
             (
@@ -244,6 +263,11 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
                 input.status,
                 input.remark,
               ]
+            )
+          if (!old)
+            await client.query(
+              'INSERT INTO role_member_scopes(tenant_id,role_id) VALUES ($1,$2)',
+              [current.tenantId, resource]
             )
           await client.query(
             'DELETE FROM role_permissions WHERE tenant_id=$1 AND role_id=$2',
@@ -327,8 +351,13 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
       async (client, current) => {
         const page = pageQuery(request.query)
         const filter =
-          'WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND u.username ILIKE $2'
-        const params = [current.tenantId, `%${page.keyword}%`]
+          'WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND u.username ILIKE $2 AND af_member_scope_visible($1,$3,$4,m.user_id)'
+        const params = [
+          current.tenantId,
+          `%${page.keyword}%`,
+          current.userId,
+          ROLE_PERMISSIONS.assign,
+        ]
         const count = one(
           await rows<{ total: string }>(
             client,
@@ -344,7 +373,7 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
           revision: number
         }>(
           client,
-          `SELECT m.user_id AS id,u.username,COALESCE(m.display_name,u.name) AS name,m.status,m.revision FROM memberships m JOIN users u ON u.id=m.user_id ${filter} ORDER BY m.user_id LIMIT $3 OFFSET $4`,
+          `SELECT m.user_id AS id,u.username,COALESCE(m.display_name,u.name) AS name,m.status,m.revision FROM memberships m JOIN users u ON u.id=m.user_id ${filter} ORDER BY m.user_id LIMIT $5 OFFSET $6`,
           [...params, page.pageSize, page.offset]
         )
         return ok({ list: members, total: Number(count.total) }, request.id)
@@ -354,8 +383,11 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
   const authorization = async (
     client: Pick<Pool, 'query'>,
     actor: Actor,
-    id: string
+    id: string,
+    checkScope = true
   ) => {
+    if (checkScope)
+      await assertMemberScope(client, actor, ROLE_PERMISSIONS.assign, id)
     const member = one(
       await rows<{
         revision: number
@@ -419,6 +451,7 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
               [current.tenantId, id]
             )
           )
+          await assertMemberScope(client, current, ROLE_PERMISSIONS.assign, id)
           assertRevision(member.revision, input.expectedRevision)
           manage(current, member.permissions)
           if (member.status !== 'enabled')
@@ -430,6 +463,23 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
               read(client, current.tenantId, roleId)
             )
           )
+          await assertDataDelegation(
+            client,
+            current,
+            input.directPermissions,
+            null,
+            id
+          )
+          await targets.reduce(async (previous, target) => {
+            await previous
+            await assertDataDelegation(
+              client,
+              current,
+              target.permissions,
+              target.id,
+              id
+            )
+          }, Promise.resolve())
           targets.forEach((target) => {
             if (target.status !== 'enabled')
               throw new DomainError(409, 'ROLE_UNAVAILABLE', '角色已停用')
@@ -462,7 +512,7 @@ export const registerRoles = (server: FastifyInstance, pool: Pool) => {
               directPermissions: input.directPermissions,
             }
           )
-          return authorization(client, current, id)
+          return authorization(client, current, id, false)
         },
         true
       ),

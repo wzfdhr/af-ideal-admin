@@ -17,8 +17,14 @@ import {
   requirePermission,
   assertRevision,
 } from '@af-admin/workflow-core'
+import { assertDataDelegation } from './scope-delegation'
 import { authenticate, scalarHeader } from './auth'
 import { assertMemberDeactivation, assertNoPendingReviews } from './governance'
+import {
+  assertMemberScope,
+  projectMemberFields,
+  assertMemberFields,
+} from './member-scope'
 import { hashPassword } from './security'
 import {
   audit,
@@ -127,9 +133,16 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
           throw new DomainError(403, 'FORBIDDEN', '没有查询联系资料的权限')
         const phone =
           typeof query.phone === 'string' ? query.phone.slice(0, 30) : ''
-        const params = [current.tenantId, `%${username}%`, status, `%${phone}%`]
+        const params = [
+          current.tenantId,
+          `%${username}%`,
+          status,
+          `%${phone}%`,
+          current.userId,
+          USER_PERMISSIONS.list,
+        ]
         const filter =
-          "WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND u.username ILIKE $2 AND ($3='' OR m.status=$3) AND m.phone LIKE $4"
+          "WHERE m.tenant_id=$1 AND m.deleted_at IS NULL AND af_member_scope_visible($1,$5,$6,m.user_id) AND u.username ILIKE $2 AND ($2='%%' OR af_member_field_visible($1,$5,$6,m.user_id,'username')) AND ($3='' OR (m.status=$3 AND af_member_field_visible($1,$5,$6,m.user_id,'status'))) AND m.phone LIKE $4 AND ($4='%%' OR af_member_field_visible($1,$5,$6,m.user_id,'phone'))"
         const count = one(
           await rows<{ total: string }>(
             client,
@@ -139,12 +152,22 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
         )
         const values = await rows<UserRow>(
           client,
-          `SELECT ${projection} ${sources} ${filter} ORDER BY m.user_id LIMIT $5 OFFSET $6`,
+          `SELECT ${projection} ${sources} ${filter} ORDER BY m.user_id LIMIT $7 OFFSET $8`,
           [...params, page.pageSize, page.offset]
         )
         return ok(
           {
-            list: values.map((value) => dto(value, current)),
+            list: await Promise.all(
+              values.map((value) =>
+                projectMemberFields(
+                  client,
+                  current,
+                  USER_PERMISSIONS.list,
+                  value.id,
+                  dto(value, current)
+                )
+              )
+            ),
             total: Number(count.total),
           },
           request.id
@@ -159,14 +182,22 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
       actor,
       USER_PERMISSIONS.detail,
       async (client, current) => {
+        const id = text(record(request.params).id, 'id', 100)
+        await assertMemberScope(client, current, USER_PERMISSIONS.detail, id)
         return ok(
-          dto(
-            await read(
-              client,
-              current.tenantId,
-              text(record(request.params).id, 'id', 100)
-            ),
-            current
+          await projectMemberFields(
+            client,
+            current,
+            USER_PERMISSIONS.detail,
+            id,
+            dto(
+              await read(
+                client,
+                current.tenantId,
+                text(record(request.params).id, 'id', 100)
+              ),
+              current
+            )
           ),
           request.id
         )
@@ -188,6 +219,13 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
           scalarHeader(request, 'idempotency-key'),
           input,
           async (client, current) => {
+            await assertDataDelegation(
+              client,
+              current,
+              [USER_PERMISSIONS.create],
+              null,
+              current.userId
+            )
             const id = randomUUID()
             if (
               (
@@ -246,6 +284,14 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
         input,
         async (client, current) => {
           const old = await read(client, current.tenantId, id, true)
+          await assertMemberScope(client, current, USER_PERMISSIONS.update, id)
+          await assertMemberFields(
+            client,
+            current,
+            USER_PERMISSIONS.update,
+            id,
+            Object.keys(input).filter((field) => field !== 'expectedRevision')
+          )
           assertRevision(old.revision, input.expectedRevision)
           if (input.status === 'disabled' && old.status !== 'disabled')
             await preserveGovernor(client, current, id)
@@ -268,7 +314,13 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
             'membership',
             id
           )
-          return dto(await read(client, current.tenantId, id), current, true)
+          const saved = await read(client, current.tenantId, id)
+          return {
+            id,
+            revision: saved.revision,
+            contactsMasked: true,
+            ...(input.status === undefined ? {} : { status: input.status }),
+          }
         },
         true
       ),
@@ -291,6 +343,7 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
         { expectedRevision: revision },
         async (client, current) => {
           const old = await read(client, current.tenantId, id, true)
+          await assertMemberScope(client, current, USER_PERMISSIONS.delete, id)
           assertRevision(old.revision, revision)
           await preserveGovernor(client, current, id)
           await client.query(
@@ -340,6 +393,12 @@ export const registerUsers = (server: FastifyInstance, pool: Pool) => {
         input,
         async (client, current) => {
           const member = await read(client, current.tenantId, id, true)
+          await assertMemberScope(
+            client,
+            current,
+            USER_PERMISSIONS.resetPassword,
+            id
+          )
           assertRevision(member.revision, input.expectedRevision)
           if (member.owner_tenant_id !== current.tenantId)
             throw new DomainError(
