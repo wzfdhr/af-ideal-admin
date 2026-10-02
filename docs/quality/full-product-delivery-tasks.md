@@ -153,3 +153,4 @@
 - 角色页面在真实/Mock模式共用；角色开发浏览器通过实际创建、绑定、SPA重新登录、目录读取、撤权及菜单移除。role-mock-provider-browser-clean.log3条独立Mock通过；role-mock-provider-domain.log15领域/Mock通过；role-mock-catalogue-http.log68真实数据库/API通过，新增目录词汇精确一致性检查。
 - role-mock-final-unit.log仍428单测通过，类型/lint无错误、构建通过。热重载干扰的失败证据保留，顺序重验通过，未降低断言或提高超时。
 - 内存状态不证明持久保存、跨浏览器、真实锁、生产哈希或服务恢复；FP-005的部署/完整恢复、角色数据范围及整体发布仍未完，保持进行中。
+- 687c4dc2b96eb5ef0fd1e9668a875e9c488cd1b4的实际CI36949823738已通过，verify/real-business均success；报告role-mock-remote-ci.json，artifact归档ci-36949823738。后续优先推进FP-006真实数据范围，不把绿色CI解释为全产品完成。
