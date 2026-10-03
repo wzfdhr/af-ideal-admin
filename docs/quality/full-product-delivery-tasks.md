@@ -453,3 +453,18 @@
 - test-results/full-product/page-package-20261003/保留渐进失败：browser-first.log中员工详情跳转未等待路由导致主管打开错误路径，补实际详情URL等待后browser-route-fixed.log通过；integration-security.log中的字典跨租户负向先因漏抄送槽得到422，补完整人员映射后才验证真实404；database-copy.log保留恢复脚本命名导入不匹配的失败，修正实际模块导入后database-copy-final.log通过。integration-release-final.log保留故障断言将失败审计误算为成功事实的失败，改为检查成功事实回滚及失败审计保留；失败请求仍需可审计。未改变业务成功断言或注入成功响应。
 - database-copy/report.json记录实际pg_dump/pg_restore、21迁移及13表计数相同、原会话保持。独立恢复库继续待重绑→业务发布→来源/页生成→页面发布→员工真实创建/提交→两人审批，金额0.30；原库仍pending/空映射/无目标发布及页面。仅为原本地PostgreSQL实例内独立库恢复，不能替代新机器部署/全产品物理回退。
 - 本批unit-release-final.log的454单测、contracts-final.log的44契约/25领域、integration-release-success-facts.log的176真实数据库/API、integration-page-facts-final.log的7项新增专项、full-browser.log的46条完整真实浏览器通过；build-bytes-final.log/typecheck全workspace通过，lint-final.log无错误/10既有警告，新增脚本命名导入修正后style-release-final.log无错误。两个既有Mock/smoke各3条通过，旧10888代理报错只属于Mock路径，不当作真实服务证据。新增页面截图已检查，目标员工真实记录与已通过图表可读。对应新提交远端CI尚待实际执行。原R1包/卷/服务不改；更多跨应用/插件物料/受控HTTP依赖、全套主题键盘布局、容量、新部署/兼容回退及正式交付继续开放，FP-019和整个Goal不勾完成。
+
+### FP-007 下一批真实菜单资源
+
+- 已核实现状：system/menuSystem及其API只有Mock写入/浏览器上报审计；真实/user/menu调用createR1Menu固定能力树；config.menuFromServer默认false，真实前端也只过滤静态路由。不能因当前返回固定componentKey而写菜单已持久化。
+- 下一批先提取共享受控路由目录（固定name/path/componentKey、布局、基础权限集合），支持租户独立资源、目录/菜单/按钮、父引用、排序、启停、revision及删除墓碑。API拒绝任意URL、组件代码、模板字符串、未登记权限与基础权限削弱；按钮登记只表达现有能力，不授予业务权限。目录变更带本租户FK、环/引用检查及租户写锁，事务内写资源/审计/回执。
+- 保留当前正式入口及R1路径。实际菜单按当前成员有效权限和资源祖先启用状态投影，all不跨租户；停用只影响导航与相应路由准入，后台授权继续独立复验，不能靠隐藏按钮授权。至少保留当前有权管理员可达的菜单管理/凭据恢复入口，拒绝会锁死租户管理能力的命令。
+- 真实前端应读取真实菜单事实并保持响应式更新，元数据标题按纯文本渲染，图标/组件仅受控目录提供。当前组件在setup复制menuPreset.value、config默认关服务端菜单的细节必须修复并回归；旧显式Mock入口保留。切换账号/租户及读取失败清除旧菜单，异步ticket阻止旧响应覆盖，直达路由仍检查实时能力。
+- 按顺序验证契约失败回归→022追加迁移/真实API→管理页与当前会话导航→双租户/即时撤权/版本竞争/故障幂等→保存刷新/进程和独立备份恢复→全量门禁/对应SHA远端CI。022尚未编写或执行，本条是实施拆分，FP-007仍未开始，未给菜单模块补虚假实现结论。
+
+
+### FP-019 页面包提交及实际远端CI
+
+- 实现SHA bbe6907cf7bafd938afa31700f3134295a96d942已推送codex/full-product-completion。实际CI 37114264940的headSha精确相同，verify/real-business均success： https://github.com/wzfdhr/af-ideal-admin/actions/runs/37114264940 。后续文档补充及FP-007拆分不改变该实现源码。
+- 已下载ci-37114264940/real-business-evidence并保存完整ci-37114264940-workflow.log及remote-ci.json。远端integration.log为176通过/0失败，browser.log为46通过，原R1、条件/并行/转交/定时、两个租户应用包、低代码及真实文件扫描路径保留。远端verify实际执行lint/typecheck/454单测、44契约/25领域、完整构建和两个3条Mock/smoke套件，不以文件配置代替实际运行。
+- verification-manifest.json记录实施SHA与本地/远端日志及独立恢复报告摘要。021仅应用本地专属开发demo；原R1库/卷/交付包保留。本批没有合并、正式tag、公开发布或客户生产部署；全产品新部署/兼容回退及正式交付仍开放。下一批接FP-007的真实菜单资源，原冻结范围不缩减。
