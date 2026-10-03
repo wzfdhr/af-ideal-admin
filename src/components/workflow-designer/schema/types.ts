@@ -1,5 +1,5 @@
 export const CURRENT_WORKFLOW_SCHEMA_VERSION = 1
-export const MAX_WORKFLOW_SCHEMA_VERSION = 3
+export const MAX_WORKFLOW_SCHEMA_VERSION = 4
 
 export const WORKFLOW_NODE_TYPES = [
   'start',
@@ -9,6 +9,7 @@ export const WORKFLOW_NODE_TYPES = [
   'parallel',
   'join',
   'sign',
+  'wait',
   'end',
 ] as const
 
@@ -23,6 +24,8 @@ export interface WorkflowNodeConfig {
   joinId?: string
   forkId?: string
   voting?: { mode: 'all' | 'any' | 'quorum'; quorum?: number }
+  delaySeconds?: number
+  deadlineSeconds?: number
   [key: string]: unknown
 }
 

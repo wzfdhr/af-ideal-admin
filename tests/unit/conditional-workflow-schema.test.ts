@@ -46,7 +46,7 @@ describe('controlled workflow format boundary', () => {
       migrated.nodes.find((node) => node.id === 'condition')?.config.condition
     ).toEqual(workflow.nodes[1].config.condition)
     expect(migrated.edges.at(-1)?.branch).toBe('fallback')
-    expect(() => migrateWorkflowSchema({ ...workflow, version: 4 })).toThrow(
+    expect(() => migrateWorkflowSchema({ ...workflow, version: 5 })).toThrow(
       '版本'
     )
     expect(() =>

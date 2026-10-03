@@ -105,6 +105,16 @@ export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
     title: '拒绝分配的审批',
     module: '审批',
   },
+  {
+    code: 'workflow:timer:read',
+    title: '查询授权范围内流程定时',
+    module: '审批',
+  },
+  {
+    code: 'workflow:timer:retry',
+    title: '恢复授权范围内流程定时',
+    module: '审批',
+  },
   { code: 'workflow:transfer', title: '转交本人待办', module: '审批' },
   { code: 'workflow:recover', title: '恢复授权范围内异常审批', module: '审批' },
   {

@@ -53,7 +53,7 @@ describe('explicit parallel schema authoring', () => {
         .sort()
     ).toEqual(['branch-1', 'branch-2'])
     expect(() =>
-      migrateWorkflowSchema({ ...schema.value, version: 4 })
+      migrateWorkflowSchema({ ...schema.value, version: 5 })
     ).toThrow('版本')
   })
 })

@@ -219,9 +219,11 @@ export const registerApplicationPackages = (
         let workflowDependency:
           | 'serial-workflow'
           | 'conditional-workflow'
-          | 'parallel-workflow' = 'serial-workflow'
+          | 'parallel-workflow'
+          | 'timed-workflow' = 'serial-workflow'
         if (workflow.version === 2) workflowDependency = 'conditional-workflow'
         if (workflow.version === 3) workflowDependency = 'parallel-workflow'
+        if (workflow.version === 4) workflowDependency = 'timed-workflow'
         const pkg: ApplicationPackage = {
           format: 'af-admin-application',
           version: packageV2 ? 2 : 1,

@@ -12,6 +12,7 @@ import {
   DICTIONARY_PERMISSIONS,
   FORM_DATA_SOURCE_PERMISSIONS,
   WORKFLOW_RECOVERY_PERMISSIONS,
+  WORKFLOW_TIMER_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -56,6 +57,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(DICTIONARY_PERMISSIONS),
           ...Object.values(FORM_DATA_SOURCE_PERMISSIONS),
           ...Object.values(WORKFLOW_RECOVERY_PERMISSIONS),
+          ...Object.values(WORKFLOW_TIMER_PERMISSIONS),
         ]),
       ]
     )

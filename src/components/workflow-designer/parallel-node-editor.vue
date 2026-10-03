@@ -69,7 +69,7 @@ watch(
 const apply = () =>
   emit('update', {
     ...props.workflow,
-    version: 3,
+    version: Math.max(3, props.workflow.version),
     edges: [
       ...props.workflow.edges.filter((edge) => edge.source !== props.node.id),
       ...targets.value

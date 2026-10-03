@@ -48,6 +48,7 @@ export const workflowNodeTypeOptions: WorkflowNodeTypeOption[] = [
     label: '并行',
     description: '并行处理',
   },
+  { type: 'wait', label: '定时等待', description: '按固定计划恢复流程路径' },
   { type: 'sign', label: '会签', description: '按固定票数规则多人签署' },
   { type: 'join', label: '汇合', description: '配对并行分支汇合' },
   {
@@ -98,6 +99,15 @@ const createWorkflowNode = (
   structuredConditions = false
 ): WorkflowNode => {
   const label = getWorkflowNodeTypeLabel(type)
+  if (type === 'wait')
+    return {
+      id: `wait-${sequence}`,
+      type,
+      name: '定时等待节点',
+      config: { delaySeconds: 60 },
+      x: position.x ?? 340,
+      y: position.y ?? 240,
+    }
 
   if (structuredConditions && type === 'sign')
     return {
@@ -211,7 +221,7 @@ export const useWorkflowDesigner = (
       }
       schema.value = validateWorkflowSchema({
         ...schema.value,
-        version: 3,
+        version: Math.max(3, schema.value.version),
         nodes: [...schema.value.nodes, node, join],
         edges: [
           ...schema.value.edges.filter((edge) => edge.id !== incoming?.id),
@@ -237,7 +247,8 @@ export const useWorkflowDesigner = (
     let { version } = schema.value
     if (type === 'condition' && structuredConditions)
       version = Math.max(2, version)
-    if (type === 'sign' && structuredConditions) version = 3
+    if (type === 'sign' && structuredConditions) version = Math.max(3, version)
+    if (type === 'wait') version = 4
     schema.value = validateWorkflowSchema({
       ...schema.value,
       version,

@@ -1,3 +1,5 @@
+import type { WorkflowTimer } from './workflow-timers'
+
 export type Json = null | boolean | number | string | Json[] | JsonObject
 export interface JsonObject {
   [key: string]: Json
@@ -36,6 +38,7 @@ export interface WorkflowNode {
     | 'parallel'
     | 'join'
     | 'sign'
+    | 'wait'
   name: string
   config: {
     approvers?: string[]
@@ -45,6 +48,8 @@ export interface WorkflowNode {
     joinId?: string
     forkId?: string
     voting?: { mode: 'all' | 'any' | 'quorum'; quorum?: number }
+    delaySeconds?: number
+    deadlineSeconds?: number
   }
   x?: number
   y?: number
@@ -134,6 +139,7 @@ export interface LeaveRequest extends LeaveFields {
   updatedAt: string
   allowedActions: string[]
   release?: Release
+  timers?: WorkflowTimer[]
   history?: HistoryRecord[]
   tasks?: WorkflowTask[]
 }
@@ -160,7 +166,7 @@ export interface HistoryRecord {
   instanceId: string
   taskId: string | null
   action: string
-  operatorId: string
+  operatorId: string | null
   operatorName: string
   comment: string
   sequence: number
@@ -345,14 +351,15 @@ export const parseWorkflow = (input: unknown): WorkflowSchema => {
   const body = record(input, 'schema')
   onlyKeys(body, ['version', 'nodes', 'edges'])
   let version = 1
-  if (body.version === 3) version = 3
+  if (body.version === 4) version = 4
+  else if (body.version === 3) version = 3
   else if (body.version === 2) version = 2
   else version = formatVersion(body.version)
   if (
     !Array.isArray(body.nodes) ||
     !Array.isArray(body.edges) ||
     body.nodes.length > 100 ||
-    body.edges.length > (version === 3 ? 200 : 100)
+    body.edges.length > (version >= 3 ? 200 : 100)
   )
     return invalid('nodes', '流程节点和连线必须是有限的数组')
   const nodes = body.nodes.map((item): WorkflowNode => {
@@ -364,7 +371,8 @@ export const parseWorkflow = (input: unknown): WorkflowSchema => {
       'ccUsers',
       'formId',
       ...(version >= 2 ? ['condition'] : []),
-      ...(version === 3 ? ['joinId', 'forkId', 'voting'] : []),
+      ...(version >= 3 ? ['joinId', 'forkId', 'voting'] : []),
+      ...(version === 4 ? ['delaySeconds', 'deadlineSeconds'] : []),
     ])
     const parsed: WorkflowNode = {
       id: text(node.id, 'node.id', 100),
@@ -377,13 +385,26 @@ export const parseWorkflow = (input: unknown): WorkflowSchema => {
           'end',
           'condition',
           'parallel',
-          ...(version === 3 ? (['join', 'sign'] as const) : []),
+          ...(version >= 3 ? (['join', 'sign'] as const) : []),
+          ...(version === 4 ? (['wait'] as const) : []),
         ],
         'node.type'
       ),
       name: text(node.name, 'node.name', 100),
       config: {},
     }
+    ;(['delaySeconds', 'deadlineSeconds'] as const).forEach((field) => {
+      if (config[field] === undefined) return
+      if (
+        field === 'delaySeconds'
+          ? parsed.type !== 'wait'
+          : !['approval', 'sign'].includes(parsed.type)
+      )
+        invalid(parsed.id, '定时配置不适用于该节点')
+      const seconds = positiveInteger(config[field], field)
+      if (seconds > 2592000) invalid(field, '定时范围不得超过30天')
+      parsed.config[field] = seconds
+    })
     if (config.approvers !== undefined)
       parsed.config.approvers = strings(config.approvers, 'approvers')
     if (config.ccUsers !== undefined)
@@ -471,7 +492,7 @@ export const parseWorkflow = (input: unknown): WorkflowSchema => {
       'target',
       'label',
       ...(version >= 2 ? ['branch'] : []),
-      ...(version === 3 ? ['channel'] : []),
+      ...(version >= 3 ? ['channel'] : []),
     ])
     return {
       id: text(edge.id, 'edge.id', 100),

@@ -22,6 +22,7 @@ export interface ApplicationPackage {
       | 'serial-workflow'
       | 'conditional-workflow'
       | 'parallel-workflow'
+      | 'timed-workflow'
       | 'registered-sources'
     version: 1 | 2
   }[]
@@ -75,6 +76,7 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
   let workflowDependency = 'serial-workflow'
   if (workflow.version === 2) workflowDependency = 'conditional-workflow'
   if (workflow.version === 3) workflowDependency = 'parallel-workflow'
+  if (workflow.version === 4) workflowDependency = 'timed-workflow'
   if (body.version === 1 && workflow.version >= 2)
     throw new DomainError(
       422,
@@ -104,6 +106,7 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
         | 'serial-workflow'
         | 'conditional-workflow'
         | 'parallel-workflow'
+        | 'timed-workflow'
         | 'registered-sources',
       version: item.version as 1 | 2,
     }

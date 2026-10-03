@@ -8,10 +8,12 @@
 
 - 参考后端新增本人审批转交、失权待办恢复及实际下一节点的实例级分配覆盖；原流程快照、签署票位和会签阈值保持固定。
 - 审批中心按独立待办/恢复权限加载对应页面，修复普通主管误加载演示配置接口导致403跳转；通用业务通知由真实worker投递并去重。
+- 新增v4定时等待与审批/会签期限提醒，持久计划、租约、一次效果、失权恢复及独立定时权限；设计、发布、运行和跨租户应用包使用同一配置。自动事实明确标记调度服务，不替代人类审批。
 
 ### 迁移说明
 
 - 全产品开发分支新增018工作流分配迁移及 `workflow:transfer/workflow:recover` 权限，保留001至017校验和。新增API、关闭入口和兼容回退规则见 `docs/architecture/full-product-workflow-recovery-design.md`；原R1交付包不随本增量改变。
+- 新增019流程定时迁移、`workflow:timer:read/workflow:timer:retry`权限和`timed-workflow`包依赖，保留001至018校验和。HistoryRecord.operatorId可为空以表达系统事实；新客户端应兼容。v4实例的服务回退和定时恢复边界见 `docs/architecture/full-product-workflow-scheduling-design.md`。
 
 ### 验证
 

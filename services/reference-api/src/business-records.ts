@@ -11,6 +11,7 @@ import {
   computeBusinessFields,
 } from '@af-admin/contracts'
 import { assertRevision, advanceWorkflow } from '@af-admin/workflow-core'
+import { instanceTimers } from './timer-state'
 import {
   startParallelActivities,
   parallelActivityProgress,
@@ -91,7 +92,7 @@ const detail = async (db: Database, actor: Actor, id: string) => {
       ),
     },
     tasks,
-    ...(instances[0] && release.workflowSnapshot.version === 3
+    ...(instances[0] && release.workflowSnapshot.version >= 3
       ? {
           activities: await parallelActivityProgress(
             db,
@@ -101,6 +102,9 @@ const detail = async (db: Database, actor: Actor, id: string) => {
           ),
         }
       : {}),
+    timers: instances[0]
+      ? await instanceTimers(db, actor.tenantId, instances[0].id)
+      : [],
     computedFields: computeBusinessFields(release.formSnapshot, row.fields),
     history: instances[0]
       ? await history(db, actor.tenantId, instances[0].id)
@@ -410,7 +414,7 @@ export const registerBusinessRecords = (
             current.userId,
             routeValues
           )
-          const parallel = release.workflowSnapshot.version === 3
+          const parallel = release.workflowSnapshot.version >= 3
           const next = parallel
             ? { approval: null, routes: [], copiedUserIds: [] }
             : advanceWorkflow(release.workflowSnapshot, undefined, routeValues)

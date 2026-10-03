@@ -121,13 +121,19 @@
             }}
             条分支
           </span>
-          <span v-else>
+          <span v-else-if="activity.kind !== 'wait'">
             · 已批准 {{ activity.approved }}/{{ activity.threshold }} 票 · 待签
             {{ activity.pending }} 人 · 已拒绝 {{ activity.rejected }} 人
           </span>
         </li>
       </ul>
     </section>
+    <WorkflowTimerProgress
+      v-if="current?.timers?.length && release"
+      :timers="current.timers"
+      :nodes="release.workflowSnapshot.nodes"
+      @refresh="reload"
+    />
     <section v-if="current?.history.length">
       <h2>处理历史</h2>
       <ol>
@@ -148,6 +154,7 @@ import {
   onBeforeRouteLeave,
   onBeforeRouteUpdate,
 } from 'vue-router'
+import WorkflowTimerProgress from '@/components/workflow-timer-progress.vue'
 import StoredFiles from '@/components/stored-files.vue'
 import WorkflowAssignmentEditor from '@/components/workflow-assignment-editor.vue'
 import { FormRenderer, migrateFormSchema } from '@/components/form-runtime'

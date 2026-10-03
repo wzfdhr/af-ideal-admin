@@ -32,7 +32,7 @@ test('migrations are checksum verified and repeatable against real PostgreSQL', 
   await migrations.migrate(pool)
   await migrations.migrate(pool)
   const result=await pool.query('SELECT name FROM schema_migrations ORDER BY name')
-  assert.deepEqual(result.rows.map((row)=>row.name),['001_leave_approval.sql','002_audit_and_telemetry.sql','003_organization.sql','004_positions.sql','005_member_profiles.sql','006_credential_revisions.sql','007_roles_and_permissions.sql','008_member_data_scopes.sql','009_application_lifecycle.sql','010_business_records.sql','011_file_storage.sql','012_application_packages.sql','013_dictionaries.sql','014_form_data_sources.sql','015_form_source_bindings.sql','016_conditional_history.sql','017_parallel_activities.sql','018_workflow_assignments.sql'])
+  assert.deepEqual(result.rows.map((row)=>row.name),['001_leave_approval.sql','002_audit_and_telemetry.sql','003_organization.sql','004_positions.sql','005_member_profiles.sql','006_credential_revisions.sql','007_roles_and_permissions.sql','008_member_data_scopes.sql','009_application_lifecycle.sql','010_business_records.sql','011_file_storage.sql','012_application_packages.sql','013_dictionaries.sql','014_form_data_sources.sql','015_form_source_bindings.sql','016_conditional_history.sql','017_parallel_activities.sql','018_workflow_assignments.sql','019_workflow_timers.sql'])
 })
 test('database rejects cross-tenant references and published release mutation', async () => {
   await isolated(async(client)=>{

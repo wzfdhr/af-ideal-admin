@@ -157,7 +157,7 @@ const apply = () => {
   error.value = ''
   const candidate: WorkflowSchema = {
     ...props.workflow,
-    version: 2,
+    version: Math.max(2, props.workflow.version),
     nodes: props.workflow.nodes.map((item) => {
       if (item.id !== props.node.id) return item
       return {

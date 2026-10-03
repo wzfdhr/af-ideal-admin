@@ -56,7 +56,7 @@ export const validateSerialWorkflow = (input: unknown): WorkflowSchema => {
   const nodes = new Map<string, WorkflowNode>()
   schema.nodes.forEach((node) => {
     if (nodes.has(node.id)) invalid(node.id, '节点标识重复')
-    if (node.type === 'condition' || node.type === 'parallel')
+    if (!['start', 'approval', 'copy', 'end'].includes(node.type))
       invalid(node.id, 'R1 不支持条件或并行节点')
     if (node.type === 'approval' && node.config.approvers?.length !== 1)
       invalid(node.id, '串行审批节点必须指定一名处理人')
@@ -110,7 +110,7 @@ export const validateExecutableWorkflow = (
   form?: unknown
 ): WorkflowSchema => {
   const schema = parseWorkflow(input)
-  if (schema.version === 3) return validateParallelWorkflow(schema, form)
+  if (schema.version >= 3) return validateParallelWorkflow(schema, form)
   return schema.version === 2
     ? validateConditionalWorkflow(schema, form)
     : validateSerialWorkflow(schema)
@@ -120,7 +120,7 @@ export const advanceWorkflow = (
   afterNodeId?: string,
   values?: Record<string, unknown>
 ): AdvanceResult => {
-  if (input.version === 3)
+  if (input.version >= 3)
     return invalid('version', '并行流程必须使用耐久活动执行器')
   if (input.version === 2) {
     if (!values) return invalid('fields', '条件流程需要真实固定业务字段')

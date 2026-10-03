@@ -4,6 +4,7 @@ import type {
   Release,
   HistoryRecord,
   JsonObject,
+  WorkflowTimer,
 } from '@af-admin/contracts'
 
 export const publishedBusinessApplications = async () =>
@@ -28,6 +29,7 @@ export interface BusinessDetail extends BusinessRecord {
   computedFields: JsonObject
   history: HistoryRecord[]
   tasks: { id: string; revision: number; status: string; nodeName?: string }[]
+  timers?: WorkflowTimer[]
   activities?: {
     id: string
     nodeId: string

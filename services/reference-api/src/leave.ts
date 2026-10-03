@@ -13,6 +13,7 @@ import {
   requirePermission,
   hasPermission,
 } from '@af-admin/workflow-core'
+import { instanceTimers } from './timer-state'
 import { appendHistory, appendRouteHistory, addTask } from './workflow-effects'
 import { startParallelActivities } from './parallel-activities'
 import { assertFilesReady } from './file-policy'
@@ -104,7 +105,7 @@ export const history = async (
     instance_id: string
     task_id: string | null
     action: string
-    operator_id: string
+    operator_id: string | null
     operator_name: string
     comment: string
     sequence: number
@@ -188,6 +189,9 @@ export const readLeave = async (
     actor.tenantId,
     row.application_release_id
   )
+  result.timers = instance[0]
+    ? await instanceTimers(db, actor.tenantId, instance[0].id)
+    : []
   result.history = instance.length
     ? await history(db, actor.tenantId, instance[0].id)
     : []
@@ -418,7 +422,7 @@ export const submitLeave = (
         current.userId,
         draft.fields as unknown as Record<string, unknown>
       )
-      const parallel = release.workflowSnapshot.version === 3
+      const parallel = release.workflowSnapshot.version >= 3
       const next = parallel
         ? { approval: null, routes: [], copiedUserIds: [] }
         : advanceWorkflow(

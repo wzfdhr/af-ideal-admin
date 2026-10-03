@@ -11,6 +11,7 @@ import {
   requirePermission,
   hasPermission,
 } from '@af-admin/workflow-core'
+import { cancelWorkflowTimers } from './timer-state'
 import { runtimeAssignments } from './assignment-runtime'
 import {
   continueParallelActivity,
@@ -224,7 +225,7 @@ export const decideTask = (
       let instanceStatus: InstanceStatus = 'rejected'
       let requestStatus = 'rejected'
       let nextNode: string | null = null
-      if (release.workflowSnapshot.version === 3) {
+      if (release.workflowSnapshot.version >= 3) {
         if (!task.activity_id)
           throw new DomainError(409, 'STATE_CONFLICT', '并行任务缺少耐久活动')
         const fields = request.fields as unknown as JsonObject
@@ -324,6 +325,7 @@ export const decideTask = (
       const titlePrefix =
         request.record_kind === 'generic' ? '业务申请' : '请假申请'
       if (requestStatus !== 'running') {
+        await cancelWorkflowTimers(client, current.tenantId, instance.id)
         await client.query(
           "UPDATE workflow_tasks SET status='cancelled',revision=revision+1,completed_at=now() WHERE tenant_id=$1 AND instance_id=$2 AND status='pending'",
           [current.tenantId, instance.id]
@@ -422,6 +424,7 @@ export const withdrawInstance = async (
         "UPDATE workflow_tasks SET status='cancelled',revision=revision+1,completed_at=now() WHERE tenant_id=$1 AND instance_id=$2 AND status='pending'",
         [current.tenantId, id]
       )
+      await cancelWorkflowTimers(client, current.tenantId, id)
       await cancelParallelActivities(client, current, id)
       await appendHistory(
         client,

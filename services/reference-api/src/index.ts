@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import Fastify from 'fastify'
 import { DomainError } from '@af-admin/contracts'
+import { registerWorkflowTimers } from './workflow-timers'
 import { registerWorkflowRecovery } from './workflow-recovery'
 import { createPool } from './database'
 import { registerAuth, getAuthenticatedActor } from './auth'
@@ -122,6 +123,7 @@ export const createServer = (
   registerApplicationCenter(server, pool)
   registerBusinessRecords(server, pool, fault)
   registerWorkflowRecovery(server, pool, fault)
+  registerWorkflowTimers(server, pool)
   registerFiles(server, pool, files)
   registerApplicationPackages(server, pool, fault)
   if (!database)

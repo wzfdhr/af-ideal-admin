@@ -25,6 +25,7 @@ export const approvalFrontier = async (
   const activity = one(
     await rows<{
       status: string
+      kind: string
       threshold: number
       parent_group_id: string | null
       branch_key: string | null
@@ -43,7 +44,8 @@ export const approvalFrontier = async (
   )
   if (
     activity.status !== 'waiting' ||
-    Number(votes.approved) + 1 < activity.threshold
+    (activity.kind !== 'wait' &&
+      Number(votes.approved) + 1 < activity.threshold)
   )
     return []
   const nodes = new Map(schema.nodes.map((node) => [node.id, node]))
@@ -57,6 +59,7 @@ export const approvalFrontier = async (
     if (id === stop) return { frontier: [], complete: true }
     const node = nodes.get(id) || invalid(id, '节点缺失')
     if (node.type === 'end') return { frontier: [], complete: true }
+    if (node.type === 'wait') return { frontier: [], complete: false }
     if (node.type === 'approval' || node.type === 'sign')
       return { frontier: [node], complete: false }
     if (node.type === 'condition') {
@@ -154,7 +157,7 @@ export const approvalFrontier = async (
         return existing(parentRow.join_node_id, parent, branch)
       return result.frontier
     }
-    if (node.type === 'end') return []
+    if (node.type === 'end' || node.type === 'wait') return []
     return [node]
   }
   return existing(

@@ -155,6 +155,12 @@
           </section>
         </section>
         <aside>
+          <WorkflowTimerProgress
+            v-if="current?.timers?.length && current.release"
+            :timers="current.timers"
+            :nodes="current.release.workflowSnapshot.nodes"
+            @refresh="reload"
+          />
           <section
             v-if="activeTask"
             class="leave-panel"
@@ -239,6 +245,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import WorkflowAssignmentEditor from '@/components/workflow-assignment-editor.vue'
+import WorkflowTimerProgress from '@/components/workflow-timer-progress.vue'
 import StoredFiles from '@/components/stored-files.vue'
 import { confirmR1Action } from '@/services/r1-confirm'
 import { FormRenderer } from '@/components/form-runtime'

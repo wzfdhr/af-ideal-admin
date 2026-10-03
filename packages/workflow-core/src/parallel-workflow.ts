@@ -34,7 +34,8 @@ export const validateParallelWorkflow = (
   form?: unknown
 ): WorkflowSchema => {
   const schema = parseWorkflow(input)
-  if (schema.version !== 3) invalid('version', '并行和会签需使用v3格式')
+  if (![3, 4].includes(schema.version))
+    invalid('version', '耐久活动需使用v3或v4格式')
   const nodes = new Map<string, WorkflowNode>()
   const outgoing = new Map<string, WorkflowSchema['edges']>()
   const incoming = new Map<string, number>()
@@ -42,6 +43,8 @@ export const validateParallelWorkflow = (
   schema.nodes.forEach((node) => {
     if (nodes.has(node.id)) invalid(node.id, '节点标识重复')
     nodes.set(node.id, node)
+    if (node.type === 'wait' && !node.config.delaySeconds)
+      invalid(node.id, '等待节点必须设置有界的等待秒数')
     if (node.type === 'approval' && node.config.approvers?.length !== 1)
       invalid(node.id, '审批节点必须指定一名处理人')
     if (node.type === 'sign') votingThreshold(node)

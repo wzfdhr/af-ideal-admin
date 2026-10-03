@@ -85,8 +85,8 @@ export const createR1Menu = (permissions: string[]) => {
     },
   ]
   if (
-    ['workflow:todo', 'workflow:recover', '*'].some((code) =>
-      permissions.includes(code)
+    ['workflow:todo', 'workflow:recover', 'workflow:timer:read', '*'].some(
+      (code) => permissions.includes(code)
     )
   )
     entries.push({
@@ -103,7 +103,11 @@ export const createR1Menu = (permissions: string[]) => {
             requireAuth: true,
             locale: 'menu.Scalability.workflowCenter',
             access: {
-              permissions: ['workflow:todo', 'workflow:recover'],
+              permissions: [
+                'workflow:todo',
+                'workflow:recover',
+                'workflow:timer:read',
+              ],
               mode: 'any',
             },
           },

@@ -19,6 +19,9 @@ const openCenter = () =>
         'WorkflowRecoveryConsole': {
           template: '<div data-testid="assignment-recovery" />',
         },
+        'WorkflowTimerConsole': {
+          template: '<div data-testid="timer-console" />',
+        },
         's-navs': true,
       },
     },
@@ -58,6 +61,18 @@ describe('workflow center with a real tenant context', () => {
     expect(wrapper.find('[data-testid="real-tasks"]').exists()).toBe(false)
     expect(wrapper.find('[data-testid="assignment-recovery"]').exists()).toBe(
       true
+    )
+    expect(wrapper.find('[data-testid="demo-tasks"]').exists()).toBe(false)
+  })
+
+  it('opens timer management through its own capability without personal tasks or assignment recovery', () => {
+    user.permissions = ['workflow:timer:read']
+    const wrapper = openCenter()
+    expect(canVisitR1Page('workflowCenter', user.permissions)).toBe(true)
+    expect(wrapper.find('[data-testid="timer-console"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="real-tasks"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="assignment-recovery"]').exists()).toBe(
+      false
     )
     expect(wrapper.find('[data-testid="demo-tasks"]').exists()).toBe(false)
   })

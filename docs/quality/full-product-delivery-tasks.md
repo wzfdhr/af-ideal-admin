@@ -31,7 +31,7 @@
 | FP-013 | 结构化条件 AST 的真实流程运行，确定路由、拒绝脚本和错误恢复 | FP-010 | LA-044 | 进行中 |
 | FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 进行中 |
 | FP-015 | 转交、无效身份、异常处理、授权/审计/任务幂等 | FP-014 | LA-044 | 进行中 |
-| FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 进行中（设计，待实现） |
+| FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 进行中 |
 | FP-017 | query/submit/navigate/openModal/refreshBlock/受控发起流程实际执行 | FP-010/012 | LA-038 | 未开始 |
 | FP-018 | 低代码权限、保存重开、发布/灰度/回滚及真实管理页生成或渲染 | FP-017 | LA-039/T-610 | 未开始 |
 | FP-019 | 包格式/依赖/校验/引用迁移，新租户导入运行；无凭据/业务数据 | FP-012/018 | LA-040 | 进行中 |
@@ -393,3 +393,16 @@
 
 - 方案已保存full-product-workflow-scheduling-design.md，FP-016-A至E明确闭合v4配置、期限提醒、等待活动、租约/唯一效果、受控恢复、原并行/会签归属及独立部署恢复证据。已核实多处version===3分流、包依赖和原事实主体约束，下一步先补契约/图校验失败回归，再接019持久化和worker。
 - 当前为设计进展，无timer表、真实调度或验收结论，不将方案写成FP-016实现完成。实际执行者仍为本任务Codex，原冻结功能和成功标准保留。
+
+### FP-016 定时等待、期限提醒与实际恢复增量
+
+- 实施/阶段自检：Codex，2026-10-03，继承bb0e33b，未缩减全产品范围。方案full-product-workflow-scheduling-design.md从设计接入实际参考后端；v4显式wait/delaySeconds与approval/sign.deadlineSeconds，有界1秒至30天，所有完成路径仍需实际审批。v1至v3保持原义，未知未来v5拒绝。客户端、引擎、发布/提交/详情/恢复前沿、包依赖及设计器逐处接入v4，没有只放宽parser。
+- 019_workflow_timers.sql保存固定版本/活动/计划时间、状态、revision、领取租约和有限重试，以及不可变定时事实。复合FK、唯一效果索引和计划身份触发器阻止跨租户、重复唤起和改写dueAt。001至018不变；独立开发库迁移前的私有备份before-019.dump与demo-migrate.log保留，原R1容器/卷/包未更新。
+- 原worker增加定时循环。等待点没有伪审批任务，到期按原快照、字段和实例覆盖推进，保持父组/分支/join归属；期限只提醒实际pending票位的当前有效处理人，转交不重置期限，不改变投票。业务→实例→活动→timer锁序内复验claim及实际运行状态，唤起/任务/历史/审计/Outbox/完成同事务。终态/阈值/撤回取消不再需要的计划。暂时失败退避、失权/租户停用blocked、耗尽failed，原计划和失败事实保留。
+- 自动事实使用NULL操作者与“流程调度服务”，HistoryRecord.operatorId放宽为可空。数据库约束禁止系统历史冒充approve/reject/withdraw等人类决策；定时事实/计划身份不可变。新增timer:read/timer:retry独立权限；替换实际下一票位同时要求workflow:recover与申请人/原人/目标范围。恢复命令闭合原因/版本/完整映射，幂等回执重放仍复验当前权限与范围。
+- scheduling-20261003/domain-before.log保留初始v4不支持的失败；domain.log三项新增图/配置通过。contracts.log首次出现旧“未来v4”断言失败，仅将已支持的未来门禁移到v5，并保留v4正向及脚本/图/票数负向；contracts-final.log为38契约+25领域/Mock全部通过，不删除非法配置测试。types-ui.log及types-release.log全workspace通过；build.log完整前后端构建通过。lint.log保留新文件格式/导入和Vue嵌套缩进失败，采用普通if及明确body字段修正，lint-corrected/lint-complete.log无错误/6既有警告。
+- integration.log首轮156、integration-immutable.log157项真实数据库/API通过；integration-recovery.log的160通过/1失败保留。故障注入原本可命中另一条先执行任务，修正为绑定目标timer ID；提交后注入只在实际效果事务成功后触发。integration-final.log最新161项/0失败，覆盖真实到期、两worker竞争、期限转交、原签署阈值、并行等待/join、当前/未来失权恢复、自审/跨租户/改dueAt拒绝、固定包重绑和原发布版、撤权回执拒绝、最终租约失败、事务回滚及目标timer真实SIGKILL领取后/效果提交前/提交后唯一效果。测试使用真实数据库时钟，未用改写dueAt伪造计划到期。
+- 设计器可添加定时等待、配置期限、错误输入保留、保存重开/发布；运行页显示北京时间、计划/执行/失败状态和系统事实。管理页按timer:read独立加载，只读账号不挂载或调用个人待办/配置/恢复，原始retry请求403。browser.log两条新增真实路径通过，browser-permissions.log加入只读账号后3条通过；full-browser.log最新42条完整真实浏览器通过，原R1/第二模板/条件/并行/包/权限/文件保留。450单测通过于unit-final.log，含v4添加条件/会签/并行不降版本和定时专权入口。两个既有Mock/旧smoke各3项通过；旧10888代理报错仅是Mock路径，不冒充实际后台证据。
+- timed-approved-runtime.png、timed-recovery-runtime.png及timed-recovery-controls.png实际像素已检查；1440设计/运行及1280恢复控件、错误原因保留和按钮焦点有具体证据，没有据此宣称全面无障碍。真实浏览器完成设计→发布→员工提交→等待唤起→实际期限消息→两人审批；另一条实际撤权→blocked→候选替换/原因确认→唤起/人工审批，原release保持；未注入成功响应。
+- verify-workflow-timer-recovery.mjs使用实际pg_dump/pg_restore到新库。database-recovery-first.log保留初次主管会话在备份后才创建、恢复库401的失败；修正为备份前建立需验证的会话。database-recovery-final.log和database-copy-final/report.json通过，19份迁移及7关键表计数一致，恢复库沿原版本/计划唤起并批准一次，原库保持running/pending且无目标任务。演练只停止/恢复专属开发worker，自己的随机临时库已清理；dump私有、CI排除且未进入Git或应用包。本证据是现有本地PostgreSQL服务中的独立库恢复，不是新部署或客户环境验收。
+- 更多嵌套等待/条件组合、全套主题/密度/键盘、Mock定时一致性、独立定时开关、容量/延迟及性能测量、数据库容器重启、新环境部署和v4兼容回退仍开放。FP-016保持进行中，本批新提交对应远端CI尚待实际执行；整个Goal不标完成。恢复部署保留019及v4兼容执行器，不能把v4在途实例交给只支持v3的旧服务或删除定时事实。

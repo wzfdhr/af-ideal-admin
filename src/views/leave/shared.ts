@@ -9,18 +9,21 @@ export const statusLabels: Record<string, string> = {
   withdrawn: '已撤回',
 }
 export const actionLabels: Record<string, string> = {
-  start: '提交申请',
-  approve: '通过',
-  reject: '驳回',
-  withdraw: '撤回',
-  copy: '抄送',
-  route: '条件分支',
-  fork: '并行分叉',
-  join: '分支汇合',
-  sign: '会签结果',
-  cancel: '取消剩余任务',
-  transfer: '转交待办',
-  recover: '异常恢复',
+  'start': '提交申请',
+  'approve': '通过',
+  'reject': '驳回',
+  'withdraw': '撤回',
+  'copy': '抄送',
+  'route': '条件分支',
+  'fork': '并行分叉',
+  'join': '分支汇合',
+  'sign': '会签结果',
+  'cancel': '取消剩余任务',
+  'transfer': '转交待办',
+  'recover': '异常恢复',
+  'timer-wait': '开始定时等待',
+  'timer-resume': '定时唤起',
+  'timer-overdue': '期限提醒',
 }
 export const errorMessage = (error: unknown) => {
   if (error instanceof ApiRequestError) return error.context.displayMessage

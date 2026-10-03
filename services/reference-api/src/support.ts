@@ -11,6 +11,10 @@ import type { Actor } from './auth'
 import type { Pool, PoolClient, QueryResultRow } from 'pg'
 import type { Json, JsonObject, UserRole } from '@af-admin/contracts'
 
+export type FactActor = Pick<Actor, 'tenantId' | 'name' | 'traceId'> & {
+  userId: string | null
+}
+
 export type Database = Pick<Pool, 'query'>
 export type FaultInjector = (point: string) => void
 export const noFault: FaultInjector = () => undefined
@@ -188,7 +192,7 @@ export const idempotent = <T>(
 }
 export const audit = async (
   db: Database,
-  actor: Actor,
+  actor: FactActor,
   module: string,
   action: string,
   targetType: string,
@@ -215,7 +219,7 @@ export const audit = async (
 }
 export const enqueue = async (
   db: Database,
-  actor: Actor,
+  actor: FactActor,
   recipientId: string,
   requestId: string,
   title: string,

@@ -216,6 +216,15 @@
               v-model="selectedCondition"
               placeholder="days > 3"
             />
+            <TimedNodeEditor
+              v-if="
+                dataMode === 'reference' &&
+                ['wait', 'approval', 'sign'].includes(selectedNode.type)
+              "
+              :node="selectedNode"
+              :workflow="schema"
+              @update="schema = $event"
+            />
             <ConditionNodeEditor
               v-if="
                 dataMode === 'reference' && selectedNode.type === 'condition'
@@ -286,6 +295,7 @@ import { computed, onMounted, watch } from 'vue'
 import { dataMode } from '../../../config/data-mode'
 import WorkflowCanvas from './workflow-canvas.vue'
 import ConditionNodeEditor from './condition-node-editor.vue'
+import TimedNodeEditor from './timed-node-editor.vue'
 import ParallelNodeEditor from './parallel-node-editor.vue'
 import {
   getWorkflowNodeTypeLabel,
@@ -320,11 +330,14 @@ const palette = computed(() => {
         item.type === 'copy' ||
         item.type === 'condition' ||
         item.type === 'parallel' ||
-        item.type === 'sign'
+        item.type === 'sign' ||
+        item.type === 'wait'
     )
-  return dataMode === 'mock'
-    ? workflowPaletteNodes.filter((item) => item.type !== 'sign')
-    : workflowPaletteNodes
+  if (dataMode === 'mock')
+    return workflowPaletteNodes.filter(
+      (item) => !['sign', 'wait'].includes(item.type)
+    )
+  return workflowPaletteNodes
 })
 
 const {

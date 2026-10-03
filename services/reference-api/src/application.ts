@@ -156,7 +156,7 @@ export const validatePeople = async (
   values?: Record<string, unknown>
 ) => {
   let selected: Set<string> | undefined
-  if (values && workflow.version === 3)
+  if (values && workflow.version >= 3)
     selected = selectedParallelNodeIds(workflow, values)
   else if (values && workflow.version === 2)
     selected = selectedConditionalNodeIds(workflow, values)

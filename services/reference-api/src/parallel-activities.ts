@@ -12,15 +12,16 @@ import {
 } from '@af-admin/workflow-core'
 import { addTask, appendHistory, appendRouteHistory } from './workflow-effects'
 import { rows, one, sequential, enqueue, audit } from './support'
+import { createWorkflowTimer, cancelWorkflowTimers } from './timer-state'
 import type { WorkflowSchema, WorkflowNode } from '@af-admin/contracts'
 import type { Actor } from './auth'
-import type { Database, FaultInjector } from './support'
+import type { Database, FaultInjector, FactActor } from './support'
 
 interface Activity {
   id: string
   instance_id: string
   node_id: string
-  kind: 'approval' | 'sign' | 'fork'
+  kind: 'approval' | 'sign' | 'fork' | 'wait'
   status: string
   parent_group_id: string | null
   branch_key: string | null
@@ -30,9 +31,9 @@ interface Activity {
   arrived_branches: string[]
   revision: number
 }
-interface Context {
+export interface Context {
   db: Database
-  actor: Actor
+  actor: FactActor
   instanceId: string
   requestId: string
   applicantId: string
@@ -76,7 +77,7 @@ const available = async (context: Context, node: WorkflowNode) => {
       throw new DomainError(422, 'SELF_APPROVAL', '申请人不能审批自己的申请')
     const members = await rows<{ permissions: string[] }>(
       context.db,
-      "SELECT af_effective_permissions(m.tenant_id,m.user_id) AS permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND u.status='enabled'",
+      "SELECT af_effective_permissions(m.tenant_id,m.user_id) AS permissions FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.user_id=$2 AND m.status='enabled' AND m.deleted_at IS NULL AND u.status='enabled' FOR SHARE OF m,u",
       [context.actor.tenantId, id]
     )
     if (
@@ -173,6 +174,25 @@ const walk = async (
     )
     return
   }
+  if (node.type === 'wait') {
+    const activityId = randomUUID()
+    await db.query(
+      "INSERT INTO workflow_activities(tenant_id,id,instance_id,node_id,kind,status,parent_group_id,branch_key) VALUES($1,$2,$3,$4,'wait','waiting',$5,$6)",
+      [actor.tenantId, activityId, instanceId, id, parent, branch]
+    )
+    await createWorkflowTimer(
+      db,
+      actor.tenantId,
+      instanceId,
+      id,
+      activityId,
+      'resume',
+      node.config.delaySeconds as number
+    )
+    await fact(context, 'timer-wait', `${node.name}：等待定时唤起`, activityId)
+    context.fault('timer:created')
+    return
+  }
   if (node.type === 'approval' || node.type === 'sign') {
     await available(context, node)
     const activityId = randomUUID()
@@ -202,6 +222,16 @@ const walk = async (
         assignee
       )
     })
+    if (node.config.deadlineSeconds)
+      await createWorkflowTimer(
+        db,
+        actor.tenantId,
+        instanceId,
+        id,
+        activityId,
+        'deadline',
+        node.config.deadlineSeconds
+      )
     context.fault('parallel:tasks-created')
     return
   }
@@ -256,7 +286,7 @@ export const startParallelActivities = async (context: Context) => {
 }
 export const cancelParallelActivities = async (
   db: Database,
-  actor: Actor,
+  actor: FactActor,
   instanceId: string
 ) => {
   await db.query(
@@ -307,6 +337,12 @@ export const continueParallelActivity = async (
       outcome === 'approved' ? 'completed' : 'rejected',
     ]
   )
+  await cancelWorkflowTimers(
+    context.db,
+    context.actor.tenantId,
+    context.instanceId,
+    activity.id
+  )
   const cancelled = await context.db.query<{ id: string }>(
     "UPDATE workflow_tasks SET status='cancelled',revision=revision+1,completed_at=now() WHERE tenant_id=$1 AND instance_id=$2 AND activity_id=$3 AND status='pending' RETURNING id",
     [context.actor.tenantId, context.instanceId, activity.id]
@@ -344,6 +380,39 @@ export const continueParallelActivity = async (
     activity.branch_key
   )
   return { completed: await completed(context), rejected: false }
+}
+
+export const continueWaitingActivity = async (
+  context: Context,
+  activityId: string
+) => {
+  validateParallelWorkflow(context.schema)
+  const activity = one(
+    await rows<Activity>(
+      context.db,
+      'SELECT * FROM workflow_activities WHERE tenant_id=$1 AND instance_id=$2 AND id=$3 FOR UPDATE',
+      [context.actor.tenantId, context.instanceId, activityId]
+    )
+  )
+  if (activity.kind !== 'wait' || activity.status !== 'waiting')
+    throw new DomainError(409, 'STATE_CONFLICT', '定时等待活动已结束')
+  await context.db.query(
+    "UPDATE workflow_activities SET status='completed',revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2",
+    [context.actor.tenantId, activityId]
+  )
+  await fact(
+    context,
+    'timer-resume',
+    `${nodeFor(context, activity.node_id).name}：已按计划唤起`,
+    activityId
+  )
+  await walk(
+    context,
+    nextFor(context, activity.node_id),
+    activity.parent_group_id,
+    activity.branch_key
+  )
+  return completed(context)
 }
 
 export const parallelActivityProgress = async (

@@ -1,21 +1,20 @@
 import { randomUUID } from 'node:crypto'
 import { originalAssignmentSlot } from './assignment-runtime'
 import { audit, sequential, enqueue } from './support'
-import type { Database } from './support'
-import type { Actor } from './auth'
+import type { Database, FactActor } from './support'
 import type { WorkflowNode } from '@af-admin/contracts'
 import type { WorkflowRouteDecision } from '@af-admin/workflow-core'
 
 export const appendHistory = async (
   db: Database,
-  actor: Actor,
+  actor: FactActor,
   instanceId: string,
   action: string,
   taskId: string | null = null,
   comment = ''
 ) => {
   await db.query(
-    'INSERT INTO workflow_history (tenant_id,id,instance_id,task_id,action,operator_id,operator_name,comment,sequence) SELECT $1,$2,$3,$4,$5,$6,$7,$8,COALESCE(max(sequence),0)+1 FROM workflow_history WHERE tenant_id=$1 AND instance_id=$3',
+    'INSERT INTO workflow_history (tenant_id,id,instance_id,task_id,action,operator_id,operator_name,comment,operator_kind,sequence) SELECT $1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE(max(sequence),0)+1 FROM workflow_history WHERE tenant_id=$1 AND instance_id=$3',
     [
       actor.tenantId,
       randomUUID(),
@@ -25,12 +24,13 @@ export const appendHistory = async (
       actor.userId,
       actor.name,
       comment,
+      actor.userId === null ? 'system' : 'user',
     ]
   )
 }
 export const appendRouteHistory = async (
   db: Database,
-  actor: Actor,
+  actor: FactActor,
   instanceId: string,
   routes?: WorkflowRouteDecision[]
 ) => {
@@ -59,7 +59,7 @@ export const appendRouteHistory = async (
 }
 export const addTask = async (
   db: Database,
-  actor: Actor,
+  actor: FactActor,
   instanceId: string,
   requestId: string,
   node: WorkflowNode,
