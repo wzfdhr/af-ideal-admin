@@ -114,6 +114,47 @@ export const createR1Menu = (permissions: string[]) => {
         },
       ],
     })
+  if (permissions.includes('low-code:page:list') || permissions.includes('*')) {
+    const parent = entries.find((entry) => entry.name === 'Scalability')
+    const node: CapabilityMenuNode = {
+      path: 'lowCodeBuilder',
+      name: 'lowCodeBuilder',
+      componentKey: 'LowCodeBuilderPage',
+      meta: {
+        requireAuth: true,
+        locale: 'menu.Scalability.lowCodeBuilder',
+        access: { permissions: ['low-code:page:list'] },
+      },
+    }
+    if (parent) parent.children?.push(node)
+    else
+      entries.push({
+        path: '/Scalability',
+        name: 'Scalability',
+        componentKey: 'FullPageLayout',
+        meta: { requireAuth: true, locale: 'menu.Scalability', order: 5 },
+        children: [node],
+      })
+  }
+  if (permissions.includes('low-code:page:run') || permissions.includes('*'))
+    entries.push({
+      path: '/low-code',
+      name: 'lowCode',
+      componentKey: 'DefaultLayout',
+      meta: { requireAuth: true, locale: 'menu.lowCode', order: 6 },
+      children: [
+        {
+          path: 'pages',
+          name: 'lowCodeRuntimePages',
+          componentKey: 'LowCodeRuntimePage',
+          meta: {
+            requireAuth: true,
+            locale: 'menu.lowCode.runtime',
+            access: { permissions: ['low-code:page:run'] },
+          },
+        },
+      ],
+    })
   if (permissions.includes('audit:read') || permissions.includes('*'))
     entries.push({
       path: '/audit',

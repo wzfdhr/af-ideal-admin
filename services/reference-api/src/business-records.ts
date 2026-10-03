@@ -10,7 +10,11 @@ import {
   validateBusinessFields,
   computeBusinessFields,
 } from '@af-admin/contracts'
-import { assertRevision, advanceWorkflow } from '@af-admin/workflow-core'
+import {
+  assertRevision,
+  advanceWorkflow,
+  requirePermission,
+} from '@af-admin/workflow-core'
 import { instanceTimers } from './timer-state'
 import {
   startParallelActivities,
@@ -47,10 +51,14 @@ import {
 } from './support'
 import type { Actor } from './auth'
 import type { Database, FaultInjector } from './support'
-import type { Pool } from 'pg'
+import type { Pool, PoolClient } from 'pg'
 import type { FastifyInstance } from 'fastify'
 
-const detail = async (db: Database, actor: Actor, id: string) => {
+export const businessRecordDetail = async (
+  db: Database,
+  actor: Actor,
+  id: string
+) => {
   const row = await visibleRecord(db, actor, id)
   if (row.record_kind !== 'generic')
     throw new DomainError(404, 'NOT_FOUND', '资源不存在')
@@ -111,6 +119,205 @@ const detail = async (db: Database, actor: Actor, id: string) => {
       : [],
   }
 }
+export const createRecordInTransaction = async (
+  client: PoolClient,
+  current: Actor,
+  input: { applicationReleaseId: string; fields: unknown },
+  fault: FaultInjector = noFault
+) => {
+  requirePermission(current.permissions, P.create)
+  const release = await activeRelease(
+    client,
+    current,
+    input.applicationReleaseId,
+    'generic'
+  )
+  requireFormSourceRead(current, release.formSnapshot)
+  const fields = validateBusinessFields(
+    release.formSnapshot,
+    input.fields,
+    false
+  )
+  await assertFormSourcesAvailable(
+    client,
+    current,
+    release.formSnapshot,
+    fields
+  )
+  computeBusinessFields(release.formSnapshot, fields)
+  const id = randomUUID()
+  await client.query(
+    "INSERT INTO business_records(tenant_id,id,record_kind,application_release_id,applicant_id,applicant_name,department_snapshot,fields,half_day_units) VALUES ($1,$2,'generic',$3,$4,$5,$6,$7,NULL)",
+    [
+      current.tenantId,
+      id,
+      release.id,
+      current.userId,
+      current.name,
+      current.department,
+      JSON.stringify(fields),
+    ]
+  )
+  fault('business:create-stored')
+  await audit(client, current, 'business', 'create', 'business-record', id)
+  const row = await readRecordRow(client, current, id)
+  return { id: row.id, revision: row.revision, status: row.status }
+}
+
+export const saveRecordInTransaction = async (
+  client: PoolClient,
+  current: Actor,
+  id: string,
+  input: {
+    fields: unknown
+    expectedRevision: number
+    applicationReleaseId?: string
+  }
+) => {
+  requirePermission(current.permissions, P.update)
+  const old = await readRecordRow(client, current, id, true)
+  if (old.record_kind !== 'generic' || old.applicant_id !== current.userId)
+    throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+  assertRevision(old.revision, input.expectedRevision)
+  if (old.status !== 'draft')
+    throw new DomainError(409, 'STATE_CONFLICT', '只能编辑未提交草稿')
+  const release = await activeRelease(
+    client,
+    current,
+    input.applicationReleaseId || old.application_release_id,
+    'generic'
+  )
+  const previous = await readRelease(
+    client,
+    current.tenantId,
+    old.application_release_id
+  )
+  if (release.applicationId !== previous.applicationId)
+    throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+  requireFormSourceRead(current, release.formSnapshot)
+  const fields = validateBusinessFields(
+    release.formSnapshot,
+    input.fields,
+    false
+  )
+  await assertFormSourcesAvailable(
+    client,
+    current,
+    release.formSnapshot,
+    fields
+  )
+  computeBusinessFields(release.formSnapshot, fields)
+  await client.query(
+    'UPDATE business_records SET fields=$3,application_release_id=$4,revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2',
+    [current.tenantId, id, JSON.stringify(fields), release.id]
+  )
+  await audit(client, current, 'business', 'update', 'business-record', id)
+  return { id, revision: old.revision + 1, status: old.status }
+}
+
+export const submitRecordInTransaction = async (
+  client: PoolClient,
+  current: Actor,
+  id: string,
+  input: { expectedRevision: number; comment: string },
+  fault: FaultInjector = noFault
+) => {
+  requirePermission(current.permissions, P.submit)
+  const draft = await readRecordRow(client, current, id, true)
+  if (draft.record_kind !== 'generic' || draft.applicant_id !== current.userId)
+    throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+  assertRevision(draft.revision, input.expectedRevision)
+  if (draft.status !== 'draft')
+    throw new DomainError(409, 'STATE_CONFLICT', '记录已经提交')
+  const release = await activeRelease(
+    client,
+    current,
+    draft.application_release_id,
+    'generic'
+  )
+  await assertFilesReady(client, current.tenantId, id)
+  requireFormSourceRead(current, release.formSnapshot)
+  const validatedFields = validateBusinessFields(
+    release.formSnapshot,
+    draft.fields
+  )
+  await assertFormSourcesAvailable(
+    client,
+    current,
+    release.formSnapshot,
+    validatedFields
+  )
+  const routeValues = {
+    ...validatedFields,
+    ...computeBusinessFields(release.formSnapshot, validatedFields),
+  }
+  await validatePeople(
+    client,
+    current.tenantId,
+    release.workflowSnapshot,
+    current.userId,
+    routeValues
+  )
+  const parallel = release.workflowSnapshot.version >= 3
+  const next = parallel
+    ? { approval: null, routes: [], copiedUserIds: [] }
+    : advanceWorkflow(release.workflowSnapshot, undefined, routeValues)
+  const instanceId = randomUUID()
+  await client.query(
+    "INSERT INTO workflow_instances(tenant_id,id,request_id,release_id,status,current_node_id) VALUES ($1,$2,$3,$4,'running',$5)",
+    [current.tenantId, instanceId, id, release.id, next.approval?.id || null]
+  )
+  await client.query(
+    "UPDATE business_records SET status='running',revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2",
+    [current.tenantId, id]
+  )
+  if (next.approval)
+    await addTask(client, current, instanceId, id, next.approval, 'generic')
+  await appendHistory(client, current, instanceId, 'start')
+  if (parallel)
+    await startParallelActivities({
+      db: client,
+      actor: current,
+      instanceId,
+      requestId: id,
+      applicantId: current.userId,
+      businessKind: 'generic',
+      schema: release.workflowSnapshot,
+      values: routeValues,
+      fault,
+    })
+  await appendRouteHistory(client, current, instanceId, next.routes)
+  await sequential(next.copiedUserIds, async (recipient) =>
+    enqueue(client, current, recipient, id, '业务记录抄送', 'message', 'copy')
+  )
+  if (next.copiedUserIds.length)
+    await appendHistory(
+      client,
+      current,
+      instanceId,
+      'copy',
+      null,
+      '已按流程抄送'
+    )
+  fault('business:submit-task-created')
+  await audit(
+    client,
+    current,
+    'business',
+    'submit',
+    'business-record',
+    id,
+    'success',
+    { instanceId }
+  )
+  return {
+    id,
+    instanceId,
+    revision: draft.revision + 1,
+    status: 'running',
+  }
+}
+
 export const registerBusinessRecords = (
   server: FastifyInstance,
   pool: Pool,
@@ -128,10 +335,13 @@ export const registerBusinessRecords = (
       actor,
       P.read,
       async (client, current) => {
+        const query = record(request.query)
+        onlyKeys(query, ['current', 'pageSize', 'keyword'])
+        const page = pageQuery({ ...query, pageSize: query.pageSize || 100 })
         const apps = await rows(
           client,
-          "SELECT id,name,active_release_id AS \"activeReleaseId\" FROM applications WHERE tenant_id=$1 AND business_kind='generic' AND status='enabled' AND active_release_id IS NOT NULL ORDER BY name,id LIMIT 100",
-          [current.tenantId]
+          "SELECT id,name,active_release_id AS \"activeReleaseId\" FROM applications WHERE tenant_id=$1 AND business_kind='generic' AND status='enabled' AND active_release_id IS NOT NULL AND name ILIKE $2 ORDER BY name,id LIMIT $3 OFFSET $4",
+          [current.tenantId, `%${page.keyword}%`, page.pageSize, page.offset]
         )
         return ok(apps, request.id)
       }
@@ -216,7 +426,7 @@ export const registerBusinessRecords = (
       actor,
       undefined,
       async (client, current) =>
-        ok(await detail(client, current, id), request.id)
+        ok(await businessRecordDetail(client, current, id), request.id)
     )
   })
   server.post('/api/business/records', async (request) => {
@@ -239,51 +449,8 @@ export const registerBusinessRecords = (
         'business:create',
         scalarHeader(request, 'idempotency-key'),
         input,
-        async (client, current) => {
-          const release = await activeRelease(
-            client,
-            current,
-            input.applicationReleaseId,
-            'generic'
-          )
-          requireFormSourceRead(current, release.formSnapshot)
-          const fields = validateBusinessFields(
-            release.formSnapshot,
-            input.fields,
-            false
-          )
-          await assertFormSourcesAvailable(
-            client,
-            current,
-            release.formSnapshot,
-            fields
-          )
-          computeBusinessFields(release.formSnapshot, fields)
-          const id = randomUUID()
-          await client.query(
-            "INSERT INTO business_records(tenant_id,id,record_kind,application_release_id,applicant_id,applicant_name,department_snapshot,fields,half_day_units) VALUES ($1,$2,'generic',$3,$4,$5,$6,$7,NULL)",
-            [
-              current.tenantId,
-              id,
-              release.id,
-              current.userId,
-              current.name,
-              current.department,
-              JSON.stringify(fields),
-            ]
-          )
-          fault('business:create-stored')
-          await audit(
-            client,
-            current,
-            'business',
-            'create',
-            'business-record',
-            id
-          )
-          const row = await readRecordRow(client, current, id)
-          return { id: row.id, revision: row.revision, status: row.status }
-        }
+        (client, current) =>
+          createRecordInTransaction(client, current, input, fault)
       ),
       request.id
     )
@@ -309,56 +476,7 @@ export const registerBusinessRecords = (
         `business:update:${id}`,
         scalarHeader(request, 'idempotency-key'),
         input,
-        async (client, current) => {
-          const old = await readRecordRow(client, current, id, true)
-          if (
-            old.record_kind !== 'generic' ||
-            old.applicant_id !== current.userId
-          )
-            throw new DomainError(404, 'NOT_FOUND', '资源不存在')
-          assertRevision(old.revision, input.expectedRevision)
-          if (old.status !== 'draft')
-            throw new DomainError(409, 'STATE_CONFLICT', '只能编辑未提交草稿')
-          const release = await activeRelease(
-            client,
-            current,
-            input.applicationReleaseId || old.application_release_id,
-            'generic'
-          )
-          const previous = await readRelease(
-            client,
-            current.tenantId,
-            old.application_release_id
-          )
-          if (release.applicationId !== previous.applicationId)
-            throw new DomainError(404, 'NOT_FOUND', '资源不存在')
-          requireFormSourceRead(current, release.formSnapshot)
-          const fields = validateBusinessFields(
-            release.formSnapshot,
-            input.fields,
-            false
-          )
-          await assertFormSourcesAvailable(
-            client,
-            current,
-            release.formSnapshot,
-            fields
-          )
-          computeBusinessFields(release.formSnapshot, fields)
-          await client.query(
-            'UPDATE business_records SET fields=$3,application_release_id=$4,revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2',
-            [current.tenantId, id, JSON.stringify(fields), release.id]
-          )
-          await audit(
-            client,
-            current,
-            'business',
-            'update',
-            'business-record',
-            id
-          )
-          return { id, revision: old.revision + 1, status: old.status }
-        }
+        (client, current) => saveRecordInTransaction(client, current, id, input)
       ),
       request.id
     )
@@ -375,125 +493,8 @@ export const registerBusinessRecords = (
         `business:submit:${id}`,
         scalarHeader(request, 'idempotency-key'),
         input,
-        async (client, current) => {
-          const draft = await readRecordRow(client, current, id, true)
-          if (
-            draft.record_kind !== 'generic' ||
-            draft.applicant_id !== current.userId
-          )
-            throw new DomainError(404, 'NOT_FOUND', '资源不存在')
-          assertRevision(draft.revision, input.expectedRevision)
-          if (draft.status !== 'draft')
-            throw new DomainError(409, 'STATE_CONFLICT', '记录已经提交')
-          const release = await activeRelease(
-            client,
-            current,
-            draft.application_release_id,
-            'generic'
-          )
-          await assertFilesReady(client, current.tenantId, id)
-          requireFormSourceRead(current, release.formSnapshot)
-          const validatedFields = validateBusinessFields(
-            release.formSnapshot,
-            draft.fields
-          )
-          await assertFormSourcesAvailable(
-            client,
-            current,
-            release.formSnapshot,
-            validatedFields
-          )
-          const routeValues = {
-            ...validatedFields,
-            ...computeBusinessFields(release.formSnapshot, validatedFields),
-          }
-          await validatePeople(
-            client,
-            current.tenantId,
-            release.workflowSnapshot,
-            current.userId,
-            routeValues
-          )
-          const parallel = release.workflowSnapshot.version >= 3
-          const next = parallel
-            ? { approval: null, routes: [], copiedUserIds: [] }
-            : advanceWorkflow(release.workflowSnapshot, undefined, routeValues)
-          const instanceId = randomUUID()
-          await client.query(
-            "INSERT INTO workflow_instances(tenant_id,id,request_id,release_id,status,current_node_id) VALUES ($1,$2,$3,$4,'running',$5)",
-            [
-              current.tenantId,
-              instanceId,
-              id,
-              release.id,
-              next.approval?.id || null,
-            ]
-          )
-          await client.query(
-            "UPDATE business_records SET status='running',revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2",
-            [current.tenantId, id]
-          )
-          if (next.approval)
-            await addTask(
-              client,
-              current,
-              instanceId,
-              id,
-              next.approval,
-              'generic'
-            )
-          await appendHistory(client, current, instanceId, 'start')
-          if (parallel)
-            await startParallelActivities({
-              db: client,
-              actor: current,
-              instanceId,
-              requestId: id,
-              applicantId: current.userId,
-              businessKind: 'generic',
-              schema: release.workflowSnapshot,
-              values: routeValues,
-              fault,
-            })
-          await appendRouteHistory(client, current, instanceId, next.routes)
-          await sequential(next.copiedUserIds, async (recipient) =>
-            enqueue(
-              client,
-              current,
-              recipient,
-              id,
-              '业务记录抄送',
-              'message',
-              'copy'
-            )
-          )
-          if (next.copiedUserIds.length)
-            await appendHistory(
-              client,
-              current,
-              instanceId,
-              'copy',
-              null,
-              '已按流程抄送'
-            )
-          fault('business:submit-task-created')
-          await audit(
-            client,
-            current,
-            'business',
-            'submit',
-            'business-record',
-            id,
-            'success',
-            { instanceId }
-          )
-          return {
-            id,
-            instanceId,
-            revision: draft.revision + 1,
-            status: 'running',
-          }
-        }
+        (client, current) =>
+          submitRecordInTransaction(client, current, id, input, fault)
       ),
       request.id
     )

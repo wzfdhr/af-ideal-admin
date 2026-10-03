@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto'
 import Fastify from 'fastify'
 import { DomainError } from '@af-admin/contracts'
+import { registerLowCodeSources } from './low-code-sources'
+import { registerLowCodePages } from './low-code-pages'
+import { registerLowCodeRuntime } from './low-code-runtime'
 import { registerWorkflowTimers } from './workflow-timers'
 import { registerWorkflowRecovery } from './workflow-recovery'
 import { createPool } from './database'
@@ -124,6 +127,9 @@ export const createServer = (
   registerBusinessRecords(server, pool, fault)
   registerWorkflowRecovery(server, pool, fault)
   registerWorkflowTimers(server, pool)
+  registerLowCodeSources(server, pool)
+  registerLowCodePages(server, pool, fault)
+  registerLowCodeRuntime(server, pool, fault)
   registerFiles(server, pool, files)
   registerApplicationPackages(server, pool, fault)
   if (!database)

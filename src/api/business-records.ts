@@ -7,12 +7,22 @@ import type {
   WorkflowTimer,
 } from '@af-admin/contracts'
 
-export const publishedBusinessApplications = async () =>
-  (
-    await request.get<{ id: string; name: string; activeReleaseId: string }[]>(
-      '/business/applications'
-    )
-  ).data
+export const publishedBusinessApplications = async (): Promise<
+  { id: string; name: string; activeReleaseId: string }[]
+> => {
+  const readPage = async (
+    current: number
+  ): Promise<{ id: string; name: string; activeReleaseId: string }[]> => {
+    const result = (
+      await request.get<
+        { id: string; name: string; activeReleaseId: string }[]
+      >('/business/applications', { params: { current, pageSize: 100 } })
+    ).data
+    if (result.length < 100) return result
+    return [...result, ...(await readPage(current + 1))]
+  }
+  return readPage(1)
+}
 export const listBusinessRecords = async (params: {
   current: number
   pageSize: number

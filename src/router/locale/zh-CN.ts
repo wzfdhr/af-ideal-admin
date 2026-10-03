@@ -1,4 +1,7 @@
 export default {
+  'menu.lowCode': '业务页面',
+  'menu.lowCode.runtime': '已发布业务页',
+
   'menu.business.records': '业务申请',
   'menu.business.record': '申请详情',
   'menu.applications': '业务应用',

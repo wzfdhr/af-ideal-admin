@@ -161,6 +161,11 @@ export const migrateLowCodePageSchema = (
   }
 
   const legacySchema = schema as LegacyLowCodePageSchema
+  if (
+    normalizeVersion(legacySchema.version) >
+    CURRENT_LOW_CODE_PAGE_SCHEMA_VERSION
+  )
+    throw new Error('不支持的低代码页面格式版本')
 
   return {
     version: normalizeVersion(legacySchema.version),

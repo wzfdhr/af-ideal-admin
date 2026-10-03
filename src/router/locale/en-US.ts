@@ -1,4 +1,7 @@
 export default {
+  'menu.lowCode': 'Business pages',
+  'menu.lowCode.runtime': 'Published pages',
+
   'menu.business.records': 'Business requests',
   'menu.business.record': 'Request detail',
   'menu.applications': 'Business applications',

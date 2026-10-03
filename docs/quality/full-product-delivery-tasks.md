@@ -32,8 +32,8 @@
 | FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 进行中 |
 | FP-015 | 转交、无效身份、异常处理、授权/审计/任务幂等 | FP-014 | LA-044 | 进行中 |
 | FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 进行中 |
-| FP-017 | query/submit/navigate/openModal/refreshBlock/受控发起流程实际执行 | FP-010/012 | LA-038 | 进行中（设计，待实现） |
-| FP-018 | 低代码权限、保存重开、发布/灰度/回滚及真实管理页生成或渲染 | FP-017 | LA-039/T-610 | 进行中（设计，待实现） |
+| FP-017 | query/submit/navigate/openModal/refreshBlock/受控发起流程实际执行 | FP-010/012 | LA-038 | 进行中 |
+| FP-018 | 低代码权限、保存重开、发布/灰度/回滚及真实管理页生成或渲染 | FP-017 | LA-039/T-610 | 进行中 |
 | FP-019 | 包格式/依赖/校验/引用迁移，新租户导入运行；无凭据/业务数据 | FP-012/018 | LA-040 | 进行中 |
 | FP-020 | 对象存储、真实附件 bytes、上传/下载/预览/分片与授权绑定 | FP-004/010 | LA-041 | 进行中 |
 | FP-021 | 扫描、隔离、失败/孤立清理和文件审计 | FP-020 | LA-041 | 进行中 |
@@ -417,3 +417,19 @@
 
 - 已读取当前builder/api/schema及LA-038/039对应规则，确认runAction只有查询/刷新共用预览，其余只显示提示，ProForm只读、reference-api未接入，v1开放url/props及未来格式未闭合。缺口作为源码事实记录，未把Mock管理页标成真实完成。
 - 方案full-product-low-code-runtime-design.md明确五种动作、后台登记来源/权限及字段投影、闭合v2配置、独立页面/发布存储、版本/灰度/回退、真实设备领用管理页和后续统计/图表、跨租户包/物料链路及验收顺序。当前是差距及设计进展，无实际低代码实现或验收结论；下一步补契约/非法动作失败回归并接真实存储与来源。
+
+### FP-017/018 真实低代码配置、五动作及管理页增量
+
+- 实施/阶段自检：Codex，2026-10-03，继承5a6af46。低代码进入真实参考后端，未将原v1 Mock演示升级成虚假真实结论。方案full-product-low-code-runtime-design.md记录已实现边界；页面包/完整物料市场/更多来源及正式交付仍保留原FP任务。
+- 020_low_code_pages.sql分别保存受控来源、页面草稿、不可变发布版和引用FK。来源只有application-records/registered-dictionary两种固定适配器，不接受url/method/headers；发布固定schema/source快照/hash，来源身份不可重定向，tenant FK防止外部引用。配置目录/对象/写入按创建者成员范围，幂等回执重放也检查当前范围；运行权限不授予业务或配置权限。
+- v2物料、布局、列、统计口径、动作/目标/命令/路由闭合，未知v3拒绝，原v1显式Mock保留并拒绝未来格式。contracts-before.log为新契约不支持的实际失败；contracts-initial.log新增3契约通过。首次shared.log/类型检查发现不完整target收窄及共享事务函数client类型，按明确返回/PoolClient修正，没有any或删断言绕过。
+- create/save/start从原business-records回调提取同一连接事务函数，业务角色/归属/字段/版本、附件就绪、发布快照、审批/历史/审计/Outbox保持原义。低代码命令在其幂等事务内检查当前页面、灰度选版、目标和来源，再调用这些领域函数；故障整体回滚，不用自发HTTP代理或另写专用设备系统。配置保存不能冒充业务保存，未保存fields不得直接start，旧页面版本写入409且无效果。
+- query/refreshBlock执行实际来源并写明确目标，submit真实存储/审批，navigate重验所属记录后返回固定站内详情，openModal返回真实授权表单/草稿；生成管理页复用ProTable/FormRenderer/附件/审批。来源查询只给当前申请人授权记录，字典必须同时具备form-source:read与system:dict:read；5秒查询局部超时、分页有界。字段采用field:前缀避免覆盖记录身份/状态元数据。
+- 页面预览使用同一受控执行器并明确未发布及写当前环境；设计、保存刷新重开、发布、主/灰度指针和0/100/稳定50选版可操作。模板复用已有真实业务发布版，一键生成表格、表单、数量/分布物料及五动作，不只是列表中的状态切换。来源停用/归档/撤权立即使后续访问失败；仅page:run账号显示来源无权状态，原始query403，不回退空数据或Mock。
+- domain-refactor-regression.log为原161项实际数据库/API回归通过；integration-first.log保留新账号权限fixture不足的失败，按功能权限与对象范围分别配置并恢复，integration-role-fixed.log166项通过。integration-scopes.log保留配置元数据范围收窄后缓存回执仍200的失败，改真实page/source command回执投影；integration-replay-fixed.log及integration-latest.log168项通过，覆盖字典底层权限、来源字段非法/任意地址、对象目录过滤及当前/回执范围拒绝。
+- 全量full-browser.log首次42通过/3失败保留：旧设备/表单入口的已发布应用列表按名称只返回100条，新应用不可选择；另真实文件扫描失败且本地13310已无监听。修复业务目录分页和客户端完整读取，不删旧断言；integration-directory.log最新169项通过，新增101后续应用及100/1分页真实HTTP证据。恢复原任务持有的ClamAV1.5.4配置/完整库，clamd-restored.log与scanner-protocol.json正常样本OK/EICAR FOUND，未改全局代理/原R1容器或用仅EICAR假库替代。
+- browser-first.log首轮新页面因继承4189预览服务无监听而失败，确认句柄缺失后恢复preview服务；browser-preview-restored.log两条实际页面通过。补仅页面权限账号及数据源权限态后browser-three.log三条通过，原始命令权限拒绝真实403；没有route.fulfill注入成功。runtime-approved.png像素已检查；初次图表快照在过渡动画中显示空白，禁用图表动画后真实分布图可读，统计来源与刷新时间明确，业务变化后区块显示待刷新。
+- full-browser-directory-fixed.log最新45条完整真实浏览器通过，含原R1/条件/并行/定时/包/字段权限/文件及新增低代码。员工经弹窗草稿→缺必填实际拒绝/输入保留→修正保存→真实提交→指定表格/统计/图表刷新→详情导航→两人审批；配置生成/JSON非法未来格式拒绝/保存重开/预览/发布以及0/100/回退、跨租户拒绝均通过。两个既有Mock/旧smoke各3项通过，10888未运行的代理错误仍仅作为Mock兼容边界。
+- unit-directory.log为452前端单测，contracts-all.log41契约+25领域/Mock、types-directory.log全workspace类型、build-directory.log完整构建通过。lint-current/lint-latest/lint-directory.log无错误/10警告（6既有、4新增函数声明顺序）；style/lint/build初期格式、嵌套ternary、同连接循环及Vue缩进失败保留，改明确分支/顺序流并修复，没有降低门禁。
+- 020仅在专属开发库应用，私有before-020.dump与demo-migrate/demo-initialize日志保留，原R1包/卷/容器未迁移。verify-low-code-recovery.mjs真实pg_dump/pg_restore到新库；database-recovery-first.log保留变量重名失败，修正且仅清理已核实无public表的自己空临时库。database-recovery-final.log和database-copy-final/report.json通过，20迁移、11关键表计数、会话、原页面/来源/业务版本一致，恢复库保存/提交/两人审批与0.30元计算正确，原库仍draft/数量2且无实例。私有dump不进入Git/可分享CI/应用包；这不是全新部署或客户验收。
+- 页面包及跨租户低代码来源重绑、完整物料目录/复用市场、更多受控来源/参数绑定、全套主题/密度/键盘/布局、物理数据库重启、新部署/兼容回退/容量等仍开放；FP-017/018/019及整个Goal保持进行中。本批须实际提交远端CI，不用此前定时源码绿色结果替代。关闭能力通过撤销权限、归档页面或停用来源，保留020及兼容API、业务和事实历史，不自动down migration。

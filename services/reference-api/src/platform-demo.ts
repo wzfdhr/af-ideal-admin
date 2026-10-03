@@ -13,6 +13,7 @@ import {
   FORM_DATA_SOURCE_PERMISSIONS,
   WORKFLOW_RECOVERY_PERMISSIONS,
   WORKFLOW_TIMER_PERMISSIONS,
+  LOW_CODE_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -58,8 +59,13 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(FORM_DATA_SOURCE_PERMISSIONS),
           ...Object.values(WORKFLOW_RECOVERY_PERMISSIONS),
           ...Object.values(WORKFLOW_TIMER_PERMISSIONS),
+          ...Object.values(LOW_CODE_PERMISSIONS),
         ]),
       ]
+    )
+    await client.query(
+      "UPDATE memberships SET permissions=permissions||$1::jsonb WHERE user_id IN ('a-employee','b-employee','a-manager-1','a-manager-2','b-manager-1','b-manager-2') AND NOT (permissions ? 'low-code:page:run')",
+      [JSON.stringify([LOW_CODE_PERMISSIONS.run])]
     )
     await client.query(
       "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT p) FROM jsonb_array_elements(permissions || $1::jsonb) p) WHERE user_id IN ('a-employee','b-employee','shared-employee')",
