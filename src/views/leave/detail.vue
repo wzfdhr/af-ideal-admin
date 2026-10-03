@@ -191,6 +191,13 @@
                 驳回
               </a-button>
             </div>
+            <WorkflowAssignmentEditor
+              v-if="hasPermission(user.permissions, 'workflow:transfer')"
+              :task-id="activeTask.id"
+              :revision="activeTask.revision"
+              mode="transfer"
+              @updated="load"
+            />
           </section>
           <section class="leave-panel">
             <h2>版本与进度</h2>
@@ -231,6 +238,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
+import WorkflowAssignmentEditor from '@/components/workflow-assignment-editor.vue'
 import StoredFiles from '@/components/stored-files.vue'
 import { confirmR1Action } from '@/services/r1-confirm'
 import { FormRenderer } from '@/components/form-runtime'

@@ -11,6 +11,7 @@ import {
   PACKAGE_PERMISSIONS,
   DICTIONARY_PERMISSIONS,
   FORM_DATA_SOURCE_PERMISSIONS,
+  WORKFLOW_RECOVERY_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -26,6 +27,10 @@ export const initializePlatformDemo = async (pool: Pool) => {
     throw new Error('A dedicated demo database is required')
   await seedDemo(pool)
   await transaction(pool, async (client) => {
+    await client.query(
+      "UPDATE memberships SET permissions=permissions || $1::jsonb WHERE user_id IN ('a-manager-1','a-manager-2','b-manager-1','b-manager-2') AND status='enabled' AND NOT (permissions ? 'workflow:transfer')",
+      [JSON.stringify([WORKFLOW_RECOVERY_PERMISSIONS.transfer])]
+    )
     await client.query(
       "INSERT INTO departments (tenant_id,id,department_name) SELECT DISTINCT m.tenant_id,'legacy-dept-'||md5(m.tenant_id||':'||m.department_name),m.department_name FROM memberships m WHERE NOT EXISTS (SELECT 1 FROM departments d WHERE d.tenant_id=m.tenant_id AND d.parent_id IS NULL AND d.department_name=m.department_name AND d.deleted_at IS NULL) ON CONFLICT DO NOTHING"
     )
@@ -50,6 +55,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(PACKAGE_PERMISSIONS),
           ...Object.values(DICTIONARY_PERMISSIONS),
           ...Object.values(FORM_DATA_SOURCE_PERMISSIONS),
+          ...Object.values(WORKFLOW_RECOVERY_PERMISSIONS),
         ]),
       ]
     )

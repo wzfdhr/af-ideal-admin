@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { originalAssignmentSlot } from './assignment-runtime'
 import { audit, sequential, enqueue } from './support'
 import type { Database } from './support'
 import type { Actor } from './auth'
@@ -67,8 +68,15 @@ export const addTask = async (
   assigneeId = node.config.approvers?.[0]
 ) => {
   const id = randomUUID()
+  const originalAssignee = await originalAssignmentSlot(
+    db,
+    actor.tenantId,
+    instanceId,
+    node.id,
+    assigneeId as string
+  )
   await db.query(
-    'INSERT INTO workflow_tasks (tenant_id,id,instance_id,node_id,node_name,assignee_id,activity_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    'INSERT INTO workflow_tasks (tenant_id,id,instance_id,node_id,node_name,assignee_id,activity_id,original_assignee_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
     [
       actor.tenantId,
       id,
@@ -77,6 +85,7 @@ export const addTask = async (
       node.name,
       assigneeId,
       activityId || null,
+      originalAssignee,
     ]
   )
   await enqueue(

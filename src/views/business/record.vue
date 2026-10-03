@@ -92,6 +92,14 @@
       >
         驳回
       </a-button>
+      <WorkflowAssignmentEditor
+        v-if="can('workflow:transfer')"
+        :key="pendingTask.id"
+        :task-id="pendingTask.id"
+        :revision="pendingTask.revision"
+        mode="transfer"
+        @updated="load"
+      />
     </section>
     <section
       v-if="current?.activities?.length"
@@ -141,6 +149,7 @@ import {
   onBeforeRouteUpdate,
 } from 'vue-router'
 import StoredFiles from '@/components/stored-files.vue'
+import WorkflowAssignmentEditor from '@/components/workflow-assignment-editor.vue'
 import { FormRenderer, migrateFormSchema } from '@/components/form-runtime'
 import type { VersionedFormSchema } from '@/components/form-designer/schema'
 import {

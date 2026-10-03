@@ -6,15 +6,17 @@
 
 ### 变更说明
 
-- 后续变更先记录到这里，发布时再归档到具体版本。
+- 参考后端新增本人审批转交、失权待办恢复及实际下一节点的实例级分配覆盖；原流程快照、签署票位和会签阈值保持固定。
+- 审批中心按独立待办/恢复权限加载对应页面，修复普通主管误加载演示配置接口导致403跳转；通用业务通知由真实worker投递并去重。
 
 ### 迁移说明
 
-- 无。
+- 全产品开发分支新增018工作流分配迁移及 `workflow:transfer/workflow:recover` 权限，保留001至017校验和。新增API、关闭入口和兼容回退规则见 `docs/architecture/full-product-workflow-recovery-design.md`；原R1交付包不随本增量改变。
 
 ### 验证
 
 - 发布前必须执行 `npm run lint:check`、`npm run typecheck`、`npm run test`、`npm run build:prd`。
+- 当前增量的真实数据库、浏览器、并发/重启及对应提交CI证据见 `docs/quality/full-product-delivery-tasks.md`；本栏为未发布开发能力，最终全产品交付门禁保持开放。
 
 ## [0.1.0-alpha.1] - 2026-10-01
 

@@ -84,7 +84,11 @@ export const createR1Menu = (permissions: string[]) => {
       ],
     },
   ]
-  if (permissions.includes('workflow:todo') || permissions.includes('*'))
+  if (
+    ['workflow:todo', 'workflow:recover', '*'].some((code) =>
+      permissions.includes(code)
+    )
+  )
     entries.push({
       path: '/Scalability',
       name: 'Scalability',
@@ -98,7 +102,10 @@ export const createR1Menu = (permissions: string[]) => {
           meta: {
             requireAuth: true,
             locale: 'menu.Scalability.workflowCenter',
-            access: { permissions: ['workflow:todo'] },
+            access: {
+              permissions: ['workflow:todo', 'workflow:recover'],
+              mode: 'any',
+            },
           },
         },
       ],

@@ -160,7 +160,7 @@ export const processOutbox = async (
             '通知接收人当前不可用'
           )
         if (
-          !/^(?:\/leave\/requests\/[A-Za-z0-9%_-]+|\/audit\/logs\?targetId=[A-Za-z0-9%_-]+|\/leave\/application)$/.test(
+          !/^(?:\/leave\/requests\/[A-Za-z0-9%_-]+|\/business\/records\/[A-Za-z0-9%_-]+|\/audit\/logs\?targetId=[A-Za-z0-9%_-]+|\/leave\/application)$/.test(
             locked.payload.link
           )
         )

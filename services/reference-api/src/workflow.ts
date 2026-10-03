@@ -11,6 +11,7 @@ import {
   requirePermission,
   hasPermission,
 } from '@af-admin/workflow-core'
+import { runtimeAssignments } from './assignment-runtime'
 import {
   continueParallelActivity,
   cancelParallelActivities,
@@ -202,6 +203,12 @@ export const decideTask = (
         current.tenantId,
         instance.release_id
       )
+      const executionSchema = await runtimeAssignments(
+        client,
+        current.tenantId,
+        instance.id,
+        release.workflowSnapshot
+      )
       await client.query(
         'UPDATE workflow_tasks SET status=$3,revision=revision+1,completed_at=now() WHERE tenant_id=$1 AND id=$2',
         [current.tenantId, id, action === 'approve' ? 'approved' : 'rejected']
@@ -229,7 +236,7 @@ export const decideTask = (
             requestId: request.id,
             applicantId: request.applicant_id,
             businessKind: request.record_kind,
-            schema: release.workflowSnapshot,
+            schema: executionSchema,
             values: {
               ...fields,
               ...(request.record_kind === 'generic'
@@ -248,7 +255,7 @@ export const decideTask = (
         if (outcome.rejected) requestStatus = 'rejected'
       } else if (action === 'approve') {
         const fields = request.fields as unknown as JsonObject
-        const next = advanceWorkflow(release.workflowSnapshot, task.node_id, {
+        const next = advanceWorkflow(executionSchema, task.node_id, {
           ...fields,
           ...(request.record_kind === 'generic'
             ? computeBusinessFields(release.formSnapshot, fields)

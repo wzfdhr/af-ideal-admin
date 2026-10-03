@@ -68,3 +68,15 @@ test('expired lease on a final crashed attempt becomes an inspectable failed eve
   const result = await pool.query("SELECT status FROM outbox WHERE tenant_id='tenant-a' AND id=$1", [eventId])
   assert.equal(result.rows[0].status, 'failed')
 })
+
+test('notification delivery rejects external, script and unrelated business routes without producing messages', async () => {
+  for (const link of ['https://example.invalid/business/records/id', 'javascript:alert(1)', '/system/users/id', '/business/records/../../system']) {
+    const eventId = await fixture()
+    await pool.query("UPDATE outbox SET payload=jsonb_set(payload,'{link}',$1::jsonb) WHERE tenant_id='tenant-a' AND id=$2", [JSON.stringify(link), eventId])
+    await notification.processOutbox(pool, undefined, 100)
+    assert.equal((await pool.query("SELECT count(*)::int AS total FROM notifications WHERE tenant_id='tenant-a' AND event_id=$1", [eventId])).rows[0].total, 0)
+    const result = await pool.query("SELECT status,attempts FROM outbox WHERE tenant_id='tenant-a' AND id=$1", [eventId])
+    assert.equal(result.rows[0].status, 'pending')
+    assert.equal(result.rows[0].attempts, 1)
+  }
+})

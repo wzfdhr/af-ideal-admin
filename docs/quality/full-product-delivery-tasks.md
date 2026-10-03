@@ -30,7 +30,7 @@
 | FP-012 | 表单编辑重开、比较、发布运行一致、格式迁移和回滚 | FP-011 | T-304/LA-040 | 进行中 |
 | FP-013 | 结构化条件 AST 的真实流程运行，确定路由、拒绝脚本和错误恢复 | FP-010 | LA-044 | 进行中 |
 | FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 进行中 |
-| FP-015 | 转交、无效身份、异常处理、授权/审计/任务幂等 | FP-014 | LA-044 | 未开始 |
+| FP-015 | 转交、无效身份、异常处理、授权/审计/任务幂等 | FP-014 | LA-044 | 进行中 |
 | FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 未开始 |
 | FP-017 | query/submit/navigate/openModal/refreshBlock/受控发起流程实际执行 | FP-010/012 | LA-038 | 未开始 |
 | FP-018 | 低代码权限、保存重开、发布/灰度/回滚及真实管理页生成或渲染 | FP-017 | LA-039/T-610 | 未开始 |
@@ -365,3 +365,20 @@
 - 并行/会签完整Mock运行、更多原生文件包往返/容量/压力、所有分辨率/主题/键盘、数据库服务重启、新部署/备份恢复/兼容回退及正式环境交付仍开放；FP-014保持进行中，FP-015转交/异常、FP-016耐久调度不删除。本批37条全量真实浏览器及新提交远端CI仍须确认，先前提交绿色不能代替。
 
 - parallel-full-browser.log的37项完整真实回归通过，原R1/条件/包/权限/文件均保留；parallel-mock-browser.log与parallel-smoke-browser.log各3项通过。旧smoke依然有10888未运行代理报错，不替代真实后台证据。parallel-schema-unit-final.log补直接channel重开保留断言通过；本批整体仍须新提交远端CI，正式模块部署/恢复等门禁保持开放。
+
+### 并行与会签远端验证
+
+- a70c801a34a1ab45081b5d90cfd0b5a6a29e29af的实际CI37077393324已通过，verify/real-business均success；此前归档parallel-remote-ci.json。2026-10-03接管时通过GitHub再次读取该提交的success，证据takeover-20261003/parallel-ci-confirmed.json。本条不包含后续转交/恢复。
+
+### FP-015 转交、异常恢复及接管后的失败回归
+
+- 实施/阶段自检：Codex，2026-10-03；接续p1的完整Goal，不改变冻结范围。分支codex/full-product-completion，继承a70c801。接管时保留13个已跟踪文件改动及12个未跟踪实现/测试/设计文件，快照takeover-20261003/inherited-working-tree.patch、inherited-untracked.tar.gz及baseline.json，未重置R1或开发数据。原目标全文仍位于用户附件goal-objective.md，当前Goal引用原文及本任务矩阵。
+- 018_workflow_assignments.sql新增原签署票位、实例级下一节点覆盖和不可变分配事实，沿用复合租户/实例/任务FK及业务→实例→任务锁序。本人转交与管理恢复独立权限；目标启用/可审批/成员范围、自审、会签重复票位及运行状态由后端复验。转交保留task.id和原票位，旧人失去处理、新人取得真实待办；恢复只针对当前失效人或实际阻塞前沿，不改release、阈值和已签票，不代替原人批准。命令回执、任务/覆盖、history/audit/Outbox同事务。
+- p1的recovery-full-browser.log为37通过/1失败，未被当成成功。接管后的reproduce-browser.log再次复现设备领用主管打开待办中心跳403；center-before-fix.log新增单测先失败。原因是恢复组件的v-else误归属，主管同时加载真实与演示运行时，演示配置请求403使页面离开。修复真实租户分支并保持原显式Mock入口，center-after-fix.log及center-browser-after-fix.log（设备领用与恢复两条）通过。
+- 新增恢复单独权限回归在recovery-access-before-fix.log失败：前端路由/菜单及真实服务端菜单仅接受todo。修复为todo/recover任一入口，各自仅加载被授权的组件。extended-before-fix.log为147通过/2失败，另确认通用业务Outbox链接被旧worker白名单拒绝、不能真正生成消息；补受控business/records链接，保留外部/脚本/无关/路径穿越拒绝测试。
+- takeover-20261003/integration-final.log的150项真实数据库/API通过，新增转交与批准竞争仅一次票位效果、转交与撤回后无pending、终态恢复拒绝、历史撤权后详情拒绝、真实worker投递/去重、非法通知链接拒绝，以及真实子API进程替换后读取覆盖、继续原人决策并创建目标任务。原有范围/双租户/停用/自审/重复会签票位/故障回滚/幂等/汇合前沿/不可变事实回归保留。
+- takeover-20261003/unit.log的448单测通过，contracts.log为37契约+22领域/Mock通过；build-final.log完整workspace构建、types.log全部workspace类型通过。lint-final.log无错误/6既有警告，首次lint.log的新增单测key格式错误已修复，不删检查。
+- takeover-20261003/full-browser.log的39项完整真实页面通过：原R1、设备领用、条件、并行、跨租户包、文件/扫描及权限等保留，新增本人转交→原人失权→实际目标审批、下一人撤权阻塞→管理恢复→原人重新决策→目标审批及原release固定，另验证只有恢复权限的新账号进入真实检查页且不请求个人待办/配置。mock-browser.log和smoke-browser.log各3项通过；旧smoke仍有10888未运行的代理错误，只作为Mock兼容证据。
+- 运行环境为macOS arm64/Chromium、Node24.17.0/npm11.13.0/PostgreSQL16，本地专属demo API10890、生产前端预览4189及ClamAV13310。API和worker使用继承私有env重启，未重新种子；原R1容器/卷/包保留。更多转交/恢复的Mock一致性、全主题/分辨率/键盘、数据库容器重启、新部署/备份恢复/兼容回退及目标环境交付仍开放。关闭新增入口可撤销transfer/recover权限并保留兼容API及018，不自动down migration或删除分配事实。本批新提交远端CI须单独确认，FP-015及整个Goal保持进行中，FP-016继续作为下一项真实实施。
+
+- recovery-1280-browser.log补最终1280×720恢复专权页面、实际Tab焦点位于视口以及原转交/恢复闭环，两条真实用例通过；recovery-only-runtime.png已检查，任务检查、错误/权限入口及文字可读。lint-release.log再次无错误/6既有警告。本地完整回归不替代当前提交的远端CI。

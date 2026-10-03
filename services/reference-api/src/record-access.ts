@@ -53,7 +53,7 @@ export const visibleRecord = async (db: Database, actor: Actor, id: string) => {
   const participated = review
     ? await rows(
         db,
-        'SELECT t.id FROM workflow_tasks t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id WHERE i.tenant_id=$1 AND i.request_id=$2 AND t.assignee_id=$3 LIMIT 1',
+        'SELECT t.id FROM workflow_tasks t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id WHERE i.tenant_id=$1 AND i.request_id=$2 AND (t.assignee_id=$3 OR EXISTS(SELECT 1 FROM workflow_assignment_events e WHERE e.tenant_id=t.tenant_id AND e.instance_id=t.instance_id AND e.task_id=t.id AND (e.from_user_id=$3 OR e.to_user_id=$3))) LIMIT 1',
         [actor.tenantId, id, actor.userId]
       )
     : []

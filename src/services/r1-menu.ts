@@ -17,7 +17,7 @@ const pagePermissions: Record<string, string[]> = {
   leaveRequests: ['leave:read:self'],
   leaveDetail: ['leave:read:self', 'workflow:todo'],
   leaveApplication: ['application:configure'],
-  workflowCenter: ['workflow:todo'],
+  workflowCenter: ['workflow:todo', 'workflow:recover'],
   messageCenter: ['message:list'],
   auditLogs: ['audit:read'],
   formDesign: ['application:configure'],
