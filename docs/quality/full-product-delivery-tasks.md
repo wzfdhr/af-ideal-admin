@@ -443,3 +443,13 @@
 
 - 新增full-product-page-package-design.md，明确v3页面/来源/物料依赖、包内符号和来源脱敏。已核实当前包只含表单/流程/人员/表单来源；低代码来源绑定实际release且不可重定向，因此目标业务未发布时不能伪造来源或复用原租户release。
 - 下一步实施受控待绑定页面定义、目标业务实际发布后的页面来源重绑和页面草稿/发布闭环；分别验证权限/字段/来源映射、原key/并发/恢复及实际跨租户文件导入。当前只有方案，没有页面包实现或验收结论，原v1/v2包与FP-019全部冻结范围保留。
+
+
+### FP-019 v3页面包与目标发布后重绑增量
+
+- 新增v3页/来源符号及page-contract v2、low-code-sources/受控Pro物料依赖。保留v1/v2路径；导出拒绝其他根应用、未发布页面及与导出业务定义不等价的固定发布版，去除源UUID/选项快照/默认值/业务数据。256KiB按UTF-8字节测量，未知未来格式/脚本/依赖/缺引用拒绝。
+- 021追加pending/bound页面集合与不可变定义/目标映射，应用、发布、成员、页面用租户复合FK。导入只生成独立业务草稿与待重绑定义；目标业务真实发布后由版本/幂等命令同事务创建来源、页面草稿、绑定事实及审计，不伪造发布指针。字典逐项重绑并复查启用/当前底层权限；回执重放也复验配置/页面/来源及当前创建者范围。
+- 实际配置页在目标业务发布前禁用重绑；生成页按pageId直接打开，刷新读取真实对象。原无页面包直接下载路径保留。人员/来源目录支持分页，UI完整获取且后续页拒绝时不返回截断结果；目录超过100条的双租户API和前端失败回归通过。
+- test-results/full-product/page-package-20261003/保留渐进失败：browser-first.log中员工详情跳转未等待路由导致主管打开错误路径，补实际详情URL等待后browser-route-fixed.log通过；integration-security.log中的字典跨租户负向先因漏抄送槽得到422，补完整人员映射后才验证真实404；database-copy.log保留恢复脚本命名导入不匹配的失败，修正实际模块导入后database-copy-final.log通过。integration-release-final.log保留故障断言将失败审计误算为成功事实的失败，改为检查成功事实回滚及失败审计保留；失败请求仍需可审计。未改变业务成功断言或注入成功响应。
+- database-copy/report.json记录实际pg_dump/pg_restore、21迁移及13表计数相同、原会话保持。独立恢复库继续待重绑→业务发布→来源/页生成→页面发布→员工真实创建/提交→两人审批，金额0.30；原库仍pending/空映射/无目标发布及页面。仅为原本地PostgreSQL实例内独立库恢复，不能替代新机器部署/全产品物理回退。
+- 本批unit-release-final.log的454单测、contracts-final.log的44契约/25领域、integration-release-success-facts.log的176真实数据库/API、integration-page-facts-final.log的7项新增专项、full-browser.log的46条完整真实浏览器通过；build-bytes-final.log/typecheck全workspace通过，lint-final.log无错误/10既有警告，新增脚本命名导入修正后style-release-final.log无错误。两个既有Mock/smoke各3条通过，旧10888代理报错只属于Mock路径，不当作真实服务证据。新增页面截图已检查，目标员工真实记录与已通过图表可读。对应新提交远端CI尚待实际执行。原R1包/卷/服务不改；更多跨应用/插件物料/受控HTTP依赖、全套主题键盘布局、容量、新部署/兼容回退及正式交付继续开放，FP-019和整个Goal不勾完成。

@@ -280,7 +280,7 @@
 </template>
 <script setup lang="ts">
 import { ref, computed, h, onMounted, watch, onUnmounted } from 'vue'
-import { useRouter, onBeforeRouteLeave } from 'vue-router'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useUserStore } from '@/store'
 import { adminUi } from '@/components/pro-ui'
 import ProTable from '@/components/pro-table/index.vue'
@@ -319,6 +319,7 @@ import type {
 } from '@af-admin/contracts'
 
 const router = useRouter()
+const route = useRoute()
 const user = useUserStore()
 const table = ref<ProTableExpose>()
 const current = ref<PersistentPage>()
@@ -618,6 +619,8 @@ const initialize = async () => {
         app.activeReleaseId
     )
     sources.value = catalogue.list
+    if (typeof route.query.pageId === 'string')
+      await edit(route.query.pageId, true)
   } catch (failure) {
     if (seq === ticket) error.value = errorMessage(failure)
   }
@@ -628,6 +631,12 @@ watch(
     ticket += 1
     busy.value = false
     initialize()
+  }
+)
+watch(
+  () => route.query.pageId,
+  (id) => {
+    if (typeof id === 'string') edit(id)
   }
 )
 onBeforeRouteLeave(

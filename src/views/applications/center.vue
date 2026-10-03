@@ -2,6 +2,11 @@
   <main class="application-center" data-testid="application-center">
     <h1>应用中心</h1>
     <ApplicationPackageImport @imported="table?.reload()" />
+    <ApplicationPackageExport
+      :app="exportApp"
+      :visible="Boolean(exportApp)"
+      @close="exportApp = undefined"
+    />
     <p v-if="error" role="alert">{{ error }}</p>
     <PermissionButton :permission="P.create" type="primary" @click="open()">
       创建应用
@@ -54,7 +59,12 @@
 import { h, ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import ApplicationPackageImport from '@/components/application-package-import.vue'
-import { exportApplicationPackage } from '@/api/application-packages'
+import ApplicationPackageExport from '@/components/application-package-export.vue'
+import {
+  exportApplicationPackage,
+  packageExportPages,
+} from '@/api/application-packages'
+import { useUserStore } from '@/store'
 import {
   listApplications,
   createApplication,
@@ -71,6 +81,7 @@ import type {
 import { createCommandRetry } from '@/services/command-retry'
 import { confirmR1Action } from '@/services/r1-confirm'
 import { registerDirtyCheck } from '@/services/tenant-context'
+import { hasPermission } from '@af-admin/workflow-core'
 import {
   APPLICATION_PERMISSIONS as P,
   parseApplicationCreate,
@@ -80,6 +91,7 @@ import type { ManagedApplication } from '@af-admin/contracts'
 
 const table = ref<ProTableExpose>()
 const router = useRouter()
+const user = useUserStore()
 const retry = createCommandRetry()
 const error = ref('')
 const editorError = ref('')
@@ -197,8 +209,16 @@ const state = async (app: ManagedApplication) => {
     error.value = message(failure)
   }
 }
+const exportApp = ref<ManagedApplication>()
 const exportPackage = async (app: ManagedApplication) => {
   try {
+    const pages = hasPermission(user.permissions, 'low-code:page:list')
+      ? await packageExportPages(app.id)
+      : []
+    if (pages.length) {
+      exportApp.value = app
+      return
+    }
     const pkg = await exportApplicationPackage(app)
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(pkg, null, 2)], { type: 'application/json' })

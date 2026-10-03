@@ -6,6 +6,8 @@ import {
   parseForm,
   parseWorkflow,
 } from './schemas'
+import { parseLowCodePage } from './low-code'
+import type { LowCodePageV2 } from './low-code'
 import type { FormSchema, WorkflowSchema } from './schemas'
 
 export const PACKAGE_PERMISSIONS = {
@@ -14,8 +16,15 @@ export const PACKAGE_PERMISSIONS = {
 } as const
 export interface ApplicationPackage {
   format: 'af-admin-application'
-  version: 1 | 2
+  version: 1 | 2 | 3
   sources?: { key: string; name: string; kind: 'dictionary' }[]
+  pageSources?: {
+    key: string
+    name: string
+    kind: 'application-records' | 'registered-dictionary'
+    binding: string
+  }[]
+  pages?: { key: string; name: string; schema: LowCodePageV2 }[]
   dependencies: {
     key:
       | 'form-contract'
@@ -24,6 +33,9 @@ export interface ApplicationPackage {
       | 'parallel-workflow'
       | 'timed-workflow'
       | 'registered-sources'
+      | 'page-contract'
+      | 'low-code-sources'
+      | 'pro-materials'
     version: 1 | 2
   }[]
   application: {
@@ -54,22 +66,26 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
     'workflow',
     'redactions',
     'checksum',
-    ...(body.version === 2 ? ['sources'] : []),
+    ...(Number(body.version) >= 2 ? ['sources'] : []),
+    ...(body.version === 3 ? ['pages', 'pageSources'] : []),
   ])
   if (
     body.format !== 'af-admin-application' ||
-    ![1, 2].includes(body.version as number)
+    ![1, 2, 3].includes(body.version as number)
   )
     throw new DomainError(
       422,
       'PACKAGE_VERSION_UNSUPPORTED',
       '应用包格式或版本不受支持'
     )
-  if (JSON.stringify(body).length > 262144)
+  if (new TextEncoder().encode(JSON.stringify(body)).byteLength > 262144)
     throw new DomainError(422, 'PACKAGE_TOO_LARGE', '应用定义包不能超过256KiB')
+  let dependencyCount = 2
+  if (body.version === 2) dependencyCount = 3
+  if (body.version === 3) dependencyCount = 6
   if (
     !Array.isArray(body.dependencies) ||
-    body.dependencies.length !== (body.version === 2 ? 3 : 2)
+    body.dependencies.length !== dependencyCount
   )
     throw new DomainError(422, 'PACKAGE_DEPENDENCY_INVALID', '依赖清单无效')
   const workflow = parseWorkflow(body.workflow)
@@ -90,10 +106,16 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
       ![
         'form-contract',
         workflowDependency,
-        ...(body.version === 2 ? ['registered-sources'] : []),
+        ...(Number(body.version) >= 2 ? ['registered-sources'] : []),
+        ...(body.version === 3
+          ? ['page-contract', 'low-code-sources', 'pro-materials']
+          : []),
       ].includes(String(item.key)) ||
       item.version !==
-        (item.key === 'form-contract' && body.version === 2 ? 2 : 1)
+        ((item.key === 'form-contract' && Number(body.version) >= 2) ||
+        item.key === 'page-contract'
+          ? 2
+          : 1)
     )
       throw new DomainError(
         422,
@@ -107,14 +129,14 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
         | 'conditional-workflow'
         | 'parallel-workflow'
         | 'timed-workflow'
-        | 'registered-sources',
+        | 'registered-sources'
+        | 'page-contract'
+        | 'low-code-sources'
+        | 'pro-materials',
       version: item.version as 1 | 2,
     }
   })
-  if (
-    new Set(dependencies.map((item) => item.key)).size !==
-    (body.version === 2 ? 3 : 2)
-  )
+  if (new Set(dependencies.map((item) => item.key)).size !== dependencyCount)
     throw new DomainError(422, 'PACKAGE_DEPENDENCY_INVALID', '依赖重复')
   const app = record(body.application)
   onlyKeys(app, ['name', 'description', 'businessKind'])
@@ -168,10 +190,10 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
       '当前包格式没有数据源重绑声明，不能携带原租户引用'
     )
   let sources: ApplicationPackage['sources']
-  if (body.version === 2) {
+  if (Number(body.version) >= 2) {
     if (
       !Array.isArray(body.sources) ||
-      body.sources.length > 10 ||
+      body.sources.length > (body.version === 3 ? 20 : 10) ||
       form.version !== 2
     )
       throw new DomainError(
@@ -197,7 +219,7 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
     })
     if (
       new Set(sources.map((slot) => slot.key)).size !== sources.length ||
-      sources.length !== form.dataSources.length
+      (body.version !== 3 && sources.length !== form.dataSources.length)
     )
       throw new DomainError(
         422,
@@ -218,8 +240,9 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
         )
     })
     if (
+      body.version !== 3 &&
       new Set(form.dataSources.map((binding) => binding.registryId)).size !==
-      sources.length
+        sources.length
     )
       throw new DomainError(
         422,
@@ -294,7 +317,7 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
     onlyKeys(item, ['path', 'reason'])
     if (
       item.reason !== 'default-value-removed' &&
-      !(body.version === 2 && item.reason === 'source-snapshot-removed')
+      !(Number(body.version) >= 2 && item.reason === 'source-snapshot-removed')
     )
       throw new DomainError(422, 'PACKAGE_INVALID', '脱敏规则无效')
     return {
@@ -304,13 +327,117 @@ export const parseApplicationPackage = (input: unknown): ApplicationPackage => {
         | 'source-snapshot-removed',
     }
   })
+  let pageSources: ApplicationPackage['pageSources']
+  let pages: ApplicationPackage['pages']
+  if (body.version === 3) {
+    if (
+      !Array.isArray(body.pageSources) ||
+      !body.pageSources.length ||
+      body.pageSources.length > 20 ||
+      !Array.isArray(body.pages) ||
+      !body.pages.length ||
+      body.pages.length > 20
+    )
+      throw new DomainError(
+        422,
+        'PACKAGE_REFERENCE_INVALID',
+        '页面包必须有明确页面和来源槽位'
+      )
+    pageSources = body.pageSources.map((raw) => {
+      const source = record(raw)
+      onlyKeys(source, ['key', 'name', 'kind', 'binding'])
+      const key = text(source.key, 'pageSource.key', 100)
+      const binding = text(source.binding, 'pageSource.binding', 100)
+      if (
+        !/^page-source-\d+$/.test(key) ||
+        !['application-records', 'registered-dictionary'].includes(
+          String(source.kind)
+        )
+      )
+        throw new DomainError(
+          422,
+          'PACKAGE_REFERENCE_INVALID',
+          '页面来源必须为受控槽位'
+        )
+      if (
+        source.kind === 'application-records'
+          ? binding !== 'application'
+          : !sources?.some((slot) => slot.key === binding)
+      )
+        throw new DomainError(
+          422,
+          'PACKAGE_REFERENCE_INVALID',
+          '页面来源绑定不是明确包内资源'
+        )
+      return {
+        key,
+        name: text(source.name, 'name', 100),
+        kind: source.kind as 'application-records' | 'registered-dictionary',
+        binding,
+      }
+    })
+    if (
+      new Set(pageSources.map((source) => source.key)).size !==
+      pageSources.length
+    )
+      throw new DomainError(
+        422,
+        'PACKAGE_REFERENCE_INVALID',
+        '页面来源槽位重复'
+      )
+    const usedPageSources = new Set<string>()
+    pages = body.pages.map((raw) => {
+      const page = record(raw)
+      onlyKeys(page, ['key', 'name', 'schema'])
+      const key = text(page.key, 'page.key', 100)
+      if (!/^page-\d+$/.test(key))
+        throw new DomainError(
+          422,
+          'PACKAGE_REFERENCE_INVALID',
+          '页面必须使用包内标识'
+        )
+      const schema = parseLowCodePage(page.schema)
+      schema.sources.forEach((source) => {
+        if (!pageSources?.some((slot) => slot.key === source))
+          throw new DomainError(
+            422,
+            'PACKAGE_REFERENCE_INVALID',
+            '页面引用包外来源'
+          )
+        usedPageSources.add(source)
+      })
+      return { key, name: text(page.name, 'name', 100), schema }
+    })
+    if (
+      new Set(pages.map((page) => page.key)).size !== pages.length ||
+      usedPageSources.size !== pageSources.length
+    )
+      throw new DomainError(
+        422,
+        'PACKAGE_REFERENCE_INVALID',
+        '页面或来源清单与实际引用不一致'
+      )
+    const usedDictionarySources = new Set(
+      form.dataSources.map((binding) => String(binding.registryId))
+    )
+    pageSources
+      .filter((source) => source.kind === 'registered-dictionary')
+      .forEach((source) => usedDictionarySources.add(source.binding))
+    if (usedDictionarySources.size !== sources?.length)
+      throw new DomainError(
+        422,
+        'PACKAGE_REFERENCE_INVALID',
+        '字典槽位必须被表单或页面明确使用'
+      )
+  }
   const checksum = text(body.checksum, 'checksum', 64)
   if (!/^[a-f0-9]{64}$/.test(checksum))
     throw new DomainError(422, 'PACKAGE_CHECKSUM_INVALID', '应用包摘要格式无效')
   return {
     format: 'af-admin-application',
-    version: body.version as 1 | 2,
+    version: body.version as 1 | 2 | 3,
     ...(sources ? { sources } : {}),
+    ...(pages && pageSources ? { pages, pageSources } : {}),
     dependencies,
     application: {
       name: text(app.name, 'name', 100),

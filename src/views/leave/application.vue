@@ -89,6 +89,11 @@
           </a-button>
         </a-space>
       </section>
+      <ApplicationPackagePages
+        v-if="app && can('application:import')"
+        :application-id="app.id"
+        :active-release-id="app.activeReleaseId"
+      />
       <a-tabs v-model:active-key="tab">
         <a-tab-pane key="form" title="配置表单">
           <section class="leave-panel">
@@ -207,6 +212,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute } from 'vue-router'
+import ApplicationPackagePages from '@/components/application-package-pages.vue'
 import { confirmR1Action } from '@/services/r1-confirm'
 import FormDesigner from '@/components/form-designer/index.vue'
 import WorkflowDesigner from '@/components/workflow-designer/index.vue'

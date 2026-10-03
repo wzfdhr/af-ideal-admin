@@ -11,11 +11,15 @@
 - 新增v4定时等待与审批/会签期限提醒，持久计划、租约、一次效果、失权恢复及独立定时权限；设计、发布、运行和跨租户应用包使用同一配置。自动事实明确标记调度服务，不替代人类审批。
 - 新增真实低代码页面：闭合v2配置、应用/字典受控来源、五种实际动作、不可变发布版/稳定灰度/回退，以及复用公共业务保存和审批的管理页生成。修复已发布业务目录超过100项后不可选择后续应用。
 
+- 新增v3页面应用包：包内来源符号、目标业务发布后重绑、独立页面草稿与人工发布、即时撤权和事务回滚。人员/登记来源目录可完整分页读取，生成的页面可按实际ID直接重开。
+
 ### 迁移说明
 
 - 全产品开发分支新增018工作流分配迁移及 `workflow:transfer/workflow:recover` 权限，保留001至017校验和。新增API、关闭入口和兼容回退规则见 `docs/architecture/full-product-workflow-recovery-design.md`；原R1交付包不随本增量改变。
 - 新增019流程定时迁移、`workflow:timer:read/workflow:timer:retry`权限和`timed-workflow`包依赖，保留001至018校验和。HistoryRecord.operatorId可为空以表达系统事实；新客户端应兼容。v4实例的服务回退和定时恢复边界见 `docs/architecture/full-product-workflow-scheduling-design.md`。
 - 新增020低代码来源/页面/发布迁移和low-code:page/source权限。原v1只用于显式Mock，真实v2拒绝未来v3及任意URL/脚本；原业务API保持，已发布业务目录增加分页，客户端完整读取。能力边界、固定来源及恢复/回退见 `docs/architecture/full-product-low-code-runtime-design.md`。
+
+- 新增021待重绑页面集合与不可变映射事实，保留001至020；v1/v2兼容，v3声明页面/来源/受控物料依赖，包大小按UTF-8字节限制。迁移、权限、独立恢复及兼容回退见 `docs/architecture/full-product-page-package-design.md`。
 
 ### 验证
 

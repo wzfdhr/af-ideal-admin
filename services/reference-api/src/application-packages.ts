@@ -18,6 +18,11 @@ import {
   validateExecutableWorkflow,
   requirePermission,
 } from '@af-admin/workflow-core'
+import {
+  exportPackagePages,
+  stagePackagePages,
+  validatePackageDictionaryBindings,
+} from './package-pages'
 import { authenticate, scalarHeader } from './auth'
 import {
   authorizedTransaction,
@@ -27,6 +32,7 @@ import {
   contentHash,
   audit,
   noFault,
+  pageQuery,
 } from './support'
 import {
   requireFormSourceRead,
@@ -60,6 +66,7 @@ export const registerApplicationPackages = (
   })
   server.get('/api/application-packages/people', async (request) => {
     const actor = await authenticate(pool, request)
+    const page = pageQuery({ pageSize: 100, ...record(request.query || {}) })
     return authorizedTransaction(
       pool,
       actor,
@@ -67,8 +74,8 @@ export const registerApplicationPackages = (
       async (client, current) => {
         const people = await rows(
           client,
-          "SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,(af_effective_permissions(m.tenant_id,m.user_id) ? 'workflow:approve' AND af_effective_permissions(m.tenant_id,m.user_id) ? 'workflow:reject') AS \"canApprove\" FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.status='enabled' AND m.deleted_at IS NULL AND u.status='enabled' ORDER BY m.user_id LIMIT 100",
-          [current.tenantId]
+          "SELECT m.user_id AS id,COALESCE(m.display_name,u.name) AS name,(af_effective_permissions(m.tenant_id,m.user_id) ? 'workflow:approve' AND af_effective_permissions(m.tenant_id,m.user_id) ? 'workflow:reject') AS \"canApprove\" FROM memberships m JOIN users u ON u.id=m.user_id WHERE m.tenant_id=$1 AND m.status='enabled' AND m.deleted_at IS NULL AND u.status='enabled' ORDER BY m.user_id LIMIT $2 OFFSET $3",
+          [current.tenantId, page.pageSize, page.offset]
         )
         return ok(people, request.id)
       }
@@ -76,6 +83,7 @@ export const registerApplicationPackages = (
   })
   server.get('/api/application-packages/sources', async (request) => {
     const actor = await authenticate(pool, request)
+    const page = pageQuery({ pageSize: 100, ...record(request.query || {}) })
     return authorizedTransaction(
       pool,
       actor,
@@ -92,8 +100,8 @@ export const registerApplicationPackages = (
         requirePermission(current.permissions, DICTIONARY_PERMISSIONS.read)
         const sources = await rows(
           client,
-          "SELECT s.id,s.name,s.code,s.kind FROM form_data_sources s JOIN dictionaries d ON d.tenant_id=s.tenant_id AND d.id=s.dictionary_id WHERE s.tenant_id=$1 AND s.status='enabled' AND d.status='enabled' AND d.deleted_at IS NULL ORDER BY s.name,s.id LIMIT 100",
-          [current.tenantId]
+          "SELECT s.id,s.name,s.code,s.kind FROM form_data_sources s JOIN dictionaries d ON d.tenant_id=s.tenant_id AND d.id=s.dictionary_id WHERE s.tenant_id=$1 AND s.status='enabled' AND d.status='enabled' AND d.deleted_at IS NULL ORDER BY s.name,s.id LIMIT $2 OFFSET $3",
+          [current.tenantId, page.pageSize, page.offset]
         )
         return ok(sources, request.id)
       }
@@ -103,7 +111,24 @@ export const registerApplicationPackages = (
     const actor = await authenticate(pool, request)
     const id = text(record(request.params).id, 'id', 100)
     const body = record(request.body)
-    onlyKeys(body, ['expectedRevision', 'formRevision', 'workflowRevision'])
+    onlyKeys(body, [
+      'expectedRevision',
+      'formRevision',
+      'workflowRevision',
+      'pageIds',
+    ])
+    let pageIds: string[] = []
+    if (body.pageIds !== undefined) {
+      if (!Array.isArray(body.pageIds) || body.pageIds.length > 20)
+        throw new DomainError(
+          422,
+          'PACKAGE_REFERENCE_INVALID',
+          '页面选择必须为有界数组'
+        )
+      pageIds = body.pageIds.map((value) => text(value, 'pageId', 100))
+      if (new Set(pageIds).size !== pageIds.length)
+        throw new DomainError(422, 'PACKAGE_REFERENCE_INVALID', '页面选择重复')
+    }
     const expectedRevision = positiveInteger(body.expectedRevision)
     return authorizedTransaction(
       pool,
@@ -213,8 +238,22 @@ export const registerApplicationPackages = (
               slot(member, 'copy')
             )
         })
+        const portablePages = pageIds.length
+          ? await exportPackagePages(
+              client,
+              current,
+              id,
+              app.active_release_id,
+              pageIds,
+              sources,
+              originalSourceIds
+            )
+          : undefined
         const packageV2 =
-          sources.length > 0 || form.version === 2 || workflow.version >= 2
+          pageIds.length > 0 ||
+          sources.length > 0 ||
+          form.version === 2 ||
+          workflow.version >= 2
         if (packageV2) form.version = 2
         let workflowDependency:
           | 'serial-workflow'
@@ -224,10 +263,19 @@ export const registerApplicationPackages = (
         if (workflow.version === 2) workflowDependency = 'conditional-workflow'
         if (workflow.version === 3) workflowDependency = 'parallel-workflow'
         if (workflow.version === 4) workflowDependency = 'timed-workflow'
+        let packageVersion: ApplicationPackage['version'] = 1
+        if (packageV2) packageVersion = 2
+        if (portablePages) packageVersion = 3
         const pkg: ApplicationPackage = {
           format: 'af-admin-application',
-          version: packageV2 ? 2 : 1,
+          version: packageVersion,
           ...(packageV2 ? { sources } : {}),
+          ...(portablePages
+            ? {
+                pages: portablePages.pages,
+                pageSources: portablePages.pageSources,
+              }
+            : {}),
           dependencies: [
             { key: 'form-contract', version: packageV2 ? 2 : 1 },
             {
@@ -236,6 +284,13 @@ export const registerApplicationPackages = (
             },
             ...(packageV2
               ? [{ key: 'registered-sources' as const, version: 1 as const }]
+              : []),
+            ...(portablePages
+              ? [
+                  { key: 'page-contract' as const, version: 2 as const },
+                  { key: 'low-code-sources' as const, version: 1 as const },
+                  { key: 'pro-materials' as const, version: 1 as const },
+                ]
               : []),
           ],
           application: {
@@ -268,6 +323,7 @@ export const registerApplicationPackages = (
             app.active_release_id,
             ...identities.map((member) => member.user_id),
             ...originalSourceIds,
+            ...(portablePages?.forbiddenIds || []),
           ].filter(Boolean)
         )
         const inspect = (value: unknown): void => {
@@ -283,6 +339,8 @@ export const registerApplicationPackages = (
         }
         inspect(pkg.form)
         inspect(pkg.workflow)
+        if (pkg.pages) inspect(pkg.pages)
+        if (pkg.pageSources) inspect(pkg.pageSources)
         pkg.checksum = checksum(pkg)
         parseApplicationPackage(pkg)
         await audit(
@@ -311,7 +369,9 @@ export const registerApplicationPackages = (
         'name',
         'description',
         'bindings',
-        ...(record(body.package).version === 2 ? ['sourceBindings'] : []),
+        ...(Number(record(body.package).version) >= 2
+          ? ['sourceBindings']
+          : []),
       ])
       const pkg = parseApplicationPackage(body.package)
       if (checksum(pkg) !== pkg.checksum)
@@ -345,7 +405,7 @@ export const registerApplicationPackages = (
         ])
       )
       let sourceBindings: Record<string, string> | undefined
-      if (pkg.version === 2) {
+      if (pkg.version >= 2) {
         const map = record(body.sourceBindings, 'sourceBindings')
         if (
           Object.keys(map).length !== pkg.sources?.length ||
@@ -408,6 +468,13 @@ export const registerApplicationPackages = (
               form,
               workflow
             )
+            const pendingPages = await stagePackagePages(
+              client,
+              current,
+              created.id,
+              pkg,
+              sourceBindings || {}
+            )
             fault('package:application-created')
             await audit(
               client,
@@ -421,6 +488,7 @@ export const registerApplicationPackages = (
             )
             return {
               application: created,
+              ...(pendingPages ? { pendingPages } : {}),
               referenceMap: {
                 application: created.id,
                 form: created.formDraftId,
@@ -428,6 +496,40 @@ export const registerApplicationPackages = (
               },
               formatVersion: pkg.version,
             }
+          },
+          false,
+          '',
+          async (client, current, response) => {
+            const owned = one(
+              await rows<{ created_by: string }>(
+                client,
+                'SELECT created_by FROM application_package_page_sets WHERE tenant_id=$1 AND application_id=$2',
+                [current.tenantId, response.application.id]
+              ).then((values) =>
+                values.length ? values : [{ created_by: current.userId }]
+              )
+            )
+            if (pkg.version === 3) {
+              requirePermission(current.permissions, 'low-code:page:create')
+              requirePermission(current.permissions, 'low-code:source:create')
+              requirePermission(current.permissions, 'low-code:source:list')
+              await validatePackageDictionaryBindings(
+                client,
+                current,
+                pkg.sources || [],
+                sourceBindings || {}
+              )
+              const visible = one(
+                await rows<{ visible: boolean }>(
+                  client,
+                  'SELECT af_historical_member_scope_visible($1,$2,$3,$4) AS visible',
+                  [current.tenantId, current.userId, P.import, owned.created_by]
+                )
+              )
+              if (!visible.visible)
+                throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+            }
+            return response
           }
         ),
         request.id

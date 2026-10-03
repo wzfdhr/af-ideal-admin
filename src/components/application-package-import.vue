@@ -70,8 +70,13 @@
             </option>
           </select>
         </label>
-        <p v-if="pkg.version === 2">
+        <p v-if="pkg.version >= 2">
           源选项数据不随包导入；发布时读取目标数据源并生成独立快照。
+        </p>
+        <p v-if="pkg.version === 3">
+          包含{{
+            pkg.pages?.length || 0
+          }}个页面，导入后等待目标业务发布，再在配置页完成来源重绑和页面发布。
         </p>
         <p>导入只创建独立草稿，需要检查并单独发布后才能运行。</p>
       </template>
@@ -144,7 +149,7 @@ const save = async () => {
       code: code.value,
       description: pkg.value.application.description,
       bindings: bindings.value,
-      ...(pkg.value.version === 2
+      ...(pkg.value.version >= 2
         ? { sourceBindings: sourceBindings.value }
         : {}),
     }

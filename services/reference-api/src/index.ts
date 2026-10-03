@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import Fastify from 'fastify'
 import { DomainError } from '@af-admin/contracts'
+import { registerPackagePages } from './package-pages'
 import { registerLowCodeSources } from './low-code-sources'
 import { registerLowCodePages } from './low-code-pages'
 import { registerLowCodeRuntime } from './low-code-runtime'
@@ -132,6 +133,7 @@ export const createServer = (
   registerLowCodeRuntime(server, pool, fault)
   registerFiles(server, pool, files)
   registerApplicationPackages(server, pool, fault)
+  registerPackagePages(server, pool, fault)
   if (!database)
     server.addHook('onClose', async () => {
       await pool.end()
