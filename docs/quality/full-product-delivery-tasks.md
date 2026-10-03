@@ -32,8 +32,8 @@
 | FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 进行中 |
 | FP-015 | 转交、无效身份、异常处理、授权/审计/任务幂等 | FP-014 | LA-044 | 进行中 |
 | FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 进行中 |
-| FP-017 | query/submit/navigate/openModal/refreshBlock/受控发起流程实际执行 | FP-010/012 | LA-038 | 未开始 |
-| FP-018 | 低代码权限、保存重开、发布/灰度/回滚及真实管理页生成或渲染 | FP-017 | LA-039/T-610 | 未开始 |
+| FP-017 | query/submit/navigate/openModal/refreshBlock/受控发起流程实际执行 | FP-010/012 | LA-038 | 进行中（设计，待实现） |
+| FP-018 | 低代码权限、保存重开、发布/灰度/回滚及真实管理页生成或渲染 | FP-017 | LA-039/T-610 | 进行中（设计，待实现） |
 | FP-019 | 包格式/依赖/校验/引用迁移，新租户导入运行；无凭据/业务数据 | FP-012/018 | LA-040 | 进行中 |
 | FP-020 | 对象存储、真实附件 bytes、上传/下载/预览/分片与授权绑定 | FP-004/010 | LA-041 | 进行中 |
 | FP-021 | 扫描、隔离、失败/孤立清理和文件审计 | FP-020 | LA-041 | 进行中 |
@@ -406,3 +406,14 @@
 - timed-approved-runtime.png、timed-recovery-runtime.png及timed-recovery-controls.png实际像素已检查；1440设计/运行及1280恢复控件、错误原因保留和按钮焦点有具体证据，没有据此宣称全面无障碍。真实浏览器完成设计→发布→员工提交→等待唤起→实际期限消息→两人审批；另一条实际撤权→blocked→候选替换/原因确认→唤起/人工审批，原release保持；未注入成功响应。
 - verify-workflow-timer-recovery.mjs使用实际pg_dump/pg_restore到新库。database-recovery-first.log保留初次主管会话在备份后才创建、恢复库401的失败；修正为备份前建立需验证的会话。database-recovery-final.log和database-copy-final/report.json通过，19份迁移及7关键表计数一致，恢复库沿原版本/计划唤起并批准一次，原库保持running/pending且无目标任务。演练只停止/恢复专属开发worker，自己的随机临时库已清理；dump私有、CI排除且未进入Git或应用包。本证据是现有本地PostgreSQL服务中的独立库恢复，不是新部署或客户环境验收。
 - 更多嵌套等待/条件组合、全套主题/密度/键盘、Mock定时一致性、独立定时开关、容量/延迟及性能测量、数据库容器重启、新环境部署和v4兼容回退仍开放。FP-016保持进行中，本批新提交对应远端CI尚待实际执行；整个Goal不标完成。恢复部署保留019及v4兼容执行器，不能把v4在途实例交给只支持v3的旧服务或删除定时事实。
+
+### 定时与期限恢复远端验证
+
+- 实现提交87eaa025268293ee5f5f8317dce95468675ce904已推送开发分支，实际CI37099940512的verify/real-business均success，链接https://github.com/wzfdhr/af-ideal-admin/actions/runs/37099940512 。归档scheduling-20261003/remote-ci.json、ci-37099940512-workflow.log和ci-37099940512/real-business-evidence；实际远端161项数据库/API、42条真实浏览器、450单测、38契约+25领域/Mock、类型/构建及两组三条既有浏览器通过。
+- 浏览器视觉复查后明确修正两个细节：勾选框与标签同行显示，恢复原因修正后清除原最小长度错误；browser-final.log三条重验通过，build-final.log重建、lint-final-all.log无错误/6既有警告。上述修正已包含在87eaa02及实际远端回归中；未使用旧转交提交的绿色结果替代。
+- verification-manifest.json记录实现SHA及本地检查/恢复报告摘要。此为未公开发布的开发增量；新部署、物理数据库重启、v4兼容回退、完整定时Mock和容量等门禁仍开放，FP-016及整个Goal保持进行中。
+
+### FP-017/018 低代码真实运行下一批
+
+- 已读取当前builder/api/schema及LA-038/039对应规则，确认runAction只有查询/刷新共用预览，其余只显示提示，ProForm只读、reference-api未接入，v1开放url/props及未来格式未闭合。缺口作为源码事实记录，未把Mock管理页标成真实完成。
+- 方案full-product-low-code-runtime-design.md明确五种动作、后台登记来源/权限及字段投影、闭合v2配置、独立页面/发布存储、版本/灰度/回退、真实设备领用管理页和后续统计/图表、跨租户包/物料链路及验收顺序。当前是差距及设计进展，无实际低代码实现或验收结论；下一步补契约/非法动作失败回归并接真实存储与来源。
