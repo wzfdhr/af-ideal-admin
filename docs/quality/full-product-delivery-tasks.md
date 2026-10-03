@@ -31,7 +31,7 @@
 | FP-013 | 结构化条件 AST 的真实流程运行，确定路由、拒绝脚本和错误恢复 | FP-010 | LA-044 | 进行中 |
 | FP-014 | 并行/会签、汇合规则、并发与重复处理、撤回清理 | FP-013 | LA-044 | 进行中 |
 | FP-015 | 转交、无效身份、异常处理、授权/审计/任务幂等 | FP-014 | LA-044 | 进行中 |
-| FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 未开始 |
+| FP-016 | 耐久流程超时/调度、租约、重启和唯一执行 | FP-015 | LA-044 | 进行中（设计，待实现） |
 | FP-017 | query/submit/navigate/openModal/refreshBlock/受控发起流程实际执行 | FP-010/012 | LA-038 | 未开始 |
 | FP-018 | 低代码权限、保存重开、发布/灰度/回滚及真实管理页生成或渲染 | FP-017 | LA-039/T-610 | 未开始 |
 | FP-019 | 包格式/依赖/校验/引用迁移，新租户导入运行；无凭据/业务数据 | FP-012/018 | LA-040 | 进行中 |
@@ -382,3 +382,14 @@
 - 运行环境为macOS arm64/Chromium、Node24.17.0/npm11.13.0/PostgreSQL16，本地专属demo API10890、生产前端预览4189及ClamAV13310。API和worker使用继承私有env重启，未重新种子；原R1容器/卷/包保留。更多转交/恢复的Mock一致性、全主题/分辨率/键盘、数据库容器重启、新部署/备份恢复/兼容回退及目标环境交付仍开放。关闭新增入口可撤销transfer/recover权限并保留兼容API及018，不自动down migration或删除分配事实。本批新提交远端CI须单独确认，FP-015及整个Goal保持进行中，FP-016继续作为下一项真实实施。
 
 - recovery-1280-browser.log补最终1280×720恢复专权页面、实际Tab焦点位于视口以及原转交/恢复闭环，两条真实用例通过；recovery-only-runtime.png已检查，任务检查、错误/权限入口及文字可读。lint-release.log再次无错误/6既有警告。本地完整回归不替代当前提交的远端CI。
+
+### 转交与恢复远端验证
+
+- 实现提交0fcbb93a2ea28141a7175bad0d7e5ca1267f493e已推送开发分支；实际CI37095404333的verify/real-business均success，链接https://github.com/wzfdhr/af-ideal-admin/actions/runs/37095404333 。验证以该SHA为准，不使用旧并行提交的结果代替。
+- 归档takeover-20261003/recovery-remote-ci.json、ci-37095404333-workflow.log及ci-37095404333/real-business-evidence。实际远端integration.log为150通过/0失败，browser.log为39条真实用例通过；verify的37契约+22领域/Mock、448前端单测、类型、构建和两组三条浏览器门禁通过。frontend-evidence未生成文件型artifact，前端步骤保留完整workflow日志；没有将空artifact称为已下载。
+- 本地verification-manifest.json记录实现SHA与各验证日志摘要；后续本任务仅追加本条CI记录和FP-016设计，未改变0fcbb93的运行源码。未合并、创建正式tag、公开发布或部署客户生产。FP-015的完整部署/恢复/Mock一致性等门禁及整个Goal继续开放。
+
+### FP-016 下一批耐久调度
+
+- 方案已保存full-product-workflow-scheduling-design.md，FP-016-A至E明确闭合v4配置、期限提醒、等待活动、租约/唯一效果、受控恢复、原并行/会签归属及独立部署恢复证据。已核实多处version===3分流、包依赖和原事实主体约束，下一步先补契约/图校验失败回归，再接019持久化和worker。
+- 当前为设计进展，无timer表、真实调度或验收结论，不将方案写成FP-016实现完成。实际执行者仍为本任务Codex，原冻结功能和成功标准保留。
