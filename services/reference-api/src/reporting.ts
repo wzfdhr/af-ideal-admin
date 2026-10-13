@@ -45,7 +45,7 @@ import type { Database, FaultInjector } from './support'
 import type { Pool } from 'pg'
 import type { FastifyInstance } from 'fastify'
 
-interface DefinitionRow {
+export interface DefinitionRow {
   tenant_id: string
   id: string
   draft_schema: ReportingDefinitionV1
@@ -56,7 +56,7 @@ interface DefinitionRow {
   created_by: string
   updated_at: Date
 }
-interface VersionRow {
+export interface VersionRow {
   tenant_id: string
   id: string
   definition_id: string
@@ -151,7 +151,11 @@ const definitionDto = async (
     ...(detail ? { versions: versions.map(versionDto) } : {}),
   }
 }
-const locateVersion = async (db: Database, actor: Actor, id: string) => {
+export const locateReportingVersion = async (
+  db: Database,
+  actor: Actor,
+  id: string
+) => {
   const version = one(
     await rows<VersionRow>(
       db,
@@ -168,10 +172,12 @@ const locateVersion = async (db: Database, actor: Actor, id: string) => {
   )
   return { version, definition }
 }
-const requireEnabled = (row: DefinitionRow) => {
+export const requireReportingEnabled = (row: DefinitionRow) => {
   if (!row.enabled)
     throw new DomainError(409, 'REPORT_DISABLED', '报表已停用，当前不能查询')
 }
+const locateVersion = locateReportingVersion
+const requireEnabled = requireReportingEnabled
 const sourcePermissions = [P.query, P.create, P.update, P.publish, P.list]
 
 export const registerReporting = (

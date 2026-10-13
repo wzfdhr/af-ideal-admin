@@ -4,6 +4,7 @@ import { DomainError } from '@af-admin/contracts'
 import { registerMessaging } from './messaging'
 import { registerMessagingRealtime } from './messaging-realtime'
 import { registerReporting } from './reporting'
+import { registerReportExportRoutes } from './report-exports'
 import { registerMenuResources } from './menu-resources'
 import { registerPackagePages } from './package-pages'
 import { registerLowCodeSources } from './low-code-sources'
@@ -142,6 +143,7 @@ export const createServer = (
   registerMessaging(server, pool, fault)
   registerMessagingRealtime(server, pool)
   registerReporting(server, pool, fault)
+  registerReportExportRoutes(server, pool, fault, files)
   if (!database)
     server.addHook('onClose', async () => {
       await pool.end()

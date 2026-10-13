@@ -1,6 +1,9 @@
 import { defaultLayout } from '@/router/constants'
 import { REPORT_PERMISSIONS } from '@/constants/report'
-import { REPORTING_PERMISSIONS } from '@af-admin/contracts'
+import {
+  REPORTING_PERMISSIONS,
+  REPORT_EXPORT_PERMISSIONS,
+} from '@af-admin/contracts'
 import { dataMode } from '../../../../config/data-mode'
 import { AppRouteRecordRaw } from '../../types'
 
@@ -60,6 +63,7 @@ const userRoutes: AppRouteRecordRaw = {
                 permissions: [
                   REPORTING_PERMISSIONS.list,
                   REPORTING_PERMISSIONS.query,
+                  REPORT_EXPORT_PERMISSIONS.list,
                 ],
                 mode: 'any' as const,
               },

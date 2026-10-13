@@ -17,6 +17,7 @@ import {
   MENU_PERMISSIONS,
   MESSAGING_PERMISSIONS,
   REPORTING_PERMISSIONS,
+  REPORT_EXPORT_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -39,6 +40,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           REPORTING_PERMISSIONS.query,
           REPORTING_PERMISSIONS.fieldApplicant,
           REPORTING_PERMISSIONS.fieldBusiness,
+          ...Object.values(REPORT_EXPORT_PERMISSIONS),
         ]),
       ]
     )
@@ -90,6 +92,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(MENU_PERMISSIONS),
           ...Object.values(MESSAGING_PERMISSIONS),
           ...Object.values(REPORTING_PERMISSIONS),
+          ...Object.values(REPORT_EXPORT_PERMISSIONS),
         ]),
       ]
     )

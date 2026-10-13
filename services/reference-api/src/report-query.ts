@@ -2,6 +2,9 @@ import {
   DomainError,
   parseReportingDefinition,
   parseReportingQuery,
+  REPORT_EXPORT_MAX_ROWS,
+  REPORT_EXPORT_MAX_SNAPSHOT_BYTES,
+  REPORT_EXPORT_PRODUCER_VERSION,
 } from '@af-admin/contracts'
 import { rows, one } from './support'
 import {
@@ -16,6 +19,7 @@ import type {
   ReportingDefinitionV1,
   ReportingQueryResultV1,
   ReportingVisibleField,
+  ReportingExportSnapshot,
 } from '@af-admin/contracts'
 import type { ReportingFieldBinding, ReportingFieldMap } from './report-source'
 import type { Actor } from './auth'
@@ -49,12 +53,21 @@ const visibleDto = (field: ReportingFieldBinding): ReportingVisibleField => ({
   sortable: field.sortable,
 })
 
-export const queryReportingVersion = async (
+export interface ReportExportAuthorizationRow {
+  id: string
+  applicantId: string
+  allowedFieldKeys: string[]
+}
+const runReportingVersion = async (
   db: Database,
   actor: Actor,
   context: ReportingQueryContext,
-  input: unknown
-): Promise<ReportingQueryResultV1> => {
+  input: unknown,
+  exporting = false
+): Promise<{
+  result: ReportingQueryResultV1
+  manifest: ReportExportAuthorizationRow[]
+}> => {
   const schema = parseReportingDefinition(context.schema)
   const query = parseReportingQuery(input, schema)
   const source = await captureReportingSource(
@@ -183,15 +196,15 @@ export const queryReportingVersion = async (
   const valuesSql = values.length
     ? `jsonb_build_object(${values.join(',')})`
     : "'{}'::jsonb"
-  const limit = bind(query.pageSize)
-  const offset = bind((query.current - 1) * query.pageSize)
+  const limit = bind(exporting ? REPORT_EXPORT_MAX_ROWS + 1 : query.pageSize)
+  const offset = bind(exporting ? 0 : (query.current - 1) * query.pageSize)
   const direction = query.sort.direction === 'asc' ? 'ASC' : 'DESC'
   const sortExpression =
     sort.valueType === 'decimal'
       ? `(${sortColumn.alias})::numeric`
       : sortColumn.alias
   const sql = `WITH authorized AS MATERIALIZED (
-    SELECT r.id,r.status,r.created_at${
+    SELECT r.id,r.applicant_id,r.status,r.created_at${
       projections.length ? `,${projections.join(',')}` : ''
     },${hiddenExpression} AS hidden_field_keys
     FROM business_records r WHERE r.tenant_id=$1 AND r.application_release_id=$3 AND r.record_kind='generic'
@@ -200,16 +213,25 @@ export const queryReportingVersion = async (
       AND r.created_at < (($6::date+1)::timestamp AT TIME ZONE $4)
       AND (cardinality($7::text[])=0 OR r.status=ANY($7::text[]))
   ), matching AS MATERIALIZED (SELECT * FROM authorized WHERE ${predicate}),
-  page AS (SELECT id,${valuesSql} AS values,hidden_field_keys,row_number() OVER(ORDER BY ${sortExpression} ${direction} NULLS LAST,id ASC) AS position FROM matching ORDER BY ${sortExpression} ${direction} NULLS LAST,id ASC LIMIT ${limit} OFFSET ${offset}),
+  page AS (SELECT id,applicant_id,${valuesSql} AS values,hidden_field_keys,row_number() OVER(ORDER BY ${sortExpression} ${direction} NULLS LAST,id ASC) AS position FROM matching ORDER BY ${sortExpression} ${direction} NULLS LAST,id ASC LIMIT ${limit} OFFSET ${offset}),
   daily AS (SELECT to_char(created_at AT TIME ZONE $4,'YYYY-MM-DD') AS day,count(*) AS total FROM matching GROUP BY day),
   statuses AS (SELECT status,count(*) AS total FROM matching GROUP BY status)
   SELECT statement_timestamp() AS queried_at,statement_timestamp() AS data_cutoff_at,
     (SELECT count(*) FROM matching) AS total,
     COALESCE((SELECT jsonb_agg(jsonb_build_object('id',id,'values',values,'hiddenFieldKeys',hidden_field_keys) ORDER BY position) FROM page),'[]'::jsonb) AS rows,
+    ${
+      exporting
+        ? "COALESCE((SELECT jsonb_agg(jsonb_build_object('id',id,'applicantId',applicant_id) ORDER BY position) FROM page),'[]'::jsonb)"
+        : "'[]'::jsonb"
+    } AS manifest,
     COALESCE((SELECT jsonb_agg(jsonb_build_object('date',day,'count',total) ORDER BY day) FROM daily),'[]'::jsonb) AS trend,
     COALESCE((SELECT jsonb_agg(jsonb_build_object('status',status,'count',total) ORDER BY status) FROM statuses),'[]'::jsonb) AS distribution,
     COALESCE((SELECT array_agg(DISTINCT denied.field_key) FROM matching CROSS JOIN LATERAL unnest(hidden_field_keys) AS denied(field_key)),ARRAY[]::text[]) AS suppressed_keys`
-  await db.query("SET LOCAL statement_timeout='5000ms'")
+  await db.query(
+    exporting
+      ? "SET LOCAL statement_timeout='15000ms'"
+      : "SET LOCAL statement_timeout='5000ms'"
+  )
   const result = one(
     await rows<{
       queried_at: Date
@@ -219,9 +241,10 @@ export const queryReportingVersion = async (
       trend: ReportingQueryResultV1['trend']
       distribution: ReportingQueryResultV1['distribution']
       suppressed_keys: string[]
+      manifest: { id: string; applicantId: string }[]
     }>(db, sql, parameters)
   )
-  return {
+  const output: ReportingQueryResultV1 = {
     version: 1,
     definitionId: context.definitionId,
     definitionVersion: context.definitionVersion,
@@ -255,4 +278,89 @@ export const queryReportingVersion = async (
     trend: result.trend,
     distribution: result.distribution,
   }
+  return {
+    result: output,
+    manifest: result.manifest.map((identity) => ({
+      ...identity,
+      allowedFieldKeys: fields
+        .map((field) => field.key)
+        .filter(
+          (key) =>
+            !output.rows
+              .find((row) => row.id === identity.id)
+              ?.hiddenFieldKeys?.includes(key)
+        ),
+    })),
+  }
+}
+
+export const queryReportingVersion = async (
+  db: Database,
+  actor: Actor,
+  context: ReportingQueryContext,
+  input: unknown
+): Promise<ReportingQueryResultV1> =>
+  (await runReportingVersion(db, actor, context, input)).result
+
+/** Server-only capture: the HTTP query parser never accepts a larger page or client facts. */
+export const captureReportingExportSnapshot = async (
+  db: Database,
+  actor: Actor,
+  context: ReportingQueryContext & { definitionVersionId: string },
+  input: unknown
+) => {
+  const query = parseReportingQuery(input, context.schema)
+  const { result, manifest } = await runReportingVersion(
+    db,
+    actor,
+    context,
+    query,
+    true
+  )
+  if (
+    result.total > REPORT_EXPORT_MAX_ROWS ||
+    result.rows.length > REPORT_EXPORT_MAX_ROWS
+  )
+    throw new DomainError(
+      422,
+      'REPORT_EXPORT_TOO_MANY_ROWS',
+      `导出最多支持${REPORT_EXPORT_MAX_ROWS}条匹配记录，请缩小筛选范围`
+    )
+  if (result.total !== result.rows.length)
+    throw new DomainError(
+      409,
+      'REPORT_EXPORT_CAPTURE_INCOMPLETE',
+      '导出数据快照不完整'
+    )
+  const snapshot: ReportingExportSnapshot = {
+    version: 1,
+    producerVersion: REPORT_EXPORT_PRODUCER_VERSION,
+    definitionId: context.definitionId,
+    definitionVersionId: context.definitionVersionId,
+    definitionVersion: context.definitionVersion,
+    schema: context.schema,
+    sourceReleaseId: context.sourceReleaseId,
+    sourceReleaseVersion: context.sourceReleaseVersion,
+    policyVersion: 1,
+    query,
+    queriedAt: result.queriedAt,
+    dataCutoffAt: result.dataCutoffAt,
+    columns: result.visibleFields,
+    rows: result.rows,
+    total: result.total,
+  }
+  const size = one(
+    await rows<{ bytes: number }>(
+      db,
+      'SELECT octet_length($1::jsonb::text)+octet_length($2::jsonb::text) AS bytes',
+      [JSON.stringify(snapshot), JSON.stringify(manifest)]
+    )
+  )
+  if (size.bytes > REPORT_EXPORT_MAX_SNAPSHOT_BYTES)
+    throw new DomainError(
+      422,
+      'REPORT_EXPORT_SNAPSHOT_TOO_LARGE',
+      '导出数据快照超过2MiB，请缩小筛选范围'
+    )
+  return { snapshot, manifest }
 }

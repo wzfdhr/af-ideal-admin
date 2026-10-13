@@ -1,9 +1,10 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import {
   mkdir,
   readFile,
-  writeFile,
-  unlink,
+  open,
+  rename,
+  rm,
   readdir,
   stat,
 } from 'node:fs/promises'
@@ -26,19 +27,50 @@ export class LocalObjectStore {
   }
 
   async put(bytes: Buffer, key: string) {
+    const destination = this.objectPath(key)
     await mkdir(this.root, { recursive: true, mode: 0o700 })
+    // A completed nonempty directory cannot be replaced by rename. This gives
+    // no-clobber atomic publication on both POSIX and ExFAT without hard links.
+    // Old flat objects remain readable; only new objects use content directories.
+    const staging = path.join(this.root, `.${key}.${randomUUID()}.staging`)
+    await mkdir(staging, { mode: 0o700 })
     try {
-      await writeFile(this.objectPath(key), bytes, { flag: 'wx', mode: 0o600 })
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
-      if (fileDigest(await this.get(key)) !== fileDigest(bytes))
-        throw new DomainError(409, 'STORAGE_CONFLICT', '对象数据与既有摘要冲突')
+      const handle = await open(path.join(staging, 'content'), 'wx', 0o600)
+      try {
+        await handle.writeFile(bytes)
+        await handle.sync()
+      } finally {
+        await handle.close()
+      }
+      try {
+        await rename(staging, destination)
+      } catch (error) {
+        if (
+          !['EEXIST', 'ENOTEMPTY', 'ENOTDIR', 'EISDIR', 'EPERM'].includes(
+            (error as NodeJS.ErrnoException).code || ''
+          )
+        )
+          throw error
+        if (fileDigest(await this.get(key)) !== fileDigest(bytes))
+          throw new DomainError(
+            409,
+            'STORAGE_CONFLICT',
+            '对象数据与既有摘要冲突'
+          )
+      }
+    } finally {
+      await rm(staging, { recursive: true, force: true })
     }
   }
 
   async get(key: string) {
     try {
-      return await readFile(this.objectPath(key))
+      const location = this.objectPath(key)
+      return await readFile(
+        (await stat(location)).isDirectory()
+          ? path.join(location, 'content')
+          : location
+      )
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT')
         throw new DomainError(503, 'STORAGE_UNAVAILABLE', '文件数据暂不可用')
@@ -47,9 +79,35 @@ export class LocalObjectStore {
   }
 
   async remove(key: string) {
-    await unlink(this.objectPath(key)).catch((error) => {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
-    })
+    await rm(this.objectPath(key), { recursive: true, force: true })
+  }
+
+  async cleanupStaging(before: Date) {
+    await mkdir(this.root, { recursive: true, mode: 0o700 })
+    const names = (await readdir(this.root)).filter((name) =>
+      /^\.[a-f0-9]{64}\.[a-f0-9-]{36}\.staging$/.test(name)
+    )
+    const old = await Promise.all(
+      names.map(async (name) => {
+        const location = path.join(this.root, name)
+        try {
+          return { location, mtime: (await stat(location)).mtime }
+        } catch (error) {
+          if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+          throw error
+        }
+      })
+    )
+    const abandoned = old.filter(
+      (item): item is { location: string; mtime: Date } =>
+        !!item && item.mtime < before
+    )
+    await Promise.all(
+      abandoned.map((item) =>
+        rm(item.location, { recursive: true, force: true })
+      )
+    )
+    return abandoned.length
   }
 
   async objectsOlderThan(before: Date) {

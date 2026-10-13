@@ -3,9 +3,12 @@
     <section class="reporting-panel">
       <h1>定时报表</h1>
       <p>当前尚未提供定时报表，暂不能创建调度任务或安排自动发送。</p>
-      <p>当前支持按权限查询报表，文件生成、下载和归档尚不可用。</p>
+      <p>
+        报表中心提供授权查询与 CSV、XLSX、PDF
+        导出，可查看任务、下载通过扫描的文件及归档。
+      </p>
       <router-link to="/visualization/reportCenter">
-        打开真实报表查询
+        打开报表查询与导出
       </router-link>
     </section>
   </main>

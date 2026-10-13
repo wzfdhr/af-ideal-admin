@@ -115,6 +115,7 @@ export const cleanupFileObjects = async (
     "SELECT tenant_id,id FROM file_uploads WHERE status IN ('completed','cancelled','expired') AND created_at<now()-interval '1 hour' ORDER BY created_at LIMIT 100"
   )
   const store = new LocalObjectStore(root)
+  await store.cleanupStaging(new Date(Date.now() - 86400000))
   await terminal.rows.reduce(async (previous, upload) => {
     await previous
     await transaction(pool, async (client) => {
@@ -138,7 +139,7 @@ export const cleanupFileObjects = async (
     })
   }, Promise.resolve())
   const referenced = await pool.query<{ object_key: string }>(
-    "SELECT object_key FROM stored_files WHERE status<>'deleted' UNION SELECT object_key FROM file_parts"
+    "SELECT object_key FROM stored_files WHERE status<>'deleted' UNION SELECT object_key FROM file_parts UNION SELECT object_key FROM report_export_jobs WHERE retention_until>now() UNION SELECT object_key FROM report_export_artifacts WHERE status<>'expired'"
   )
   const keys = new Set(referenced.rows.map((row) => row.object_key))
   const old = await store.objectsOlderThan(new Date(Date.now() - 86400000))

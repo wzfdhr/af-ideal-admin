@@ -375,7 +375,7 @@ export const registerBusiness = (
       boundary(dates[1], true),
     ]
     const filter =
-      "WHERE tenant_id=$1 AND ($2='' OR result=$2) AND ($3='' OR module=$3) AND ($4='' OR target_id=$4 OR detail->>'requestId'=$4 OR detail->>'instanceId'=$4) AND actor_name ILIKE $5 AND ($6='' OR (CASE WHEN module='auth' THEN 'security' ELSE 'operation' END)=$6) AND ($7::timestamptz IS NULL OR created_at>=$7) AND ($8::timestamptz IS NULL OR created_at<$8)"
+      "WHERE tenant_id=$1 AND ($2='' OR result=$2) AND ($3='' OR module=$3) AND ($4='' OR target_id=$4 OR detail->>'requestId'=$4 OR detail->>'instanceId'=$4) AND actor_name ILIKE $5 AND ($6='' OR (CASE WHEN module='auth' THEN 'security' WHEN module='report-export' THEN 'export' ELSE 'operation' END)=$6) AND ($7::timestamptz IS NULL OR created_at>=$7) AND ($8::timestamptz IS NULL OR created_at<$8)"
     const count = one(
       await rows<{ total: string }>(
         pool,
@@ -407,12 +407,34 @@ export const registerBusiness = (
         operator: { id: row.actor_id, name: row.actor_name },
         module: row.module,
         action: row.action,
-        eventType: row.module === 'auth' ? 'security' : 'operation',
+        eventType:
+          (
+            { 'auth': 'security', 'report-export': 'export' } as Record<
+              string,
+              string
+            >
+          )[row.module] || 'operation',
         result: row.result,
         target: { type: row.target_type, id: row.target_id },
         traceId: row.trace_id,
         occurredAt: row.created_at.toISOString(),
-        detail: row.detail,
+        // Audit capability grants operational facts, not captured report data.
+        // Row counts and artifact fingerprints use the separately authorized job API.
+        detail:
+          row.module === 'report-export'
+            ? Object.fromEntries(
+                Object.entries(row.detail).filter(([detailKey]) =>
+                  [
+                    'code',
+                    'stage',
+                    'attempt',
+                    'format',
+                    'definitionVersionId',
+                    'archived',
+                  ].includes(detailKey)
+                )
+              )
+            : row.detail,
         source: 'server',
       })),
     })
