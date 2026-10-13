@@ -1,10 +1,14 @@
 import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
+import { reactive } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Reporting from '@/components/reporting/index.vue'
 import { useUserStore } from '@/store'
 import { commitTenantContext } from '@/services/tenant-context'
-import { REPORTING_PERMISSIONS as P } from '@af-admin/contracts'
+import {
+  REPORTING_PERMISSIONS as P,
+  REPORT_EXPORT_PERMISSIONS as EP,
+} from '@af-admin/contracts'
 import type {
   ReportingDefinitionRecord,
   ReportingDefinitionVersion,
@@ -28,11 +32,23 @@ const api = vi.hoisted(() =>
     ].map((name) => [name, vi.fn()])
   )
 )
+const exportApi = vi.hoisted(() => ({
+  fetchReportExports: vi.fn(),
+  fetchReportExportCapabilities: vi.fn(),
+  getReportExport: vi.fn(),
+}))
+const route = reactive<{ query: { exportJobId?: string | string[] } }>({
+  query: {},
+})
 vi.mock('@/api/reporting', () => api)
+vi.mock('@/api/reporting-exports', () => exportApi)
 vi.mock('@/services/r1-confirm', () => ({
   confirmR1Action: vi.fn().mockResolvedValue(true),
 }))
-vi.mock('vue-router', () => ({ onBeforeRouteLeave: vi.fn() }))
+vi.mock('vue-router', () => ({
+  onBeforeRouteLeave: vi.fn(),
+  useRoute: () => route,
+}))
 const source: ReportingSourceCatalogue = {
   source: { kind: 'application-records', applicationId: 'application-1' },
   applicationName: '登记设备申请',
@@ -159,6 +175,9 @@ beforeEach(() => {
   setActivePinia(pinia)
   commitTenantContext('tenant-a')
   permissions([P.query])
+  route.query = {}
+  exportApi.fetchReportExports.mockResolvedValue({ list: [], total: 0 })
+  exportApi.fetchReportExportCapabilities.mockResolvedValue({ formats: [] })
   api.fetchPublishedReportingDefinitions.mockResolvedValue({
     list: [version],
     total: 1,
@@ -186,6 +205,76 @@ const submitQuery = async (wrapper: ReturnType<typeof page>) => {
 }
 
 describe('real reporting state and authority', () => {
+  it('opens an authorized export notification link through its real detail endpoint without private report reads', async () => {
+    permissions([EP.list])
+    route.query = { exportJobId: 'export-from-notification' }
+    exportApi.getReportExport.mockResolvedValue({
+      id: 'export-from-notification',
+      revision: 1,
+      query: null,
+      events: [],
+      artifact: null,
+    })
+    const wrapper = page()
+    await flushPromises()
+    expect(exportApi.getReportExport).toHaveBeenCalledWith(
+      'export-from-notification'
+    )
+    expect(
+      wrapper
+        .get('[data-testid="reporting-panel-exports"]')
+        .attributes('aria-pressed')
+    ).toBe('true')
+    expect(
+      wrapper.get('[data-testid="reporting-export-detail"]').text()
+    ).toContain('export-from-notification')
+    expect(api.fetchPublishedReportingDefinitions).not.toHaveBeenCalled()
+    expect(api.fetchReportingDefinitions).not.toHaveBeenCalled()
+  })
+  it('rejects multi-value, oversized, empty and unpermitted export link identifiers', async () => {
+    route.query = { exportJobId: 'not-permitted' }
+    page()
+    await flushPromises()
+    expect(exportApi.getReportExport).not.toHaveBeenCalled()
+    permissions([EP.list])
+    route.query = { exportJobId: ['multiple', 'values'] }
+    await flushPromises()
+    exportApi.getReportExport.mockClear()
+    route.query = { exportJobId: 'x'.repeat(101) }
+    await flushPromises()
+    route.query = { exportJobId: '   ' }
+    await flushPromises()
+    expect(exportApi.getReportExport).not.toHaveBeenCalled()
+  })
+  it('discards a pending export detail response after its route link is removed and keeps denied links explicit', async () => {
+    permissions([EP.list])
+    route.query = { exportJobId: 'pending-job' }
+    let accept!: (value: unknown) => void
+    exportApi.getReportExport.mockReturnValueOnce(
+      new Promise((resolve) => {
+        accept = resolve
+      })
+    )
+    const wrapper = page()
+    await flushPromises()
+    route.query = {}
+    accept({ id: 'old-sensitive-job', query: { keyword: 'old keyword' } })
+    await flushPromises()
+    expect(
+      wrapper.find('[data-testid="reporting-export-detail"]').exists()
+    ).toBe(false)
+    exportApi.getReportExport.mockRejectedValueOnce(
+      new Error('REPORT_EXPORT_PERMISSION_DENIED')
+    )
+    route.query = { exportJobId: 'denied-job' }
+    await flushPromises()
+    expect(
+      wrapper.get('[data-testid="reporting-export-error"]').text()
+    ).toContain('REPORT_EXPORT_PERMISSION_DENIED')
+    expect(
+      wrapper.find('[data-testid="reporting-export-detail"]').exists()
+    ).toBe(false)
+  })
   it('query-only accounts use the published library and exact version catalogue without private drafts or active-source guessing', async () => {
     const wrapper = page()
     await flushPromises()

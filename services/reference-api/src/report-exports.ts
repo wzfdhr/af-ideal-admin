@@ -42,13 +42,93 @@ import {
   reportExportArtifact,
 } from './report-export-access'
 import { fileDigest } from './file-storage'
+import { hasScheduleExportGrant } from './report-schedules-grants'
 import type { FastifyInstance } from 'fastify'
 import type { Pool } from 'pg'
 import type { Actor } from './auth'
 import type { Database, FaultInjector } from './support'
 import type { ReportExportRuntime } from './report-export-jobs'
 import type { ReportExportJobRow } from './report-export-access'
-import type { ReportingExportJob } from '@af-admin/contracts'
+import type {
+  ReportingExportJob,
+  ReportExportCreate,
+} from '@af-admin/contracts'
+
+/** Trusted scheduler reuse only; no HTTP caller can supply a recipient or captured rows. */
+export const createReportExportPlan = async (
+  db: Database,
+  current: Actor,
+  input: ReportExportCreate,
+  secondaryActor?: Actor
+) => {
+  requirePermission(current.permissions, E.create)
+  requirePermission(current.permissions, P.query)
+  const { definition, version } = await locateReportingVersion(
+    db,
+    current,
+    input.definitionVersionId
+  )
+  requireReportingEnabled(definition)
+  const captured = await captureReportingExportSnapshot(
+    db,
+    current,
+    {
+      definitionId: definition.id,
+      definitionVersionId: version.id,
+      definitionVersion: version.version,
+      schema: version.schema_snapshot,
+      sourceReleaseId: version.source_release_id,
+      sourceReleaseVersion: version.source_release_version,
+      fieldMap: version.field_bindings,
+    },
+    input.query,
+    secondaryActor
+  )
+  const id = randomUUID()
+  await db.query(
+    'INSERT INTO report_export_jobs(tenant_id,id,definition_id,definition_version_id,source_application_id,source_release_id,source_release_version,created_by,report_name,format,query,snapshot,snapshot_hash,field_bindings,authorization_manifest,object_key,total_rows) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)',
+    [
+      current.tenantId,
+      id,
+      definition.id,
+      version.id,
+      version.source_application_id,
+      version.source_release_id,
+      version.source_release_version,
+      current.userId,
+      version.schema_snapshot.name,
+      input.format,
+      JSON.stringify(captured.snapshot.query),
+      JSON.stringify(captured.snapshot),
+      contentHash(captured.snapshot),
+      JSON.stringify(version.field_bindings),
+      JSON.stringify(captured.manifest),
+      randomBytes(32).toString('hex'),
+      captured.snapshot.total,
+    ]
+  )
+  await appendReportExportEvent(db, current, id, 'created', {
+    total: captured.snapshot.total,
+    format: input.format,
+    definitionVersionId: version.id,
+  })
+  await audit(
+    db,
+    current,
+    'report-export',
+    'report-export.created',
+    'report-export',
+    id,
+    'success',
+    {
+      total: captured.snapshot.total,
+      format: input.format,
+      definitionVersionId: version.id,
+      snapshotHash: contentHash(captured.snapshot),
+    }
+  )
+  return { id }
+}
 
 const allPermissions = Object.values(E)
 const statuses = [
@@ -79,7 +159,8 @@ const accessible = async (db: Database, actor: Actor, id: string) => {
       [actor.tenantId, actor.userId, job.created_by, permissions]
     )
   )
-  if (!visible.visible) throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+  if (!visible.visible && !(await hasScheduleExportGrant(db, actor, job.id)))
+    throw new DomainError(404, 'NOT_FOUND', '资源不存在')
   return job
 }
 const closed = (job: ReportExportJobRow) => {
@@ -132,26 +213,12 @@ export const registerReportExportRoutes = (
       input,
       async (db, current) => {
         requirePermission(current.permissions, P.query)
-        const { definition, version } = await locateReportingVersion(
+        const { definition } = await locateReportingVersion(
           db,
           current,
           input.definitionVersionId
         )
         requireReportingEnabled(definition)
-        const captured = await captureReportingExportSnapshot(
-          db,
-          current,
-          {
-            definitionId: definition.id,
-            definitionVersionId: version.id,
-            definitionVersion: version.version,
-            schema: version.schema_snapshot,
-            sourceReleaseId: version.source_release_id,
-            sourceReleaseVersion: version.source_release_version,
-            fieldMap: version.field_bindings,
-          },
-          input.query
-        )
         const capability = (
           await reportExportCapabilities(runtime)
         ).formats.find((value) => value.format === input.format)
@@ -161,49 +228,7 @@ export const registerReportExportRoutes = (
             'REPORT_EXPORT_FORMAT_UNAVAILABLE',
             capability?.reason || '导出格式当前不可用'
           )
-        const id = randomUUID()
-        await db.query(
-          'INSERT INTO report_export_jobs(tenant_id,id,definition_id,definition_version_id,source_application_id,source_release_id,source_release_version,created_by,report_name,format,query,snapshot,snapshot_hash,field_bindings,authorization_manifest,object_key,total_rows) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)',
-          [
-            current.tenantId,
-            id,
-            definition.id,
-            version.id,
-            version.source_application_id,
-            version.source_release_id,
-            version.source_release_version,
-            current.userId,
-            version.schema_snapshot.name,
-            input.format,
-            JSON.stringify(captured.snapshot.query),
-            JSON.stringify(captured.snapshot),
-            contentHash(captured.snapshot),
-            JSON.stringify(version.field_bindings),
-            JSON.stringify(captured.manifest),
-            randomBytes(32).toString('hex'),
-            captured.snapshot.total,
-          ]
-        )
-        await appendReportExportEvent(db, current, id, 'created', {
-          total: captured.snapshot.total,
-          format: input.format,
-          definitionVersionId: version.id,
-        })
-        await audit(
-          db,
-          current,
-          'report-export',
-          'report-export.created',
-          'report-export',
-          id,
-          'success',
-          {
-            total: captured.snapshot.total,
-            format: input.format,
-            definitionVersionId: version.id,
-            snapshotHash: contentHash(captured.snapshot),
-          }
-        )
+        const { id } = await createReportExportPlan(db, current, input)
         fault('report-export.create.before-commit')
         return { id }
       },
@@ -265,7 +290,7 @@ export const registerReportExportRoutes = (
         archived,
       ]
       const filter =
-        "WHERE tenant_id=$1 AND af_historical_member_scope_visible($1,$2,$3,created_by) AND report_name ILIKE $4 ESCAPE '!' AND ($5='' OR status=$5) AND ($6='all' OR ($6='active' AND archived_at IS NULL) OR ($6='archived' AND archived_at IS NOT NULL))"
+        "WHERE tenant_id=$1 AND (af_historical_member_scope_visible($1,$2,$3,created_by) OR af_report_schedule_grant_visible($1,$2,id)) AND report_name ILIKE $4 ESCAPE '!' AND ($5='' OR status=$5) AND ($6='all' OR ($6='active' AND archived_at IS NULL) OR ($6='archived' AND archived_at IS NOT NULL))"
       const total = one(
         await rows<{ total: string }>(
           db,

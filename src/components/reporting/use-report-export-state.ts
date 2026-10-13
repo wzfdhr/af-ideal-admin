@@ -146,7 +146,18 @@ export const useReportExportState = () => {
         )
         // A fresh projection replaces all prior sensitive fields immediately.
         if (projected) selected.value = projected
-        else selected.value = undefined
+        else {
+          const { id } = selected.value
+          const detail = detailSequence
+          selected.value = undefined
+          const fresh = await getReportExport(id)
+          if (
+            current() &&
+            sequence === listSequence &&
+            detail === detailSequence
+          )
+            selected.value = fresh
+        }
       }
     } catch (failure) {
       if (current() && sequence === listSequence) {
@@ -171,6 +182,10 @@ export const useReportExportState = () => {
       if (current() && sequence === detailSequence)
         error.value = errorMessage(failure)
     }
+  }
+  const clearSelection = () => {
+    detailSequence += 1
+    selected.value = undefined
   }
   const create = async (
     version: ReportingDefinitionVersion,
@@ -382,6 +397,7 @@ export const useReportExportState = () => {
     load,
     loadCapabilities,
     inspect,
+    clearSelection,
     create,
     command,
     download,

@@ -1,6 +1,7 @@
 import { MESSAGING_PERMISSIONS } from './messaging'
 import { REPORTING_PERMISSIONS } from './reporting'
 import { REPORT_EXPORT_PERMISSIONS } from './report-exports'
+import { REPORT_SCHEDULE_PERMISSIONS } from './report-schedules'
 
 export interface PermissionDefinition {
   code: string
@@ -8,6 +9,21 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  ...Object.entries(REPORT_SCHEDULE_PERMISSIONS).map(([key, code]) => ({
+    code,
+    title: (
+      {
+        list: '查看定时报表规则',
+        create: '创建定时报表',
+        update: '编辑定时报表版本',
+        toggle: '启停定时报表',
+        runRead: '读取定时报表运行事实',
+        retry: '重试定时报表运行',
+        cancel: '取消定时报表运行',
+      } as Record<string, string>
+    )[key],
+    module: '定时报表',
+  })),
   ...Object.entries(REPORT_EXPORT_PERMISSIONS).map(([key, code]) => ({
     code,
     title: (

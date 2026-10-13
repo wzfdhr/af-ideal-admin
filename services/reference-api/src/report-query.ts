@@ -63,7 +63,8 @@ const runReportingVersion = async (
   actor: Actor,
   context: ReportingQueryContext,
   input: unknown,
-  exporting = false
+  exporting = false,
+  secondaryActor: Actor | undefined = undefined
 ): Promise<{
   result: ReportingQueryResultV1
   manifest: ReportExportAuthorizationRow[]
@@ -76,6 +77,16 @@ const runReportingVersion = async (
     schema.source.applicationId,
     context.sourceReleaseId
   )
+  if (secondaryActor) {
+    if (secondaryActor.tenantId !== actor.tenantId)
+      throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+    await captureReportingSource(
+      db,
+      secondaryActor,
+      schema.source.applicationId,
+      context.sourceReleaseId
+    )
+  }
   if (source.release.releaseVersion !== context.sourceReleaseVersion)
     throw new DomainError(
       409,
@@ -84,11 +95,17 @@ const runReportingVersion = async (
     )
   assertReportingMapping(source, context.fieldMap)
   const configured = assertReportingFields(source, actor, schema.fields, false)
-  const fields = configured.filter((field) =>
-    reportingFieldAvailable(actor, field)
+  const fields = configured.filter(
+    (field) =>
+      reportingFieldAvailable(actor, field) &&
+      (!secondaryActor || reportingFieldAvailable(secondaryActor, field))
   )
   const sort = assertReportingFields(source, actor, [query.sort.field])[0]
   const searches = assertReportingFields(source, actor, query.searchFields)
+  if (secondaryActor) {
+    assertReportingFields(source, secondaryActor, [query.sort.field])
+    assertReportingFields(source, secondaryActor, query.searchFields)
+  }
   if (!sort.sortable || searches.some((field) => !field.searchable))
     throw new DomainError(
       422,
@@ -97,7 +114,11 @@ const runReportingVersion = async (
     )
   const catalogue = reportingCatalogue(source, actor)
   const hiddenFields = configured
-    .filter((field) => !reportingFieldAvailable(actor, field))
+    .filter(
+      (field) =>
+        !reportingFieldAvailable(actor, field) ||
+        (!!secondaryActor && !reportingFieldAvailable(secondaryActor, field))
+    )
     .map((field) => ({
       reference: field.reference,
       reason: 'permission-denied' as const,
@@ -115,6 +136,7 @@ const runReportingVersion = async (
     parameters.push(value)
     return `$${parameters.length}`
   }
+  const secondaryUser = secondaryActor ? bind(secondaryActor.userId) : ''
   const columns = new Map<
     string,
     {
@@ -156,6 +178,14 @@ const runReportingVersion = async (
             field.memberField
           )})`
         : `af_member_scope_visible($1,$2,${permission},r.applicant_id)`
+      if (secondaryActor)
+        allowed = `(${allowed} AND ${
+          field.memberField
+            ? `af_member_field_visible($1,${secondaryUser},${permission},r.applicant_id,${bind(
+                field.memberField
+              )})`
+            : `af_member_scope_visible($1,${secondaryUser},${permission},r.applicant_id)`
+        })`
     }
     columns.set(reportingFieldKey(field.reference), {
       alias: `v${index}`,
@@ -209,6 +239,7 @@ const runReportingVersion = async (
     },${hiddenExpression} AS hidden_field_keys
     FROM business_records r WHERE r.tenant_id=$1 AND r.application_release_id=$3 AND r.record_kind='generic'
       AND af_record_visible($1,$2,r.id)
+      ${secondaryActor ? `AND af_record_visible($1,${secondaryUser},r.id)` : ''}
       AND r.created_at >= ($5::date::timestamp AT TIME ZONE $4)
       AND r.created_at < (($6::date+1)::timestamp AT TIME ZONE $4)
       AND (cardinality($7::text[])=0 OR r.status=ANY($7::text[]))
@@ -307,7 +338,8 @@ export const captureReportingExportSnapshot = async (
   db: Database,
   actor: Actor,
   context: ReportingQueryContext & { definitionVersionId: string },
-  input: unknown
+  input: unknown,
+  secondaryActor?: Actor
 ) => {
   const query = parseReportingQuery(input, context.schema)
   const { result, manifest } = await runReportingVersion(
@@ -315,8 +347,15 @@ export const captureReportingExportSnapshot = async (
     actor,
     context,
     query,
-    true
+    true,
+    secondaryActor
   )
+  if (!result.visibleFields.length)
+    throw new DomainError(
+      403,
+      'REPORT_EXPORT_FIELD_FORBIDDEN',
+      '当前双方没有可输出的批准字段'
+    )
   if (
     result.total > REPORT_EXPORT_MAX_ROWS ||
     result.rows.length > REPORT_EXPORT_MAX_ROWS

@@ -8,6 +8,11 @@ import { hasPermission, requirePermission } from '@af-admin/workflow-core'
 import { rows, one, contentHash } from './support'
 import { locateReportingVersion, requireReportingEnabled } from './reporting'
 import {
+  scheduleExportGrant,
+  assertScheduleRecipient,
+  hasScheduleExportGrant,
+} from './report-schedules-grants'
+import {
   captureReportingSource,
   assertReportingMapping,
   assertReportingFields,
@@ -158,7 +163,17 @@ export const locateReportExport = async (
       [actor.tenantId, id]
     )
   )
-  await reportExportMetadataScope(db, actor, job.created_by, permission)
+  try {
+    await reportExportMetadataScope(db, actor, job.created_by, permission)
+  } catch (error) {
+    if (
+      !(error instanceof DomainError) ||
+      error.status !== 404 ||
+      ![E.list, E.download].includes(permission as typeof E.list) ||
+      !(await hasScheduleExportGrant(db, actor, job.id))
+    )
+      throw error
+  }
   return job
 }
 
@@ -308,6 +323,23 @@ export const assertReportExportOrigin = async (
   )
   requirePermission(origin.permissions, E.create)
   await assertReportExportSnapshotAccess(db, origin, job)
+  const grant = await scheduleExportGrant(db, job.tenant_id, job.id)
+  if (grant) {
+    if (grant.created_by !== origin.userId)
+      throw new DomainError(
+        409,
+        'REPORT_EXPORT_SNAPSHOT_INVALID',
+        '定时导出原主体绑定冲突'
+      )
+    const receiver = await reportExportPrincipal(
+      db,
+      job.tenant_id,
+      grant.recipient_user_id,
+      traceId
+    )
+    await assertScheduleRecipient(db, origin, receiver, grant.schema_snapshot)
+    await assertReportExportSnapshotAccess(db, receiver, job)
+  }
   return origin
 }
 export const reportExportArtifact = async (
@@ -393,7 +425,8 @@ export const reportExportDto = async (
     job.status === 'completed' &&
     artifact?.status === 'ready' &&
     artifact.expires_at > new Date() &&
-    (await scoped(E.download))
+    ((await scoped(E.download)) ||
+      (await hasScheduleExportGrant(db, actor, job.id)))
   )
     allowedActions.push('download')
   const result: ReportingExportJob = {

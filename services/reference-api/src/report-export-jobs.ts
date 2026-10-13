@@ -32,6 +32,76 @@ export interface ReportExportRuntime {
   storageRoot?: string
   scanner?: VirusScanner
 }
+export const REPORT_EXPORT_MAINTENANCE_SCOPE_VERSION = 1
+// Trusted maintenance callers only; this value is never accepted from HTTP.
+export interface ReportExportWorkerScope {
+  readonly tenantId: string
+  readonly jobIds: readonly string[]
+}
+type FrozenReportExportWorkerScope = Readonly<{
+  tenantId: string
+  jobIds: readonly string[]
+}>
+const maintenanceScope = (
+  value: ReportExportWorkerScope | undefined
+): FrozenReportExportWorkerScope | undefined => {
+  if (value === undefined) return undefined
+  const identifier = /^[A-Za-z0-9][A-Za-z0-9_-]{0,99}$/
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    Array.isArray(value) ||
+    Object.getPrototypeOf(value) !== Object.prototype ||
+    Reflect.ownKeys(value).length !== 2 ||
+    Reflect.ownKeys(value).some(
+      (key) => typeof key !== 'string' || !['tenantId', 'jobIds'].includes(key)
+    )
+  )
+    throw new Error('Invalid report export maintenance scope')
+  const tenant = Object.getOwnPropertyDescriptor(value, 'tenantId')
+  const jobs = Object.getOwnPropertyDescriptor(value, 'jobIds')
+  if (
+    !tenant ||
+    !('value' in tenant) ||
+    typeof tenant.value !== 'string' ||
+    !identifier.test(tenant.value) ||
+    !jobs ||
+    !('value' in jobs) ||
+    !Array.isArray(jobs.value)
+  )
+    throw new Error('Invalid report export maintenance scope')
+  const jobIds = [...jobs.value]
+  if (
+    jobIds.length < 1 ||
+    jobIds.length > 200 ||
+    jobIds.some((id) => typeof id !== 'string' || !identifier.test(id)) ||
+    new Set(jobIds).size !== jobIds.length
+  )
+    throw new Error('Invalid report export maintenance scope')
+  return Object.freeze({
+    tenantId: tenant.value,
+    jobIds: Object.freeze(jobIds),
+  })
+}
+const validatedMaintenanceScope = async (
+  pool: Pool,
+  requested: ReportExportWorkerScope | undefined
+) => {
+  const scope = maintenanceScope(requested)
+  if (!scope) return undefined
+  const actual = (
+    await rows<{ total: number }>(
+      pool,
+      'SELECT count(*)::int AS total FROM report_export_jobs WHERE tenant_id=$1 AND id=ANY($2::text[])',
+      [scope.tenantId, scope.jobIds]
+    )
+  )[0]
+  if (!actual || actual.total !== scope.jobIds.length)
+    throw new Error(
+      'Maintenance scope must reference existing report export jobs in the specified tenant'
+    )
+  return scope
+}
 export const reportExportStore = (runtime: ReportExportRuntime) => {
   const root = runtime.storageRoot || process.env.FILE_STORAGE_DIR
   if (!root)
@@ -105,11 +175,16 @@ const fenced = async (
       throw stopped('REPORT_EXPORT_FENCE_LOST', '导出租约已结束或任务已取消')
     await run(client, selected[0])
   })
-const claimNext = (pool: Pool, fault: FaultInjector = noFault) =>
+const claimNext = (
+  pool: Pool,
+  fault: FaultInjector = noFault,
+  scope: FrozenReportExportWorkerScope | undefined = undefined
+) =>
   transaction(pool, async (client) => {
     const selected = await rows<ReportExportJobRow>(
       client,
-      "SELECT * FROM report_export_jobs WHERE retention_until>now() AND ((status='queued' AND next_attempt_at<=now()) OR (status='processing' AND lease_until<=now())) ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1"
+      "SELECT * FROM report_export_jobs WHERE retention_until>now() AND ((status='queued' AND next_attempt_at<=now()) OR (status='processing' AND lease_until<=now())) AND ($1::text IS NULL OR (tenant_id=$1 AND id=ANY($2::text[]))) ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1",
+      [scope?.tenantId ?? null, scope?.jobIds ?? null]
     )
     if (!selected.length) return null
     const job = selected[0]
@@ -224,14 +299,16 @@ const failClaim = (
     )
   })
 
-export const expireReportExports = async (
+const expireReportExportsInScope = async (
   pool: Pool,
-  runtime: ReportExportRuntime = {}
+  runtime: ReportExportRuntime,
+  scope: FrozenReportExportWorkerScope | undefined
 ) => {
   const expired = await transaction(pool, async (client) => {
     const jobs = await rows<ReportExportJobRow>(
       client,
-      "SELECT j.* FROM report_export_jobs j WHERE j.retention_until<=now() AND (j.status IN('queued','processing') OR EXISTS(SELECT 1 FROM report_export_artifacts a WHERE a.tenant_id=j.tenant_id AND a.job_id=j.id AND a.status<>'expired')) ORDER BY j.retention_until,j.id FOR UPDATE SKIP LOCKED LIMIT 100"
+      "SELECT j.* FROM report_export_jobs j WHERE j.retention_until<=now() AND (j.status IN('queued','processing') OR EXISTS(SELECT 1 FROM report_export_artifacts a WHERE a.tenant_id=j.tenant_id AND a.job_id=j.id AND a.status<>'expired')) AND ($1::text IS NULL OR (j.tenant_id=$1 AND j.id=ANY($2::text[]))) ORDER BY j.retention_until,j.id FOR UPDATE SKIP LOCKED LIMIT 100",
+      [scope?.tenantId ?? null, scope?.jobIds ?? null]
     )
     await sequential(jobs, async (job) => {
       const actor = reportExportFactActor(job, randomUUID())
@@ -261,7 +338,8 @@ export const expireReportExports = async (
   const store = reportExportStore(runtime)
   const pending = await rows<ReportExportArtifactRow>(
     pool,
-    "SELECT * FROM report_export_artifacts WHERE status='expired' AND purged_at IS NULL ORDER BY expired_at,id LIMIT 100"
+    "SELECT * FROM report_export_artifacts WHERE status='expired' AND purged_at IS NULL AND ($1::text IS NULL OR (tenant_id=$1 AND job_id=ANY($2::text[]))) ORDER BY expired_at,id LIMIT 100",
+    [scope?.tenantId ?? null, scope?.jobIds ?? null]
   )
   await sequential(pending, async (artifact) => {
     await transaction(pool, async (client) => {
@@ -271,37 +349,50 @@ export const expireReportExports = async (
       )
       const current = await rows<ReportExportArtifactRow>(
         client,
-        "SELECT * FROM report_export_artifacts WHERE tenant_id=$1 AND id=$2 AND status='expired' AND purged_at IS NULL FOR UPDATE",
-        [artifact.tenant_id, artifact.id]
+        "SELECT * FROM report_export_artifacts WHERE tenant_id=$1 AND job_id=$2 AND id=$3 AND status='expired' AND purged_at IS NULL FOR UPDATE",
+        [artifact.tenant_id, artifact.job_id, artifact.id]
       )
       if (!current.length) return
-      await store.remove(artifact.object_key)
+      await store.remove(current[0].object_key)
       await client.query(
-        'UPDATE report_export_artifacts SET purged_at=now() WHERE tenant_id=$1 AND id=$2',
-        [artifact.tenant_id, artifact.id]
+        'UPDATE report_export_artifacts SET purged_at=now() WHERE tenant_id=$1 AND job_id=$2 AND id=$3',
+        [artifact.tenant_id, artifact.job_id, artifact.id]
       )
     })
   })
   return expired
 }
 
+export const expireReportExports = async (
+  pool: Pool,
+  runtime: ReportExportRuntime = {},
+  requestedScope: ReportExportWorkerScope | undefined = undefined
+) =>
+  expireReportExportsInScope(
+    pool,
+    runtime,
+    await validatedMaintenanceScope(pool, requestedScope)
+  )
+
 export const processReportExports = async (
   pool: Pool,
   runtime: ReportExportRuntime = {},
   fault: FaultInjector = noFault,
-  batchSize = 10
+  batchSize = 10,
+  requestedScope: ReportExportWorkerScope | undefined = undefined
 ): Promise<number> => {
+  if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 100)
+    throw new Error('Invalid report export batch size')
+  const scope = await validatedMaintenanceScope(pool, requestedScope)
   if (!runtime.storageRoot && !process.env.FILE_STORAGE_DIR) return 0
-  await expireReportExports(pool, runtime)
+  await expireReportExportsInScope(pool, runtime, scope)
   const store = reportExportStore(runtime)
   const scanner = reportExportScanner(runtime)
   let processed = 0
   let done = false
-  if (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 100)
-    throw new Error('Invalid report export batch size')
   await sequential(Array.from({ length: batchSize }), async () => {
     if (done) return
-    const claimed = await claimNext(pool, fault)
+    const claimed = await claimNext(pool, fault, scope)
     if (!claimed) {
       done = true
       return

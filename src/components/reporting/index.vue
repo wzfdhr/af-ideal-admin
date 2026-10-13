@@ -22,7 +22,7 @@
       </div>
     </header>
     <p class="reporting-muted">
-      按当前权限查询业务记录，所选来源版本和字段口径固定。文件导出与归档使用真实服务器任务；定时发送尚不可用。
+      按当前权限查询业务记录，所选来源版本和字段口径固定。文件导出与归档使用真实服务器任务；日、周、月计划可在定时报表配置。
     </p>
     <nav class="reporting-actions" aria-label="报表中心功能">
       <button
@@ -710,7 +710,8 @@
   </main>
 </template>
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { reportingReferenceKey, useReportingState } from './use-reporting-state'
 import QueryResults from './query-results.vue'
 import ExportCreate from './export-create.vue'
@@ -721,6 +722,7 @@ import './reporting.css'
 
 const {
   P,
+  user,
   definitions,
   definitionPage,
   definitionTotal,
@@ -797,6 +799,29 @@ const {
 } = exportState
 const activePanel = ref(
   [P.list, P.create, P.query].some(allowed) ? 'reports' : 'exports'
+)
+const route = useRoute()
+watch(
+  () => [
+    route?.query.exportJobId,
+    user.id,
+    user.tenantId,
+    user.availablePermissions.join('|'),
+  ],
+  () => {
+    exportState.clearSelection()
+    const jobId = route?.query.exportJobId
+    if (
+      typeof jobId === 'string' &&
+      jobId.trim() &&
+      jobId.length <= 100 &&
+      exportAllowed(EP.list)
+    ) {
+      activePanel.value = 'exports'
+      exportState.inspect(jobId)
+    }
+  },
+  { immediate: true, flush: 'sync' }
 )
 const reloadAll = () => {
   reload()

@@ -468,30 +468,45 @@ export const createR1Menu = (permissions: string[]) => {
         },
       ],
     })
+  const reportingPages: CapabilityMenuNode[] = []
+  const reportAccess = ['report:list', 'report:query', 'report:export:list']
   if (
     permissions.includes('*') ||
-    ['report:list', 'report:query'].some((code) => permissions.includes(code))
+    reportAccess.some((code) => permissions.includes(code))
   )
+    reportingPages.push({
+      path: 'reportCenter',
+      name: 'reportCenter',
+      componentKey: 'ReportCenterPage',
+      meta: {
+        requireAuth: true,
+        locale: 'menu.visualization.reportCenter',
+        access: { permissions: reportAccess, mode: 'any' },
+      },
+    })
+  const scheduleAccess = ['report:schedule:list', 'report:schedule:run:read']
+  if (
+    permissions.includes('*') ||
+    scheduleAccess.some((code) => permissions.includes(code))
+  )
+    reportingPages.push({
+      path: 'reportSchedules',
+      name: 'reportSchedules',
+      componentKey: 'ReportSchedulesPage',
+      meta: {
+        requireAuth: true,
+        locale: 'menu.visualization.reportSchedules',
+        order: 1,
+        access: { permissions: scheduleAccess, mode: 'any' },
+      },
+    })
+  if (reportingPages.length)
     entries.push({
       path: '/visualization',
       name: 'visualization',
       componentKey: 'DefaultLayout',
       meta: { requireAuth: true, locale: 'menu.visualization', order: 1 },
-      children: [
-        {
-          path: 'reportCenter',
-          name: 'reportCenter',
-          componentKey: 'ReportCenterPage',
-          meta: {
-            requireAuth: true,
-            locale: 'menu.visualization.reportCenter',
-            access: {
-              permissions: ['report:list', 'report:query'],
-              mode: 'any',
-            },
-          },
-        },
-      ],
+      children: reportingPages,
     })
   return entries
 }

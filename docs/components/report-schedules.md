@@ -1,6 +1,31 @@
 # 定时报表与导出审计
 
-定时报表与导出审计用于补齐报表中心的企业级调度链路。当前 MVP 已接入页面入口、API 契约、Mock 数据、权限码、接收范围、导出格式和审计记录，可在无后端环境下演示定时导出任务创建、启停和失败审计。
+本文保留原定时报表与导出审计 Mock 的使用说明，并区分全产品真实调度实现。原 MVP 的列表、创建、启停及运行审计只证明 Mock 演示；真实实现的验收证据以 `docs/quality/full-product-delivery-tasks.md` 为准。
+
+## 真实模式接入
+
+真实模式复用同一页面入口，采用 `packages/contracts/src/report-schedules.ts` 的闭合 v1 契约。规则固定已发布报表版本、IANA 时区、每日/每周/每月本地时刻、自然周期数据窗、真实角色/部门/租户接收范围及 CSV/XLSX/PDF 格式。目录和预览来自当前服务端授权，不接收自由文本人员或客户端执行时间。
+
+| 路径（均位于 `/api`） | 行为 |
+| --- | --- |
+| `GET/POST /reporting/schedules` | 分页读取规则、创建不可变初版 |
+| `GET/PUT /reporting/schedules/:id` | 读取历史版本、保存新规则版本 |
+| `POST /reporting/schedules/:id/enabled` | 按 revision 启用或关闭启用区间 |
+| `GET /reporting/schedules/recipient-options` | 当前授权的角色和部门目录 |
+| `POST /reporting/schedules/preview` | 新规则预览 |
+| `POST /reporting/schedules/:id/preview` | 固定规则预览 |
+| `GET /reporting/schedules/runs` | 当前授权的运行事实 |
+| `GET /reporting/schedules/runs/:id` | 运行及逐收件事实 |
+| `POST /reporting/schedules/runs/:id/retry` | 保持原主体、查询及已固定接收集合重试 |
+| `POST /reporting/schedules/runs/:id/cancel` | 显式取消尚未完成的运行 |
+
+写入使用 `Idempotency-Key`；编辑、启停、重试和取消使用 `expectedRevision`。真实权限按规则读取/创建/更新/启停和运行读取/重试/取消分别控制，使用 `report:schedule:list/create/update/toggle/run:read/run:retry/run:cancel` 对应权限码。旧 `report:schedule` 只属于下文 Mock。
+
+worker 将周期运行、接收集合、导出绑定及通知事实保存到 PostgreSQL。停用关闭启用区间，保留已经到期和已经创建的事实；显式取消是独立操作。重启后补跑已启用区间的到期周期，不补停用期间的周期。文件按发起者与收件人的当前行和字段权限交集生成，扫描成功且真实通知提交后才显示完成；撤权、成员退出范围或来源停用会限制后续访问。通知跳转到 `/visualization/reportCenter?exportJobId=...`，页面重新读取授权，链接本身不携带文件读取权。
+
+规则、日历、恢复、扫描、通知和限制的完整决策见 `docs/architecture/full-product-report-scheduling-design.md`。模块仍在实施验证中；此说明不作为真实执行、部署、恢复或正式交付完成的证据。
+
+## 原 Mock 说明
 
 ## 页面入口
 

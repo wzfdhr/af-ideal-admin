@@ -3,6 +3,7 @@ import { REPORT_PERMISSIONS } from '@/constants/report'
 import {
   REPORTING_PERMISSIONS,
   REPORT_EXPORT_PERMISSIONS,
+  REPORT_SCHEDULE_PERMISSIONS,
 } from '@af-admin/contracts'
 import { dataMode } from '../../../../config/data-mode'
 import { AppRouteRecordRaw } from '../../types'
@@ -80,9 +81,16 @@ const userRoutes: AppRouteRecordRaw = {
         locale: 'menu.visualization.reportSchedules',
         requireAuth: true,
         roles: ['*'],
-        access: {
-          permissions: [REPORT_PERMISSIONS.schedule],
-        },
+        access:
+          dataMode === 'reference'
+            ? {
+                permissions: [
+                  REPORT_SCHEDULE_PERMISSIONS.list,
+                  REPORT_SCHEDULE_PERMISSIONS.runRead,
+                ],
+                mode: 'any' as const,
+              }
+            : { permissions: [REPORT_PERMISSIONS.schedule] },
       },
     },
   ],
