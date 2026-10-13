@@ -467,6 +467,9 @@ test('real data screens bind three independent templates, persist canvas editing
           document.documentElement.scrollHeight <= window.innerHeight
       )
     ).toBe(true)
+    await replacement.screenshot({
+      path: testInfo.outputPath('data-screen-fullscreen.png'),
+    })
     await replacement.getByTestId('screen-fullscreen').click()
     await expect(replacement.locator('.left-panel')).toBeVisible()
     await expect(replacement.locator('.right-panel')).toBeVisible()

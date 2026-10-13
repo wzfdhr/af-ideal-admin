@@ -218,7 +218,7 @@ export const bindDemoScreenTemplate = (template, reports, fields, title) => {
     sources: reportKinds.map((sourceKey) => ({
       sourceKey,
       reportDefinitionVersionId: reports[sourceKey].versionId,
-      dateWindow: 'today',
+      dateWindow: 'last-7-days',
       statuses: [],
       refreshSeconds: 15,
     })),

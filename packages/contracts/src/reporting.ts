@@ -37,9 +37,14 @@ export const REPORTING_BUSINESS_STATUSES = [
   'withdrawn',
 ] as const
 
-export type BusinessRecordStatus = (typeof REPORTING_BUSINESS_STATUSES)[number]
+type ReportingOption<T extends readonly string[]> = T[number]
+export type BusinessRecordStatus = ReportingOption<
+  typeof REPORTING_BUSINESS_STATUSES
+>
 export type ReportingKind = 'trend' | 'distribution' | 'detail'
-export type ReportingMetadataField = (typeof REPORTING_METADATA_FIELDS)[number]
+export type ReportingMetadataField = ReportingOption<
+  typeof REPORTING_METADATA_FIELDS
+>
 export type ReportingFieldReference =
   | { kind: 'metadata'; id: ReportingMetadataField }
   | { kind: 'field'; id: string }
