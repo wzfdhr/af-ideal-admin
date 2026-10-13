@@ -499,6 +499,7 @@ import ScreenWidget from './widget.vue'
 import {
   buildDataScreenAlertFacts,
   createDataScreenScheduler,
+  dataScreenAlertSourceName,
   emptySourceRuntime,
 } from './runtime'
 import type { SourceRuntimeState } from './runtime'
@@ -559,6 +560,7 @@ const fitScale = ref(0.5)
 const fullscreen = ref(false)
 const runtimeMode = ref<'idle' | 'draft' | 'release'>('idle')
 let resizeObserver: ResizeObserver | undefined
+let definitionGeneration = 0
 
 const widgetKinds: DataScreenWidgetKind[] = [
   'line',
@@ -729,14 +731,22 @@ const loadAll = async () => {
   }
 }
 const openDefinition = async (id: string) => {
-  const opened = await getDataScreenDefinition(id)
-  current.value = opened
-  draft.value = clone(opened.draft)
-  syncBindingWizardFromDraft()
-  selectedIds.value = []
-  rollbackReleaseId.value = opened.activeReleaseId || ''
-  await loadDraftCatalogues()
-  restartRuntime()
+  const generation = ++definitionGeneration
+  notice.value = null
+  try {
+    const opened = await getDataScreenDefinition(id)
+    if (generation !== definitionGeneration) return
+    current.value = opened
+    draft.value = clone(opened.draft)
+    syncBindingWizardFromDraft()
+    selectedIds.value = []
+    rollbackReleaseId.value = opened.activeReleaseId || ''
+    restartRuntime()
+    await loadDraftCatalogues(opened.draft)
+  } catch (error) {
+    if (generation === definitionGeneration)
+      notice.value = { kind: 'error', text: errorText(error) }
+  }
 }
 const loadDetailCatalogue = async () => {
   if (!binding.detail || catalogues[binding.detail]) return
@@ -744,9 +754,11 @@ const loadDetailCatalogue = async () => {
     binding.detail
   )
 }
-const loadDraftCatalogues = async () => {
+const loadDraftCatalogues = async (
+  definition: DataScreenDefinitionV1 = draft.value
+) => {
   await Promise.all(
-    draft.value.sources.map(async (source) => {
+    definition.sources.map(async (source) => {
       if (!catalogues[source.reportDefinitionVersionId])
         catalogues[source.reportDefinitionVersionId] =
           await getReportingVersionCatalogue(source.reportDefinitionVersionId)
@@ -1219,6 +1231,11 @@ const alertText = computed(() => {
   if (!facts.length) return '当前没有可用于告警的授权来源事实'
   return facts
     .map((fact) => {
+      const sourceName = dataScreenAlertSourceName(
+        fact,
+        canvasDefinition.value,
+        reports.value
+      )
       const statuses =
         fact.statuses.map((status) => statusLabels[status]).join('、') ||
         '无匹配告警状态'
@@ -1226,7 +1243,7 @@ const alertText = computed(() => {
         fact.count >= alert.countThreshold
           ? `达到阈值 ${alert.countThreshold}`
           : `未达阈值 ${alert.countThreshold}`
-      return `来源 ${fact.applicationId} / 发布版 ${
+      return `来源 ${sourceName} / 发布版 ${
         fact.sourceReleaseVersion
       } · 状态 ${statuses} · ${fact.count} 条 · 截止 ${formatTime(
         fact.dataCutoffAt

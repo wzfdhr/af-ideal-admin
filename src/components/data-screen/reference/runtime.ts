@@ -1,9 +1,11 @@
 import { ApiRequestError } from '@/api/request-client'
 import type {
   BusinessRecordStatus,
+  DataScreenDefinitionV1,
   DataScreenRunResultV1,
   DataScreenSourceRunResultV1,
   DataScreenSourceV1,
+  ReportingDefinitionVersion,
 } from '@af-admin/contracts'
 
 export type SourceRuntimePhase =
@@ -36,6 +38,7 @@ export const emptySourceRuntime = (): SourceRuntimeState => ({
 
 export interface DataScreenAlertFact {
   collectionKey: string
+  sourceKey: string
   applicationId: string
   sourceReleaseId: string
   sourceReleaseVersion: number
@@ -78,6 +81,7 @@ export const buildDataScreenAlertFacts = (
     })
     const fact: DataScreenAlertFact = {
       collectionKey,
+      sourceKey: source.sourceKey,
       applicationId: result.source.applicationId,
       sourceReleaseId: result.sourceReleaseId,
       sourceReleaseVersion: result.sourceReleaseVersion,
@@ -96,6 +100,25 @@ export const buildDataScreenAlertFacts = (
   })
   return Array.from(facts.values()).sort((left, right) =>
     left.collectionKey.localeCompare(right.collectionKey)
+  )
+}
+
+export const dataScreenAlertSourceName = (
+  fact: DataScreenAlertFact,
+  definition: DataScreenDefinitionV1,
+  reports: readonly ReportingDefinitionVersion[]
+) => {
+  const source = definition.sources.find(
+    (candidate) => candidate.sourceKey === fact.sourceKey
+  )
+  const report = reports.find(
+    (candidate) => candidate.id === source?.reportDefinitionVersionId
+  )
+  return (
+    report?.schema.name ||
+    definition.widgets.find((widget) => widget.sourceKey === fact.sourceKey)
+      ?.title ||
+    '当前业务来源'
   )
 }
 

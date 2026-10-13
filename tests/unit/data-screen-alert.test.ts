@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildDataScreenAlertFacts,
+  dataScreenAlertSourceName,
   emptySourceRuntime,
   type SourceRuntimeState,
 } from '@/components/data-screen/reference/runtime'
@@ -147,5 +148,78 @@ describe('data screen alert facts', () => {
       )
     ).toHaveLength(1)
     expect(buildDataScreenAlertFacts([rights], ['draft'])).toEqual([])
+  })
+
+  it('uses the bound published report name and falls back to a business widget title instead of a raw source UUID', () => {
+    const [fact] = buildDataScreenAlertFacts(
+      [state({ sourceKey: 'detail', kind: 'detail', count: 6 })],
+      ['draft']
+    )
+    const definition = {
+      version: 1 as const,
+      title: '销售大屏',
+      theme: { preset: 'enterprise' as const, brandColor: '#722ED1' },
+      sources: [
+        {
+          sourceKey: 'detail',
+          reportDefinitionVersionId: 'sales-detail-v1',
+          dateWindow: 'today' as const,
+          statuses: [],
+          refreshSeconds: 15,
+        },
+      ],
+      widgets: [
+        {
+          id: 'detail',
+          kind: 'table' as const,
+          title: '销售订单授权明细',
+          sourceKey: 'detail',
+          layout: { x: 0, y: 0, width: 640, height: 400, z: 0 },
+          props: {
+            view: 'detail' as const,
+            columns: [{ kind: 'metadata' as const, id: 'id' as const }],
+            maxRows: 100,
+            scrollingPaused: true,
+          },
+        },
+      ],
+      alert: {
+        enabled: true,
+        statuses: ['draft' as const],
+        countThreshold: 1,
+        scrollingPaused: true,
+      },
+    }
+    const reports = [
+      {
+        id: 'sales-detail-v1',
+        definitionId: 'sales-detail',
+        version: 1,
+        schema: {
+          version: 1 as const,
+          name: '销售订单明细报表',
+          source: {
+            kind: 'application-records' as const,
+            applicationId: 'sales-app',
+          },
+          kind: 'detail' as const,
+          metric: 'count' as const,
+          factTime: 'createdAt' as const,
+          timeZone: 'America/New_York',
+          fields: [{ kind: 'metadata' as const, id: 'id' as const }],
+        },
+        sourceReleaseId: 'sales-release',
+        sourceReleaseVersion: 1,
+        contentHash: 'hash',
+        publishedBy: 'admin',
+        publishedAt: '2026-10-13T12:00:00.000Z',
+      },
+    ]
+    expect(dataScreenAlertSourceName(fact, definition, reports)).toBe(
+      '销售订单明细报表'
+    )
+    expect(dataScreenAlertSourceName(fact, definition, [])).toBe(
+      '销售订单授权明细'
+    )
   })
 })

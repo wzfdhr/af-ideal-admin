@@ -99,6 +99,20 @@ const details: DataScreenDetails = {
   createdAt: '2026-10-12T00:00:00.000Z',
   updatedAt: '2026-10-12T00:00:00.000Z',
 }
+const disabledDetails: DataScreenDetails = {
+  ...details,
+  id: 'screen-disabled',
+  draft: {
+    ...draft,
+    title: '已停用来源大屏',
+    sources: [
+      {
+        ...draft.sources[0],
+        reportDefinitionVersionId: 'disabled-report-v1',
+      },
+    ],
+  },
+}
 const catalogue: ReportingSourceCatalogue = {
   source: trend.schema.source,
   applicationName: '真实应用',
@@ -190,6 +204,81 @@ describe('reference data screen page', () => {
     expect(api.publishDataScreenDefinition).toHaveBeenCalledWith(
       updated,
       expect.any(String)
+    )
+    wrapper.unmount()
+  })
+
+  it('clears a disabled previous screen banner when an active screen opens and still reports a current failure', async () => {
+    api.fetchDataScreenDefinitions.mockResolvedValueOnce({
+      list: [disabledDetails, details],
+      total: 2,
+      current: 1,
+      pageSize: 50,
+    })
+    api.getDataScreenDefinition.mockImplementation(async (id: string) =>
+      id === disabledDetails.id ? disabledDetails : details
+    )
+    reporting.getReportingVersionCatalogue.mockImplementation(
+      async (id: string) => {
+        if (id === 'disabled-report-v1')
+          throw new Error('报表已停用当前不能查询')
+        return catalogue
+      }
+    )
+    const wrapper = mount(ReferenceDataScreen)
+    await flushPromises()
+    expect(wrapper.get('.notice.error').text()).toContain('报表已停用')
+    await wrapper
+      .get(`[data-testid="screen-definition-${details.id}"]`)
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.notice.error').exists()).toBe(false)
+    expect(
+      (
+        wrapper.get('[data-testid="screen-binding-trend"]')
+          .element as HTMLSelectElement
+      ).value
+    ).toBe(trend.id)
+    await wrapper
+      .get(`[data-testid="screen-definition-${disabledDetails.id}"]`)
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.get('.notice.error').text()).toContain('报表已停用')
+    wrapper.unmount()
+  })
+
+  it('drops a late catalogue failure from the previous screen generation', async () => {
+    let rejectOld!: (error: Error) => void
+    const lateFailure = new Promise<ReportingSourceCatalogue>(
+      (_resolve, reject) => {
+        rejectOld = reject
+      }
+    )
+    api.fetchDataScreenDefinitions.mockResolvedValueOnce({
+      list: [disabledDetails, details],
+      total: 2,
+      current: 1,
+      pageSize: 50,
+    })
+    api.getDataScreenDefinition.mockImplementation(async (id: string) =>
+      id === disabledDetails.id ? disabledDetails : details
+    )
+    reporting.getReportingVersionCatalogue.mockImplementation((id: string) =>
+      id === 'disabled-report-v1' ? lateFailure : Promise.resolve(catalogue)
+    )
+    const wrapper = mount(ReferenceDataScreen)
+    await flushPromises()
+    await wrapper
+      .get(`[data-testid="screen-definition-${details.id}"]`)
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.notice.error').exists()).toBe(false)
+    rejectOld(new Error('旧大屏迟到的停用错误'))
+    await flushPromises()
+    expect(wrapper.find('.notice.error').exists()).toBe(false)
+    expect(wrapper.get('[data-testid="screen-title"]').element).toHaveProperty(
+      'value',
+      details.draft.title
     )
     wrapper.unmount()
   })
