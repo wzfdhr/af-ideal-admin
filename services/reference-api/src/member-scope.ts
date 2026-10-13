@@ -9,6 +9,9 @@ import { rows, one } from './support'
 import type { Database } from './support'
 import type { Actor } from './auth'
 
+type MemberFieldOption<T extends readonly string[]> = T[number]
+type MemberScopeField = MemberFieldOption<typeof MEMBER_SCOPE_FIELDS>
+
 export const assertMemberScope = async (
   db: Database,
   actor: Actor,
@@ -75,9 +78,8 @@ export const projectMemberFields = async (
     Object.entries(value).filter(([key]) => {
       const field = aliases[key] || key
       return (
-        !MEMBER_SCOPE_FIELDS.includes(
-          field as typeof MEMBER_SCOPE_FIELDS[number]
-        ) || names.has(field)
+        !MEMBER_SCOPE_FIELDS.includes(field as MemberScopeField) ||
+        names.has(field)
       )
     })
   )

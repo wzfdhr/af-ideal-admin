@@ -148,7 +148,8 @@ test('persisted menu resources change current navigation, survive refresh, refus
       (item: typeof dictionary) =>
         item.routeKey === 'dictSystem' && item.status === 'enabled'
     )
-    const changed: typeof dictionary[] = []
+    type DictionaryResource = typeof dictionary
+    const changed: DictionaryResource[] = []
     try {
       await routes.reduce(
         async (previous: Promise<void>, item: typeof dictionary) => {

@@ -13,7 +13,8 @@ export const WORKFLOW_NODE_TYPES = [
   'end',
 ] as const
 
-export type WorkflowNodeType = typeof WORKFLOW_NODE_TYPES[number]
+type NodeOption<T extends readonly string[]> = T[number]
+export type WorkflowNodeType = NodeOption<typeof WORKFLOW_NODE_TYPES>
 
 export interface WorkflowNodeConfig {
   approvers?: string[]

@@ -185,7 +185,9 @@ const apply = () => {
     error.value = failure instanceof Error ? failure.message : '规则无效'
   }
 }
-const predicate = (field: typeof fields.value[number]): WorkflowPredicate => {
+const predicate = (
+  field: ReturnType<typeof workflowConditionFields>[number]
+): WorkflowPredicate => {
   let value: string | number = ''
   if (field.valueType === 'integer') value = 0
   if (field.valueType === 'decimal') value = '0.00'

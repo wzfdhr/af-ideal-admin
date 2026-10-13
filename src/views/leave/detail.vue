@@ -3,7 +3,7 @@
     class="leave-page"
     data-testid="leave-detail"
     :aria-busy="loading || busy || !activeView"
-    :inert="loading || busy || !activeView ? '' : undefined"
+    :inert="loading || busy || !activeView"
   >
     <div class="leave-header">
       <div>

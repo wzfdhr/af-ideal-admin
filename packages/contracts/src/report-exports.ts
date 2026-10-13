@@ -16,7 +16,8 @@ export const REPORT_EXPORT_PERMISSIONS = {
   download: 'report:export:download',
 } as const
 export const REPORT_EXPORT_FORMATS = ['csv', 'xlsx', 'pdf'] as const
-export type ReportExportFormat = typeof REPORT_EXPORT_FORMATS[number]
+type ExportOption<T extends readonly string[]> = T[number]
+export type ReportExportFormat = ExportOption<typeof REPORT_EXPORT_FORMATS>
 export const REPORT_EXPORT_MAX_ROWS = 2000
 export const REPORT_EXPORT_MAX_SNAPSHOT_BYTES = 2 * 1024 * 1024
 export const REPORT_EXPORT_MAX_FILE_BYTES = 10 * 1024 * 1024

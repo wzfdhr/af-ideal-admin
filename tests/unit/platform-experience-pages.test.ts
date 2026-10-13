@@ -10,7 +10,8 @@ const rootDir = path.resolve(__dirname, '../..')
 const readFile = (filePath: string) =>
   fs.readFileSync(path.join(rootDir, filePath), 'utf8')
 
-type MenuNode = typeof mockMenus.admin[number]
+type MenuItem<T extends readonly unknown[]> = T[number]
+type MenuNode = MenuItem<typeof mockMenus.admin>
 
 const flattenMenus = (menus: MenuNode[]): MenuNode[] =>
   menus.flatMap((menu) => [
