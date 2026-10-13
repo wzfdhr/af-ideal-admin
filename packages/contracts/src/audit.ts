@@ -235,3 +235,17 @@ export interface AuditEventPageV1 {
   readonly current: number
   readonly pageSize: number
 }
+
+export interface AuditCatalogueV1 {
+  readonly version: 1
+  readonly source: 'server'
+  readonly projectionVersion: 1
+  readonly modules: readonly { code: string; label: string }[]
+  readonly actions: readonly {
+    module: string
+    action: string
+    eventType: AuditEventType
+  }[]
+  readonly eventTypes: readonly AuditEventType[]
+  readonly results: readonly AuditResult[]
+}
