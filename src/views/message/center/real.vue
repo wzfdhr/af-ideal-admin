@@ -166,6 +166,48 @@
         </tbody>
       </table>
       <div v-if="loading" class="message-center__loading">加载中...</div>
+      <nav class="message-center__pagination" aria-label="消息分页">
+        <button
+          class="message-center__button"
+          data-testid="message-first"
+          type="button"
+          :disabled="loading || current <= 1"
+          @click="changePage(1)"
+        >
+          首页
+        </button>
+        <button
+          class="message-center__button"
+          data-testid="message-previous"
+          type="button"
+          :disabled="loading || current <= 1"
+          @click="changePage(current - 1)"
+        >
+          上一页
+        </button>
+        <span aria-live="polite" data-testid="message-page-state">
+          第 {{ current }} / {{ pageCount }} 页 · 共 {{ total }} 条 · 每页
+          {{ pageSize }} 条
+        </span>
+        <button
+          class="message-center__button"
+          data-testid="message-next"
+          type="button"
+          :disabled="loading || current >= pageCount"
+          @click="changePage(current + 1)"
+        >
+          下一页
+        </button>
+        <button
+          class="message-center__button"
+          data-testid="message-last"
+          type="button"
+          :disabled="loading || current >= pageCount"
+          @click="changePage(pageCount)"
+        >
+          末页
+        </button>
+      </nav>
     </section>
   </main>
 </template>
@@ -218,6 +260,9 @@ const error = ref('')
 const loading = ref(false)
 const current = ref(1)
 const pageSize = ref(20)
+const pageCount = computed(() =>
+  Math.max(1, Math.ceil(total.value / pageSize.value))
+)
 
 const filters = reactive({
   category: '' as MessageNotificationCategory | '',
@@ -255,8 +300,13 @@ const loadMessages = async (): Promise<boolean> => {
   try {
     const result = await fetchMessageNotifications(buildQuery())
     if (!currentContext() || seq !== loadSequence) return false
-    records.value = result.list
     total.value = result.total
+    if (current.value > pageCount.value) {
+      current.value = pageCount.value
+      records.value = []
+      return loadMessages()
+    }
+    records.value = result.list
     unreadTotal.value = result.unreadTotal
     categoryUnread.value = result.categoryUnread
     return true
@@ -285,6 +335,7 @@ watch(
     unreadTotal.value = 0
     categoryUnread.value = createEmptyCategoryUnread()
     error.value = ''
+    current.value = 1
     loading.value = false
     loadMessages()
   }
@@ -292,6 +343,19 @@ watch(
 onUnmounted(() => {
   contextGeneration += 1
 })
+
+const changePage = async (page: number) => {
+  if (
+    loading.value ||
+    !Number.isSafeInteger(page) ||
+    page < 1 ||
+    page > pageCount.value
+  )
+    return
+  current.value = page
+  records.value = []
+  await loadMessages()
+}
 
 const queryMessages = async () => {
   current.value = 1
@@ -332,6 +396,15 @@ onMounted(loadMessages)
   padding: 24px;
   color: #1d2129;
   background: #f5f7fb;
+}
+
+.message-center__pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px;
 }
 
 .message-center__header {

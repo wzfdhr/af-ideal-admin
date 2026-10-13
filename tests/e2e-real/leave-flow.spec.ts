@@ -223,7 +223,33 @@ test('real production frontend supports saved drafts, two reviewers, result noti
     const url = await create(employee, '浏览器完整链路验收')
     await login(first, 'a-manager-1')
     const detailPath = new URL(url).pathname
-    await first.locator(`a[href="${detailPath}"]`).click()
+    const firstTasks = first.waitForResponse(
+      (response) => new URL(response.url()).pathname === '/api/workflow-todos'
+    )
+    await first.getByRole('link', { name: '查看更多', exact: true }).click()
+    expect((await firstTasks).status()).toBe(200)
+    const taskList = first.getByTestId('leave-runtime')
+    const taskLink = taskList.locator(`a[href="${detailPath}"]`)
+    const findTask = async (): Promise<void> => {
+      await expect(taskList.locator('.arco-spin-loading')).toHaveCount(0)
+      if (await taskLink.count()) return
+      const next = taskList.locator('.arco-pagination-item-next')
+      if (
+        await next
+          .getAttribute('class')
+          .then((value) => value?.includes('disabled'))
+      )
+        return
+      const loaded = first.waitForResponse(
+        (response) => new URL(response.url()).pathname === '/api/workflow-todos'
+      )
+      await next.click()
+      expect((await loaded).status()).toBe(200)
+      await findTask()
+    }
+    await findTask()
+    await expect(taskLink).toBeVisible()
+    await taskLink.click()
     await expect(first).toHaveURL(url)
     await expect(first.getByTestId('leave-review-panel')).toBeVisible()
     await first.getByTestId('leave-review-comment').fill('第一主管已核实')
@@ -252,15 +278,45 @@ test('real production frontend supports saved drafts, two reviewers, result noti
       fullPage: true,
     })
     await employee.goto('/message/center')
+    await employee.getByTestId('message-keyword').fill('请假申请已通过')
     await expect(async () => {
       await employee.getByTestId('message-query').click()
       await expect(employee.getByText('请假申请已通过').first()).toBeVisible({
         timeout: 1000,
       })
+      const findNotification = async (): Promise<void> => {
+        await expect(employee.getByTestId('message-query')).toBeEnabled()
+        if (await employee.locator(`a[href="${detailPath}"]`).count()) return
+        const next = employee.getByTestId('message-next')
+        if (await next.isDisabled()) return
+        const loaded = employee.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname === '/api/messages/notifications'
+        )
+        await next.click()
+        expect((await loaded).status()).toBe(200)
+        await findNotification()
+      }
+      await findNotification()
       await expect(employee.locator(`a[href="${detailPath}"]`)).toBeVisible({
         timeout: 1000,
       })
     }).toPass({ timeout: 15000 })
+    const notification = employee
+      .locator('tbody tr')
+      .filter({ has: employee.locator(`a[href="${detailPath}"]`) })
+    await expect(notification).toContainText('请假申请已通过')
+    if (
+      await notification
+        .getByRole('button', { name: '标为已读', exact: true })
+        .count()
+    ) {
+      await notification
+        .getByRole('button', { name: '标为已读', exact: true })
+        .click()
+    }
+    await expect(notification).toContainText('已读')
+    await expect(notification).not.toContainText('未读')
     await employee.locator(`a[href="${detailPath}"]`).click()
     await expect(employee).toHaveURL(url)
     await expect(

@@ -162,6 +162,24 @@ test('real own-task transfer preserves errors and removes old actions, then supe
     await expect(consoleRoot).toBeVisible()
     const requestId = new URL(secondUrl).pathname.split('/').at(-1)
     const row = consoleRoot.locator('article').filter({ hasText: requestId })
+    const findRecovery = async (): Promise<void> => {
+      await expect(
+        consoleRoot.getByRole('button', { name: '刷新待办检查', exact: true })
+      ).toBeEnabled()
+      if (await row.count()) return
+      const next = consoleRoot
+        .getByRole('navigation', { name: '运行待办检查分页' })
+        .getByRole('button', { name: '下一页', exact: true })
+      if (await next.isDisabled()) return
+      const loaded = admin.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/workflow-exceptions'
+      )
+      await next.click()
+      expect((await loaded).status()).toBe(200)
+      await findRecovery()
+    }
+    await findRecovery()
     await expect(row).toContainText('下一阻塞票位 1')
     const recovery = row.getByTestId('workflow-assignment-editor')
     await recovery
