@@ -15,6 +15,9 @@ const api = vi.hoisted(() => ({
   detail: vi.fn(),
   save: vi.fn(),
   create: vi.fn(),
+  application: vi.fn(),
+  submit: vi.fn(),
+  navigate: vi.fn(),
 }))
 vi.mock('../../config/data-mode', () => ({ dataMode: 'reference' }))
 vi.mock('@/api/form-schema', () => ({
@@ -22,9 +25,9 @@ vi.mock('@/api/form-schema', () => ({
   getFormSchemaDetail: api.detail,
   saveFormSchema: api.save,
   createFormSchema: api.create,
-  getFormApplication: vi.fn(),
+  getFormApplication: api.application,
   publishFormSchema: vi.fn(),
-  submitFormRuntime: vi.fn(),
+  submitFormRuntime: api.submit,
 }))
 const record = (id: string, revision = 1) => ({
   id,
@@ -79,6 +82,7 @@ beforeEach(() => {
   setToken('test-current-token')
 })
 afterEach(() => {
+  vi.unstubAllGlobals()
   active.splice(0).forEach((wrapper) => wrapper.unmount())
 })
 
@@ -191,5 +195,240 @@ describe('real form catalogue', () => {
     expect(designer.formId.value).toBe('')
     expect(actions.draftChoices.value).toEqual([])
     expect(actions.loading.value).toBe(false)
+  })
+
+  it.each(['create', 'save'] as const)(
+    'releases its own pending %s after a token-only change without applying its response or retrying automatically',
+    async (operation) => {
+      const { actions, designer } = harness()
+      api.detail.mockResolvedValueOnce(record('selected', 7))
+      await actions.loadDraft('selected')
+      designer.ast.value.widgetsConfig = [
+        { uid: 'local', type: 'input', name: '未保存字段', config: {} },
+      ]
+      const unsaved = JSON.stringify(designer.ast.value)
+      const old = deferred<ReturnType<typeof record>>()
+      const next = deferred<ReturnType<typeof record>>()
+      const transport = operation === 'create' ? api.create : api.save
+      transport
+        .mockReturnValueOnce(old.promise)
+        .mockReturnValueOnce(next.promise)
+      const invoke = () =>
+        operation === 'create'
+          ? actions.createDraft('明确创建')
+          : actions.saveDraft()
+      const busy = operation === 'create' ? actions.creating : actions.saving
+      const pending = invoke()
+      expect(busy.value).toBe(true)
+      setToken('replacement-token-same-user-and-tenant')
+      old.resolve(record('stale-result', 99))
+      await pending
+      expect(busy.value).toBe(false)
+      expect(designer.formId.value).toBe('selected')
+      expect(JSON.stringify(designer.ast.value)).toBe(unsaved)
+      expect(
+        actions.draftChoices.value.find((item) => item.id === 'selected')
+          ?.revision
+      ).toBe(7)
+      expect(actions.actionMessage.value).toBe('')
+      expect(actions.actionError.value).toBe('')
+      expect(transport).toHaveBeenCalledTimes(1)
+      const fresh = invoke()
+      expect(transport).toHaveBeenCalledTimes(2)
+      expect(busy.value).toBe(true)
+      if (operation === 'save') expect(api.save.mock.calls[1][2]).toBe(7)
+      next.resolve(
+        record(operation === 'create' ? 'explicit-new' : 'selected', 8)
+      )
+      await fresh
+      expect(busy.value).toBe(false)
+      expect(designer.formId.value).toBe(
+        operation === 'create' ? 'explicit-new' : 'selected'
+      )
+      expect(actions.actionMessage.value).toBe(
+        operation === 'create' ? '创建成功' : '保存成功'
+      )
+    }
+  )
+
+  it.each(['create', 'save'] as const)(
+    'does not let an old %s finally clear the busy state of a newer identity operation',
+    async (operation) => {
+      const { actions, designer, user } = harness()
+      api.detail.mockResolvedValueOnce(record('previous', 3))
+      await actions.loadDraft('previous')
+      const old = deferred<ReturnType<typeof record>>()
+      const next = deferred<ReturnType<typeof record>>()
+      const transport = operation === 'create' ? api.create : api.save
+      transport
+        .mockReturnValueOnce(old.promise)
+        .mockReturnValueOnce(next.promise)
+      const invoke = () =>
+        operation === 'create'
+          ? actions.createDraft('明确创建')
+          : actions.saveDraft()
+      const busy = operation === 'create' ? actions.creating : actions.saving
+      const oldPending = invoke()
+      setToken('replacement-token')
+      user.$patch({
+        permissions: ['form:read', 'form:configure', 'form:publish'],
+      })
+      api.detail.mockResolvedValueOnce(record('current', 5))
+      await actions.loadDraft('current')
+      designer.ast.value.widgetsConfig = [
+        {
+          uid: 'current-local',
+          type: 'input',
+          name: '当前未保存字段',
+          config: {},
+        },
+      ]
+      const unsaved = JSON.stringify(designer.ast.value)
+      const newPending = invoke()
+      expect(busy.value).toBe(true)
+      old.resolve(record('stale-result', 99))
+      await oldPending
+      expect(busy.value).toBe(true)
+      expect(designer.formId.value).toBe('current')
+      expect(JSON.stringify(designer.ast.value)).toBe(unsaved)
+      expect(actions.actionMessage.value).toBe('')
+      expect(
+        actions.draftChoices.value.find((item) => item.id === 'current')
+          ?.revision
+      ).toBe(5)
+      next.resolve(
+        record(operation === 'create' ? 'current-created' : 'current', 6)
+      )
+      await newPending
+      expect(busy.value).toBe(false)
+      expect(designer.formId.value).toBe(
+        operation === 'create' ? 'current-created' : 'current'
+      )
+    }
+  )
+
+  it('releases token-only pending publish and permits a new explicit attempt without redirecting from the old response', async () => {
+    const { actions, designer } = harness()
+    api.detail.mockResolvedValueOnce(record('selected', 7))
+    await actions.loadDraft('selected')
+    designer.ast.value.widgetsConfig = [
+      { uid: 'local', type: 'input', name: '未保存字段', config: {} },
+    ]
+    const unsaved = JSON.stringify(designer.ast.value)
+    vi.stubGlobal('window', { location: { assign: api.navigate } })
+    const old = deferred<{ id: string }>()
+    const next = deferred<{ id: string }>()
+    api.application
+      .mockReturnValueOnce(old.promise)
+      .mockReturnValueOnce(next.promise)
+    const oldPending = actions.publishCurrent()
+    expect(actions.publishing.value).toBe(true)
+    setToken('replacement-token-same-user-and-tenant')
+    old.resolve({ id: 'stale-app' })
+    await oldPending
+    expect(actions.publishing.value).toBe(false)
+    expect(api.navigate).not.toHaveBeenCalled()
+    expect(api.application).toHaveBeenCalledTimes(1)
+    expect(JSON.stringify(designer.ast.value)).toBe(unsaved)
+    const newPending = actions.publishCurrent()
+    expect(actions.publishing.value).toBe(true)
+    expect(api.application).toHaveBeenCalledTimes(2)
+    next.resolve({ id: 'current-app' })
+    await newPending
+    expect(actions.publishing.value).toBe(false)
+    expect(api.navigate).toHaveBeenCalledExactlyOnceWith(
+      '/applications/current-app/configuration'
+    )
+  })
+
+  it('does not let a stale publish finally clear a newer publishing operation', async () => {
+    const { actions, designer, user } = harness()
+    api.detail.mockResolvedValueOnce(record('previous'))
+    await actions.loadDraft('previous')
+    vi.stubGlobal('window', { location: { assign: api.navigate } })
+    const old = deferred<{ id: string }>()
+    const next = deferred<{ id: string }>()
+    api.application
+      .mockReturnValueOnce(old.promise)
+      .mockReturnValueOnce(next.promise)
+    const oldPending = actions.publishCurrent()
+    setToken('replacement-token')
+    user.$patch({
+      permissions: ['form:read', 'form:configure', 'form:publish'],
+    })
+    api.detail.mockResolvedValueOnce(record('current'))
+    await actions.loadDraft('current')
+    const newPending = actions.publishCurrent()
+    old.resolve({ id: 'stale-app' })
+    await oldPending
+    expect(actions.publishing.value).toBe(true)
+    expect(designer.formId.value).toBe('current')
+    expect(api.navigate).not.toHaveBeenCalled()
+    next.resolve({ id: 'current-app' })
+    await newPending
+    expect(actions.publishing.value).toBe(false)
+    expect(api.navigate).toHaveBeenCalledExactlyOnceWith(
+      '/applications/current-app/configuration'
+    )
+  })
+
+  it('does not continue an old-token preview validation into an API submission and allows a new explicit preview', async () => {
+    const { actions } = harness()
+    const validation = deferred<boolean>()
+    const validate = vi
+      .fn()
+      .mockReturnValueOnce(validation.promise)
+      .mockResolvedValueOnce(true)
+    actions.previewRendererRef.value = {
+      validate,
+      getValues: () => ({ example: 'current input' }),
+    }
+    const oldPending = actions.submitPreview()
+    setToken('replacement-token-same-user-and-tenant')
+    validation.resolve(true)
+    await oldPending
+    expect(api.submit).not.toHaveBeenCalled()
+    expect(actions.submittingPreview.value).toBe(false)
+    expect(actions.actionMessage.value).toBe('')
+    api.submit.mockResolvedValueOnce({ mode: 'preview' })
+    await actions.submitPreview()
+    expect(api.submit).toHaveBeenCalledTimes(1)
+    expect(actions.actionMessage.value).toBe('试提交校验通过（未创建申请）')
+    expect(actions.submittingPreview.value).toBe(false)
+  })
+
+  it('discards an old preview result without clearing a newer preview submission busy state', async () => {
+    const { actions, user } = harness()
+    actions.previewRendererRef.value = {
+      validate: async () => true,
+      getValues: () => ({ example: 'current input' }),
+    }
+    const old = deferred<{ mode: string }>()
+    const next = deferred<{ mode: string }>()
+    api.submit
+      .mockReturnValueOnce(old.promise)
+      .mockReturnValueOnce(next.promise)
+    const oldPending = actions.submitPreview()
+    await Promise.resolve()
+    expect(api.submit).toHaveBeenCalledTimes(1)
+    setToken('replacement-token')
+    user.$patch({
+      permissions: ['form:read', 'form:configure', 'form:publish'],
+    })
+    actions.previewRendererRef.value = {
+      validate: async () => true,
+      getValues: () => ({ example: 'fresh current identity input' }),
+    }
+    const newPending = actions.submitPreview()
+    await Promise.resolve()
+    expect(api.submit).toHaveBeenCalledTimes(2)
+    old.resolve({ mode: 'stale-submitted' })
+    await oldPending
+    expect(actions.submittingPreview.value).toBe(true)
+    expect(actions.actionMessage.value).toBe('')
+    next.resolve({ mode: 'preview' })
+    await newPending
+    expect(actions.submittingPreview.value).toBe(false)
+    expect(actions.actionMessage.value).toBe('试提交校验通过（未创建申请）')
   })
 })

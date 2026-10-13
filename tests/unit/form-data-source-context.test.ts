@@ -2,7 +2,8 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { defineComponent, h } from 'vue'
-import { expect, it, vi } from 'vitest'
+import { beforeEach, expect, it, vi } from 'vitest'
+import { setToken } from '@/services/auth'
 import { useUserStore } from '@/store'
 import Manager from '@/components/form-data-source-manager.vue'
 import type { PropType } from 'vue'
@@ -12,21 +13,27 @@ const calls = vi.hoisted(() => ({
   query: vi.fn(),
   fetch: vi.fn(),
   detail: vi.fn(),
+  save: vi.fn(),
+  dictionaries: vi.fn(),
+  reload: vi.fn().mockResolvedValue(undefined),
+  notice: vi.fn(),
   reset: vi.fn().mockResolvedValue(undefined),
   record: { id: 'source-a' },
 }))
 vi.mock('@/api/form-data-sources', () => ({
   fetchFormDataSources: calls.fetch,
   getFormDataSource: calls.detail,
-  saveFormDataSource: vi.fn(),
+  saveFormDataSource: calls.save,
   queryFormDataSource: calls.query,
 }))
-vi.mock('@/api/system/dictionary', () => ({ fetchSystemDictionaries: vi.fn() }))
+vi.mock('@/api/system/dictionary', () => ({
+  fetchSystemDictionaries: calls.dictionaries,
+}))
 vi.mock('@/components/pro-ui', async () => {
   const vue = await import('vue')
   return {
     adminUi: {
-      Message: { success: vi.fn() },
+      Message: { success: calls.notice },
       Modal: vue.defineComponent({
         setup: (_, ctx) => () => vue.h('section', {}, ctx.slots.default?.()),
       }),
@@ -46,7 +53,7 @@ vi.mock('@/components/pro-table/index.vue', async () => {
         },
       },
       setup: (props, ctx) => {
-        ctx.expose({ reset: calls.reset })
+        ctx.expose({ reset: calls.reset, reload: calls.reload })
         return () =>
           vue.h(
             'div',
@@ -213,5 +220,179 @@ it('does not reopen a previous identity source editor from a delayed detail repl
     (wrapper.get('[aria-label="数据源名称"]').element as HTMLInputElement).value
   ).toBe('')
   expect(wrapper.text()).not.toContain('private-name')
+  wrapper.unmount()
+})
+
+const sourceRecord = (id: string) => ({
+  id,
+  code: `code-${id}`,
+  name: `名称-${id}`,
+  kind: 'dictionary',
+  dictionaryId: `dictionary-${id}`,
+  status: 'enabled',
+  description: '',
+  revision: 2,
+})
+const deferredSource = () => {
+  let resolve!: (value: any) => void
+  const promise = new Promise<any>((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+const sourceHarness = () => {
+  const pinia = createPinia()
+  const user = useUserStore(pinia)
+  user.$patch({
+    id: 'a-admin',
+    tenantId: 'tenant-a',
+    permissions: ['form-source:list', 'form-source:update', 'system:dict:read'],
+  })
+  const wrapper = mount(Manager, {
+    global: { plugins: [pinia], stubs: { PermissionButton: Button } },
+  })
+  const action = (label: string) => {
+    const button = wrapper
+      .findAll('button')
+      .find((item) => item.text() === label)
+    if (!button) throw new Error(`Missing actual button: ${label}`)
+    return button
+  }
+  return { wrapper, user, action }
+}
+beforeEach(() => {
+  vi.clearAllMocks()
+  setToken('source-original-token')
+})
+
+it('discards token-only stale source list, editor lookup, dictionary lookup and preview replies without starting follow-up requests', async () => {
+  const { wrapper, action } = sourceHarness()
+  const detail = deferredSource()
+  const dictionaries = deferredSource()
+  const preview = deferredSource()
+  const list = deferredSource()
+  calls.detail.mockReturnValueOnce(detail.promise)
+  calls.dictionaries.mockReturnValueOnce(dictionaries.promise)
+  calls.query.mockReturnValueOnce(preview.promise)
+  calls.fetch.mockReturnValueOnce(list.promise)
+  await wrapper.get('[aria-label="数据源名称"]').setValue('当前未保存输入')
+  await action('维护数据源').trigger('click')
+  await action('搜索关联字典').trigger('click')
+  await action('查询预览').trigger('click')
+  const fetchData = wrapper
+    .getComponent({ name: 'SourceTable' })
+    .props('fetchData')
+  const pendingList = fetchData({ current: 1, pageSize: 20, filters: {} })
+  setToken('source-replacement-token')
+  detail.resolve(sourceRecord('stale'))
+  dictionaries.resolve({
+    list: [{ id: 'private-dictionary', dictName: '旧字典私密内容' }],
+    total: 1,
+  })
+  preview.resolve({
+    sourceRevision: 1,
+    dictionaryRevision: 1,
+    options: [{ label: '旧预览私密内容', value: 'private' }],
+  })
+  list.resolve({ list: [sourceRecord('stale')], total: 1 })
+  expect(await pendingList).toEqual({ list: [], total: 0 })
+  await flushPromises()
+  expect(
+    (wrapper.get('[aria-label="数据源名称"]').element as HTMLInputElement).value
+  ).toBe('当前未保存输入')
+  expect(wrapper.text()).not.toContain('旧字典私密内容')
+  expect(wrapper.text()).not.toContain('旧预览私密内容')
+  expect(wrapper.find('[data-testid="form-source-preview"]').exists()).toBe(
+    false
+  )
+  expect(calls.detail).toHaveBeenCalledTimes(1)
+  expect(calls.dictionaries).toHaveBeenCalledTimes(1)
+  expect(calls.query).toHaveBeenCalledTimes(1)
+  expect(calls.fetch).toHaveBeenCalledTimes(1)
+  expect(calls.reload).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('releases token-only stale source save without changing the editor or reloading under the new token, preserving the retry key', async () => {
+  const { wrapper, action } = sourceHarness()
+  calls.detail.mockResolvedValueOnce(sourceRecord('selected'))
+  await action('维护数据源').trigger('click')
+  await flushPromises()
+  const old = deferredSource()
+  const next = deferredSource()
+  calls.save.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise)
+  await wrapper.findAll('form')[1].trigger('submit')
+  expect(calls.save).toHaveBeenCalledTimes(1)
+  setToken('source-replacement-token')
+  old.resolve(sourceRecord('selected'))
+  await flushPromises()
+  expect(calls.reload).not.toHaveBeenCalled()
+  expect(calls.notice).not.toHaveBeenCalled()
+  expect(calls.save).toHaveBeenCalledTimes(1)
+  expect(
+    (wrapper.get('[aria-label="数据源名称"]').element as HTMLInputElement).value
+  ).toBe('名称-selected')
+  expect(action('保存数据源').attributes('disabled')).toBeUndefined()
+  await wrapper.findAll('form')[1].trigger('submit')
+  expect(calls.save).toHaveBeenCalledTimes(2)
+  expect(calls.save.mock.calls[1][1]).toBe(calls.save.mock.calls[0][1])
+  next.resolve(sourceRecord('selected'))
+  await flushPromises()
+  expect(calls.reload).toHaveBeenCalledTimes(1)
+  expect(calls.notice).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
+})
+
+it('does not let an old identity save callback overwrite a newer editor or release its pending save', async () => {
+  const { wrapper, user, action } = sourceHarness()
+  calls.detail.mockResolvedValueOnce(sourceRecord('old'))
+  await action('维护数据源').trigger('click')
+  await flushPromises()
+  const old = deferredSource()
+  const next = deferredSource()
+  calls.save.mockReturnValueOnce(old.promise).mockReturnValueOnce(next.promise)
+  await wrapper.findAll('form')[1].trigger('submit')
+  setToken('source-replacement-token')
+  user.$patch({
+    permissions: [
+      'form-source:list',
+      'form-source:update',
+      'system:dict:read',
+      'form-source:create',
+    ],
+  })
+  await flushPromises()
+  calls.detail.mockResolvedValueOnce(sourceRecord('new'))
+  await action('维护数据源').trigger('click')
+  await flushPromises()
+  await wrapper.findAll('form')[1].trigger('submit')
+  expect(calls.save).toHaveBeenCalledTimes(2)
+  old.resolve(sourceRecord('old'))
+  await flushPromises()
+  expect(action('保存中…').attributes('disabled')).toBeDefined()
+  expect(
+    (wrapper.get('[aria-label="数据源名称"]').element as HTMLInputElement).value
+  ).toBe('名称-new')
+  expect(calls.reload).not.toHaveBeenCalled()
+  expect(calls.notice).not.toHaveBeenCalled()
+  next.resolve(sourceRecord('new'))
+  await flushPromises()
+  expect(action('保存数据源').attributes('disabled')).toBeUndefined()
+  expect(calls.reload).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
+})
+
+it('suppresses an old-token source list rejection instead of surfacing it in the current table', async () => {
+  const { wrapper } = sourceHarness()
+  calls.fetch.mockRejectedValueOnce(
+    new Error('stale previous session list error')
+  )
+  const fetchData = wrapper
+    .getComponent({ name: 'SourceTable' })
+    .props('fetchData')
+  const pending = fetchData({ current: 1, pageSize: 20, filters: {} })
+  setToken('replacement-token')
+  await expect(pending).resolves.toEqual({ list: [], total: 0 })
+  expect(calls.fetch).toHaveBeenCalledTimes(1)
   wrapper.unmount()
 })

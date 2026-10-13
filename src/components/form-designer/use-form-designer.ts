@@ -55,6 +55,10 @@ export const useFormDesignerActions = (
   const catalogueError = ref('')
   let catalogueGeneration = 0
   let loadGeneration = 0
+  let createGeneration = 0
+  let saveGeneration = 0
+  let publishGeneration = 0
+  let previewGeneration = 0
   let identityGeneration = 0
   let disposed = false
   const scope = () => ({
@@ -175,6 +179,10 @@ export const useFormDesignerActions = (
     identityGeneration += 1
     catalogueGeneration += 1
     loadGeneration += 1
+    createGeneration += 1
+    saveGeneration += 1
+    publishGeneration += 1
+    previewGeneration += 1
     draftPage.value = []
     selectedDraft.value = undefined
     draftRevision.value = undefined
@@ -192,7 +200,9 @@ export const useFormDesignerActions = (
     creating.value = false
     saving.value = false
     publishing.value = false
+    submittingPreview.value = false
     previewVisible.value = false
+    previewRendererRef.value = undefined
     dataSourceEditorVisible.value = false
     importVisible.value = false
     importSource.value = ''
@@ -232,6 +242,7 @@ export const useFormDesignerActions = (
   const createDraft = async (name = '未命名表单') => {
     if (creating.value || saving.value || loading.value) return
     const captured = scope()
+    const generation = ++createGeneration
     creating.value = true
     actionMessage.value = ''
     actionError.value = ''
@@ -259,13 +270,14 @@ export const useFormDesignerActions = (
       if (currentScope(captured))
         actionError.value = getErrorMessage(failure, '创建失败，输入已保留')
     } finally {
-      if (currentScope(captured)) creating.value = false
+      if (!disposed && generation === createGeneration) creating.value = false
     }
   }
 
   const saveDraft = async () => {
     if (saving.value || creating.value || loading.value) return
     const captured = scope()
+    const generation = ++saveGeneration
     saving.value = true
     actionMessage.value = ''
     actionError.value = ''
@@ -294,12 +306,15 @@ export const useFormDesignerActions = (
       if (currentScope(captured))
         actionError.value = getErrorMessage(failure, '保存失败，输入已保留')
     } finally {
-      if (currentScope(captured)) saving.value = false
+      if (!disposed && generation === saveGeneration) saving.value = false
     }
   }
 
   const publishCurrent = async () => {
+    if (publishing.value || saving.value || creating.value || loading.value)
+      return
     const captured = scope()
+    const generation = ++publishGeneration
     publishing.value = true
     actionMessage.value = ''
     actionError.value = ''
@@ -327,11 +342,15 @@ export const useFormDesignerActions = (
       if (currentScope(captured))
         actionError.value = getErrorMessage(error, '发布失败')
     } finally {
-      if (currentScope(captured)) publishing.value = false
+      if (!disposed && generation === publishGeneration)
+        publishing.value = false
     }
   }
 
   const submitPreview = async () => {
+    if (submittingPreview.value || loading.value) return
+    const captured = scope()
+    const generation = ++previewGeneration
     submittingPreview.value = true
     actionMessage.value = ''
     actionError.value = ''
@@ -343,18 +362,22 @@ export const useFormDesignerActions = (
       }
 
       const valid = await renderer.validate()
+      if (!currentScope(captured)) return
       if (!valid) {
         actionError.value = '表单校验未通过'
         return
       }
 
       const result = await submitFormRuntime(formId.value, renderer.getValues())
+      if (!currentScope(captured)) return
       actionMessage.value =
         result?.mode === 'preview' ? '试提交校验通过（未创建申请）' : '提交成功'
     } catch (error) {
-      actionError.value = getErrorMessage(error, '提交失败')
+      if (currentScope(captured))
+        actionError.value = getErrorMessage(error, '提交失败')
     } finally {
-      submittingPreview.value = false
+      if (!disposed && generation === previewGeneration)
+        submittingPreview.value = false
     }
   }
 

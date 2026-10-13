@@ -158,7 +158,8 @@ import {
 } from '@/api/form-data-sources'
 import { fetchSystemDictionaries } from '@/api/system/dictionary'
 import { createCommandRetry } from '@/services/command-retry'
-import { registerDirtyCheck } from '@/services/tenant-context'
+import { registerDirtyCheck, tenantScope } from '@/services/tenant-context'
+import { getToken } from '@/services/auth'
 import type {
   ProTableExpose,
   ProTableFetchParams,
@@ -187,6 +188,16 @@ const sourceKeyword = ref('')
 const contextGeneration = ref(0)
 let editGeneration = 0
 let dictionaryGeneration = 0
+let saveGeneration = 0
+const captureScope = () => ({
+  context: contextGeneration.value,
+  token: getToken(),
+  tenant: tenantScope.snapshot(),
+})
+const currentScope = (captured: ReturnType<typeof captureScope>) =>
+  captured.context === contextGeneration.value &&
+  captured.token === getToken() &&
+  tenantScope.isCurrent(captured.tenant)
 const dictionaries = ref<SystemDictionaryRecord[]>([])
 const model = ref<FormDataSourceInput>({
   code: '',
@@ -205,6 +216,7 @@ watch(
     contextGeneration.value += 1
     editGeneration += 1
     dictionaryGeneration += 1
+    saveGeneration += 1
     sourceKeyword.value = ''
     saving.value = false
     querySequence += 1
@@ -234,19 +246,27 @@ onBeforeUnmount(() => {
   contextGeneration.value += 1
   editGeneration += 1
   dictionaryGeneration += 1
+  saveGeneration += 1
   querySequence += 1
   unregister()
 })
 const fetchSources = async (params: ProTableFetchParams) => {
-  const context = contextGeneration.value
-  const result = await fetchFormDataSources({
-    current: params.current,
-    pageSize: Math.min(100, Math.max(1, params.pageSize)),
-    keyword:
-      typeof params.filters.keyword === 'string' ? params.filters.keyword : '',
-  })
-  if (context !== contextGeneration.value) return { list: [], total: 0 }
-  return { ...result, list: result.list.map((source) => ({ ...source })) }
+  const captured = captureScope()
+  try {
+    const result = await fetchFormDataSources({
+      current: params.current,
+      pageSize: Math.min(100, Math.max(1, params.pageSize)),
+      keyword:
+        typeof params.filters.keyword === 'string'
+          ? params.filters.keyword
+          : '',
+    })
+    if (!currentScope(captured)) return { list: [], total: 0 }
+    return { ...result, list: result.list.map((source) => ({ ...source })) }
+  } catch (failure) {
+    if (!currentScope(captured)) return { list: [], total: 0 }
+    throw failure
+  }
 }
 const searchSources = async () => {
   queryError.value = ''
@@ -257,7 +277,7 @@ const searchSources = async () => {
     })
 }
 const loadDictionaries = async () => {
-  const context = contextGeneration.value
+  const captured = captureScope()
   const generation = ++dictionaryGeneration
   try {
     const { list } = await fetchSystemDictionaries({
@@ -266,17 +286,10 @@ const loadDictionaries = async () => {
       dictName: dictionarySearch.value,
       dictStatus: 'enabled',
     })
-    if (
-      context === contextGeneration.value &&
-      generation === dictionaryGeneration
-    )
+    if (currentScope(captured) && generation === dictionaryGeneration)
       dictionaries.value = list
   } catch (failure) {
-    if (
-      context !== contextGeneration.value ||
-      generation !== dictionaryGeneration
-    )
-      return
+    if (!currentScope(captured) || generation !== dictionaryGeneration) return
     editorError.value =
       failure instanceof Error ? failure.message : '无法搜索字典'
   }
@@ -299,12 +312,11 @@ const create = () => {
   loadDictionaries()
 }
 const edit = async (id: string) => {
-  const context = contextGeneration.value
+  const captured = captureScope()
   const generation = ++editGeneration
   try {
     const source = await getFormDataSource(id)
-    if (context !== contextGeneration.value || generation !== editGeneration)
-      return
+    if (!currentScope(captured) || generation !== editGeneration) return
     editing.value = id
     retry.clear()
     editorError.value = ''
@@ -319,15 +331,15 @@ const edit = async (id: string) => {
     }
     visible.value = true
   } catch (failure) {
-    if (context !== contextGeneration.value || generation !== editGeneration)
-      return
+    if (!currentScope(captured) || generation !== editGeneration) return
     queryError.value =
       failure instanceof Error ? failure.message : '无法读取数据源'
   }
 }
 const save = async () => {
   if (saving.value) return
-  const context = contextGeneration.value
+  const captured = captureScope()
+  const generation = ++saveGeneration
   saving.value = true
   editorError.value = ''
   try {
@@ -337,7 +349,7 @@ const save = async () => {
       retry.key('save', input),
       editing.value || undefined
     )
-    if (context !== contextGeneration.value) return
+    if (!currentScope(captured)) return
     retry.complete('save')
     visible.value = false
     querySequence += 1
@@ -345,23 +357,25 @@ const save = async () => {
     Message.success('数据源已保存')
     await table.value?.reload()
   } catch (failure) {
-    if (context !== contextGeneration.value) return
+    if (!currentScope(captured)) return
     editorError.value =
       failure instanceof Error ? failure.message : '保存失败，输入已保留'
   } finally {
-    if (context === contextGeneration.value) saving.value = false
+    if (generation === saveGeneration) saving.value = false
   }
 }
 const query = async (id: string) => {
+  const captured = captureScope()
   querySequence += 1
   const sequence = querySequence
   queryError.value = ''
   preview.value = undefined
   try {
     const result = await queryFormDataSource(id)
-    if (sequence === querySequence) preview.value = result
+    if (currentScope(captured) && sequence === querySequence)
+      preview.value = result
   } catch (failure) {
-    if (sequence !== querySequence) return
+    if (!currentScope(captured) || sequence !== querySequence) return
     queryError.value =
       failure instanceof Error ? failure.message : '查询失败，请重试'
   }
