@@ -20,6 +20,42 @@ const field = (page: Page, label: string) =>
     .locator('.arco-form-item')
     .filter({ hasText: label })
     .locator('input,textarea')
+interface TodoPage {
+  current: number
+  pageSize: number
+  list: {
+    requestId: string
+    recordLink: string
+    businessKind: string
+  }[]
+  total: number
+}
+const readTodoPage = async (response: Response): Promise<TodoPage> => {
+  expect(response.status()).toBe(200)
+  const body = response.json()
+  expect(await response.finished()).toBeNull()
+  const requestUrl = new URL(response.url())
+  const payload = await body
+  expect(payload.code).toBe(20000)
+  return {
+    current: Number(requestUrl.searchParams.get('current')),
+    pageSize: Number(requestUrl.searchParams.get('pageSize')),
+    list: payload.data.list,
+    total: payload.data.total,
+  }
+}
+const waitForTodoPage = (page: Page, current: number, pageSize: number) =>
+  page
+    .waitForResponse((response) => {
+      const requestUrl = new URL(response.url())
+      return (
+        requestUrl.pathname === '/api/workflow-todos' &&
+        requestUrl.searchParams.get('current') === String(current) &&
+        requestUrl.searchParams.get('pageSize') === String(pageSize) &&
+        response.request().method() === 'GET'
+      )
+    })
+    .then(readTodoPage)
 test('equipment template uses shared designers, true saved records and the common two-reviewer workflow without pretending to be leave', async ({
   browser,
   request,
@@ -88,31 +124,12 @@ test('equipment template uses shared designers, true saved records and the commo
       employee.getByRole('heading', { name: '审批中', exact: true })
     ).toBeVisible()
     await login(first, 'a-manager-1')
-    const initialTasks = first.waitForResponse((response) => {
-      const requestUrl = new URL(response.url())
-      return (
-        requestUrl.pathname === '/api/workflow-todos' &&
-        requestUrl.searchParams.get('current') === '1' &&
-        response.request().method() === 'GET'
-      )
-    })
+    const initialTasks = waitForTodoPage(first, 1, 10)
     await first.goto('/Scalability/workflowCenter')
     const taskList = first.getByTestId('leave-runtime')
     const detailPath = new URL(url).pathname
-    const findTask = async (response: Response): Promise<void> => {
-      expect(response.status()).toBe(200)
-      const requestUrl = new URL(response.url())
-      const current = Number(requestUrl.searchParams.get('current'))
-      const pageSize = Number(requestUrl.searchParams.get('pageSize'))
-      const data = (await response.json()).data as {
-        list: {
-          requestId: string
-          recordLink: string
-          businessKind: string
-        }[]
-        total: number
-      }
-      const index = data.list.findIndex(
+    const findTask = async (taskPage: TodoPage): Promise<void> => {
+      const index = taskPage.list.findIndex(
         (task) =>
           task.requestId === id &&
           task.recordLink === detailPath &&
@@ -129,20 +146,16 @@ test('equipment template uses shared designers, true saved records and the commo
         return
       }
       expect(
-        current * pageSize,
+        taskPage.current * taskPage.pageSize,
         'the assigned equipment task must exist within the server-reported todo total'
-      ).toBeLessThan(data.total)
+      ).toBeLessThan(taskPage.total)
       const next = taskList.locator('.arco-pagination-item-next')
       await expect(next).not.toHaveClass(/arco-pagination-item-disabled/)
-      const loaded = first.waitForResponse((nextResponse) => {
-        const nextUrl = new URL(nextResponse.url())
-        return (
-          nextUrl.pathname === '/api/workflow-todos' &&
-          nextUrl.searchParams.get('current') === String(current + 1) &&
-          nextUrl.searchParams.get('pageSize') === String(pageSize) &&
-          nextResponse.request().method() === 'GET'
-        )
-      })
+      const loaded = waitForTodoPage(
+        first,
+        taskPage.current + 1,
+        taskPage.pageSize
+      )
       await next.click()
       await findTask(await loaded)
     }
