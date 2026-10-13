@@ -1181,13 +1181,16 @@ const removeSelected = () => {
   selectedIds.value = []
 }
 const hasTableField = (
-  widget: Extract<DataScreenWidgetV1, { kind: 'table' }>,
+  widget: DataScreenWidgetV1 | null,
   reference: ReportingFieldReference
-) => widget.props.columns.some((field) => refKey(field) === refKey(reference))
+) =>
+  widget?.kind === 'table' &&
+  widget.props.columns.some((field) => refKey(field) === refKey(reference))
 const toggleTableField = (
-  widget: Extract<DataScreenWidgetV1, { kind: 'table' }>,
+  widget: DataScreenWidgetV1 | null,
   reference: ReportingFieldReference
 ) => {
+  if (!widget || widget.kind !== 'table') return
   if (hasTableField(widget, reference))
     widget.props.columns = widget.props.columns.filter(
       (field) => refKey(field) !== refKey(reference)
@@ -1203,10 +1206,11 @@ const parseFieldKey = (value: string): ReportingFieldReference => {
   return { kind: kind as 'field', id } as ReportingFieldReference
 }
 const setMapField = (
-  widget: Extract<DataScreenWidgetV1, { kind: 'map' }>,
+  widget: DataScreenWidgetV1 | null,
   property: 'longitudeField' | 'latitudeField',
   event: Event
 ) => {
+  if (!widget || widget.kind !== 'map') return
   widget.props[property] = parseFieldKey(
     (event.target as HTMLSelectElement).value
   )
