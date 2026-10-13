@@ -193,6 +193,44 @@ describe('persistent low-code application directory', () => {
     )
   })
 
+  it('keeps an editor inert until the full generate chain finishes, then preserves fast title input', async () => {
+    applicationApi.listApplications
+      .mockResolvedValueOnce({ list: [], total: 386 })
+      .mockResolvedValueOnce({ list: [target], total: 1 })
+    const wrapper = mountDesigner()
+    await flushPromises()
+    const keyword = wrapper.get(
+      '[data-testid="persistent-application-keyword"]'
+    )
+    await keyword.setValue(target.code)
+    await keyword.trigger('keydown.enter')
+    await flushPromises()
+    await wrapper
+      .get('select[aria-label="生成页面业务发布版"]')
+      .setValue(target.activeReleaseId)
+    const pendingRoute = deferred<void>()
+    routing.replace.mockReturnValueOnce(pendingRoute.promise)
+
+    await wrapper
+      .get('[data-testid="persistent-page-generate"]')
+      .trigger('click')
+    await flushPromises()
+    const editor = wrapper.get('[data-testid="persistent-page-editor"]')
+    const title = editor.get('input[aria-label="低代码页面标题"]')
+    expect(editor.attributes('aria-busy')).toBe('true')
+    expect((title.element as HTMLInputElement).matches(':disabled')).toBe(true)
+
+    pendingRoute.resolve()
+    await flushPromises()
+    expect(editor.attributes('aria-busy')).toBe('false')
+    expect((title.element as HTMLInputElement).matches(':disabled')).toBe(false)
+    await title.setValue('快速输入但不会丢失的标题')
+    await flushPromises()
+    expect((title.element as HTMLInputElement).value).toBe(
+      '快速输入但不会丢失的标题'
+    )
+  })
+
   it('ignores an older search response that arrives after a newer identity result', async () => {
     let resolveOlder: (value: unknown) => void = () => undefined
     let resolveNewer: (value: unknown) => void = () => undefined

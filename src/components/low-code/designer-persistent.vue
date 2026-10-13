@@ -105,128 +105,36 @@
       v-if="current && draft"
       class="page-editor"
       data-testid="persistent-page-editor"
+      :aria-busy="busy"
     >
-      <h2>{{ current.name }} · 配置草稿</h2>
-      <p>
-        最后保存 {{ current.updatedAt }}
-        <span v-if="dirty">· 有未保存配置</span>
-      </p>
-      <label>
-        配置名称
-        <input v-model="name" aria-label="低代码配置名称" maxlength="100" />
-      </label>
-      <label>
-        页面标题
-        <input
-          v-model="draft.title"
-          aria-label="低代码页面标题"
-          maxlength="100"
-        />
-      </label>
-      <div class="property-grid">
-        <section>
-          <h3>物料配置</h3>
-          <label>
-            选择物料
-            <select v-model="selectedMaterialId" aria-label="低代码物料选择">
-              <option
-                v-for="material in draft.materials"
-                :key="material.id"
-                :value="material.id"
-              >
-                {{ material.name }}
-              </option>
-            </select>
-          </label>
-          <template v-if="selectedMaterial">
+      <fieldset
+        class="page-editor__fieldset"
+        :disabled="busy"
+        aria-label="低代码页面配置编辑器"
+      >
+        <h2>{{ current.name }} · 配置草稿</h2>
+        <p>
+          最后保存 {{ current.updatedAt }}
+          <span v-if="dirty">· 有未保存配置</span>
+        </p>
+        <label>
+          配置名称
+          <input v-model="name" aria-label="低代码配置名称" maxlength="100" />
+        </label>
+        <label>
+          页面标题
+          <input
+            v-model="draft.title"
+            aria-label="低代码页面标题"
+            maxlength="100"
+          />
+        </label>
+        <div class="property-grid">
+          <section>
+            <h3>物料配置</h3>
             <label>
-              物料名称
-              <input
-                v-model="selectedMaterial.name"
-                aria-label="低代码物料名称"
-                maxlength="100"
-              />
-            </label>
-            <label>
-              布局宽度
-              <select
-                v-model.number="selectedMaterial.span"
-                aria-label="低代码布局宽度"
-              >
-                <option :value="6">四分之一</option>
-                <option :value="12">二分之一</option>
-                <option :value="24">整行</option>
-              </select>
-            </label>
-            <label>
-              受控来源
-              <select
-                :value="selectedMaterial.sourceId"
-                aria-label="低代码物料来源"
-                @change="changeSource"
-              >
-                <option
-                  v-if="
-                    !sources.some(
-                      (source) => source.id === selectedMaterial?.sourceId
-                    )
-                  "
-                  :value="selectedMaterial.sourceId"
-                >
-                  当前固定来源
-                </option>
-                <option
-                  v-for="source in sources"
-                  :key="source.id"
-                  :value="source.id"
-                >
-                  {{ source.name
-                  }}{{ source.status === 'disabled' ? ' · 已停用' : '' }}
-                </option>
-              </select>
-            </label>
-            <label>
-              额外显示权限
-              <input
-                :value="selectedMaterial.permissionCode || ''"
-                aria-label="低代码物料权限"
-                @input="changePermission($event)"
-              />
-            </label>
-            <label v-if="selectedMaterial.type === 'ChartCard'">
-              统计口径
-              <select
-                v-model="selectedMaterial.metric"
-                aria-label="低代码图表口径"
-              >
-                <option value="status-distribution">授权业务状态分布</option>
-                <option value="created-day">按北京时间创建日趋势</option>
-              </select>
-            </label>
-          </template>
-        </section>
-        <section>
-          <h3>动作配置</h3>
-          <article
-            v-for="action in draft.actions"
-            :key="action.id"
-            class="action-row"
-            :data-config-action="action.id"
-          >
-            <label>
-              {{ actionTypeLabels[action.type] }}按钮名称
-              <input
-                v-model="action.label"
-                :aria-label="`动作名称-${action.id}`"
-                maxlength="100"
-              />
-            </label>
-            <label>
-              目标物料
-              <select
-                v-model="action.targetId"
-                :aria-label="`动作目标-${action.id}`"
-              >
+              选择物料
+              <select v-model="selectedMaterialId" aria-label="低代码物料选择">
                 <option
                   v-for="material in draft.materials"
                   :key="material.id"
@@ -236,107 +144,208 @@
                 </option>
               </select>
             </label>
-            <small v-if="action.operation">
-              业务操作：{{ operationLabels[action.operation] }}
-            </small>
-          </article>
+            <template v-if="selectedMaterial">
+              <label>
+                物料名称
+                <input
+                  v-model="selectedMaterial.name"
+                  aria-label="低代码物料名称"
+                  maxlength="100"
+                />
+              </label>
+              <label>
+                布局宽度
+                <select
+                  v-model.number="selectedMaterial.span"
+                  aria-label="低代码布局宽度"
+                >
+                  <option :value="6">四分之一</option>
+                  <option :value="12">二分之一</option>
+                  <option :value="24">整行</option>
+                </select>
+              </label>
+              <label>
+                受控来源
+                <select
+                  :value="selectedMaterial.sourceId"
+                  aria-label="低代码物料来源"
+                  @change="changeSource"
+                >
+                  <option
+                    v-if="
+                      !sources.some(
+                        (source) => source.id === selectedMaterial?.sourceId
+                      )
+                    "
+                    :value="selectedMaterial.sourceId"
+                  >
+                    当前固定来源
+                  </option>
+                  <option
+                    v-for="source in sources"
+                    :key="source.id"
+                    :value="source.id"
+                  >
+                    {{ source.name
+                    }}{{ source.status === 'disabled' ? ' · 已停用' : '' }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                额外显示权限
+                <input
+                  :value="selectedMaterial.permissionCode || ''"
+                  aria-label="低代码物料权限"
+                  @input="changePermission($event)"
+                />
+              </label>
+              <label v-if="selectedMaterial.type === 'ChartCard'">
+                统计口径
+                <select
+                  v-model="selectedMaterial.metric"
+                  aria-label="低代码图表口径"
+                >
+                  <option value="status-distribution">授权业务状态分布</option>
+                  <option value="created-day">按北京时间创建日趋势</option>
+                </select>
+              </label>
+            </template>
+          </section>
+          <section>
+            <h3>动作配置</h3>
+            <article
+              v-for="action in draft.actions"
+              :key="action.id"
+              class="action-row"
+              :data-config-action="action.id"
+            >
+              <label>
+                {{ actionTypeLabels[action.type] }}按钮名称
+                <input
+                  v-model="action.label"
+                  :aria-label="`动作名称-${action.id}`"
+                  maxlength="100"
+                />
+              </label>
+              <label>
+                目标物料
+                <select
+                  v-model="action.targetId"
+                  :aria-label="`动作目标-${action.id}`"
+                >
+                  <option
+                    v-for="material in draft.materials"
+                    :key="material.id"
+                    :value="material.id"
+                  >
+                    {{ material.name }}
+                  </option>
+                </select>
+              </label>
+              <small v-if="action.operation">
+                业务操作：{{ operationLabels[action.operation] }}
+              </small>
+            </article>
+          </section>
+        </div>
+        <details>
+          <summary>配置导入导出</summary>
+          <p>只保存配置和来源引用，业务数据不进入此配置。</p>
+          <textarea v-model="jsonText" aria-label="低代码配置JSON" rows="8" />
+          <a-button :disabled="busy" @click="importJson">
+            校验并载入配置
+          </a-button>
+          <a-button @click="exportJson">查看当前配置JSON</a-button>
+        </details>
+        <div class="editor-actions">
+          <a-button
+            :disabled="busy"
+            data-testid="persistent-page-save"
+            @click="save"
+          >
+            保存配置
+          </a-button>
+          <a-button
+            :disabled="busy"
+            data-testid="persistent-page-preview"
+            @click="preview"
+          >
+            预览当前配置
+          </a-button>
+          <a-button
+            type="primary"
+            :disabled="busy || dirty"
+            data-testid="persistent-page-publish"
+            @click="publish"
+          >
+            发布页面
+          </a-button>
+          <a-button
+            v-if="current.activeReleaseId"
+            :disabled="busy"
+            @click="openRuntime(current)"
+          >
+            运行已发布页
+          </a-button>
+        </div>
+        <section v-if="current.releases?.length" aria-label="版本与灰度">
+          <h3>运行版本与灰度</h3>
+          <label>
+            主发布版
+            <select v-model="baseReleaseId" aria-label="低代码主发布版">
+              <option
+                v-for="release in current.releases"
+                :key="release.id"
+                :value="release.id"
+              >
+                v{{ release.releaseVersion }} · {{ release.schema.title }}
+              </option>
+            </select>
+          </label>
+          <label>
+            灰度发布版
+            <select v-model="rolloutReleaseId" aria-label="低代码灰度发布版">
+              <option value="">不使用灰度</option>
+              <option
+                v-for="release in current.releases.filter(
+                  (value) => value.id !== baseReleaseId
+                )"
+                :key="release.id"
+                :value="release.id"
+              >
+                v{{ release.releaseVersion }} · {{ release.schema.title }}
+              </option>
+            </select>
+          </label>
+          <label>
+            灰度比例
+            <input
+              v-model.number="percent"
+              type="number"
+              min="0"
+              max="100"
+              step="1"
+              aria-label="低代码灰度比例"
+            />
+          </label>
+          <a-button
+            :disabled="busy || dirty"
+            data-testid="persistent-page-rollout"
+            @click="rollout"
+          >
+            应用运行版本
+          </a-button>
         </section>
-      </div>
-      <details>
-        <summary>配置导入导出</summary>
-        <p>只保存配置和来源引用，业务数据不进入此配置。</p>
-        <textarea v-model="jsonText" aria-label="低代码配置JSON" rows="8" />
-        <a-button :disabled="busy" @click="importJson">校验并载入配置</a-button>
-        <a-button @click="exportJson">查看当前配置JSON</a-button>
-      </details>
-      <div class="editor-actions">
-        <a-button
-          :disabled="busy"
-          data-testid="persistent-page-save"
-          @click="save"
-        >
-          保存配置
-        </a-button>
-        <a-button
-          :disabled="busy"
-          data-testid="persistent-page-preview"
-          @click="preview"
-        >
-          预览当前配置
-        </a-button>
-        <a-button
-          type="primary"
-          :disabled="busy || dirty"
-          data-testid="persistent-page-publish"
-          @click="publish"
-        >
-          发布页面
-        </a-button>
-        <a-button
-          v-if="current.activeReleaseId"
-          :disabled="busy"
-          @click="openRuntime(current)"
-        >
-          运行已发布页
-        </a-button>
-      </div>
-      <section v-if="current.releases?.length" aria-label="版本与灰度">
-        <h3>运行版本与灰度</h3>
-        <label>
-          主发布版
-          <select v-model="baseReleaseId" aria-label="低代码主发布版">
-            <option
-              v-for="release in current.releases"
-              :key="release.id"
-              :value="release.id"
-            >
-              v{{ release.releaseVersion }} · {{ release.schema.title }}
-            </option>
-          </select>
-        </label>
-        <label>
-          灰度发布版
-          <select v-model="rolloutReleaseId" aria-label="低代码灰度发布版">
-            <option value="">不使用灰度</option>
-            <option
-              v-for="release in current.releases.filter(
-                (value) => value.id !== baseReleaseId
-              )"
-              :key="release.id"
-              :value="release.id"
-            >
-              v{{ release.releaseVersion }} · {{ release.schema.title }}
-            </option>
-          </select>
-        </label>
-        <label>
-          灰度比例
-          <input
-            v-model.number="percent"
-            type="number"
-            min="0"
-            max="100"
-            step="1"
-            aria-label="低代码灰度比例"
+        <section v-if="previewDefinition" class="preview-section">
+          <h2>当前配置预览</h2>
+          <PersistentRuntime
+            :key="previewKey"
+            :page-id="current.id"
+            :definition="previewDefinition"
+            :preview-schema="previewSchema"
           />
-        </label>
-        <a-button
-          :disabled="busy || dirty"
-          data-testid="persistent-page-rollout"
-          @click="rollout"
-        >
-          应用运行版本
-        </a-button>
-      </section>
-      <section v-if="previewDefinition" class="preview-section">
-        <h2>当前配置预览</h2>
-        <PersistentRuntime
-          :key="previewKey"
-          :page-id="current.id"
-          :definition="previewDefinition"
-          :preview-schema="previewSchema"
-        />
-      </section>
+        </section>
+      </fieldset>
     </section>
   </main>
 </template>
@@ -909,6 +918,12 @@ onUnmounted(() => {
   border: 1px solid var(--color-border-2);
   border-radius: 8px;
   background: var(--color-bg-2);
+}
+.page-editor__fieldset {
+  min-width: 0;
+  padding: 0;
+  margin: 0;
+  border: 0;
 }
 .property-grid {
   display: grid;
