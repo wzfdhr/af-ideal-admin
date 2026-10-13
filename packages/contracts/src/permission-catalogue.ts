@@ -1,9 +1,38 @@
+import { MESSAGING_PERMISSIONS } from './messaging'
+
 export interface PermissionDefinition {
   code: string
   title: string
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  ...Object.entries(MESSAGING_PERMISSIONS).map(([key, code]) => ({
+    code,
+    title: (
+      {
+        templateList: '查看消息模板',
+        templateCreate: '创建消息模板',
+        templateUpdate: '编辑模板草稿',
+        templateSubmit: '提交模板审批',
+        templateApprove: '审批消息模板',
+        templateDisable: '启停消息模板',
+        templateDelete: '归档消息模板',
+        announcementList: '查看公告配置',
+        announcementCreate: '创建公告',
+        announcementUpdate: '编辑公告草稿',
+        announcementPublish: '发布公告',
+        announcementRevoke: '撤销公告',
+        announcementRead: '阅读授权公告',
+        subscriptionRead: '查看本人订阅',
+        subscriptionUpdate: '保存本人订阅',
+        sendList: '查看消息发送事实',
+        sendCreate: '创建消息发送计划',
+        sendCancel: '取消待投递消息',
+        sendRetry: '重试失败投递',
+      } as Record<string, string>
+    )[key],
+    module: '消息公告',
+  })),
   ...[
     ['list', '查看菜单资源'],
     ['detail', '查看菜单资源详情'],

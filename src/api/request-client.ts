@@ -52,6 +52,7 @@ export interface ApiErrorContext {
   httpStatus?: number
   traceId?: string
   businessCode?: string
+  requestPath?: string
   errors?: Record<string, string[]>
 }
 
@@ -303,6 +304,10 @@ export const createRequestClient = (
           businessCode: result.businessCode,
           errors: result.errors,
         })
+        context.requestPath = new URL(
+          response.config?.url || '/',
+          'http://api.local'
+        ).pathname
         await handleErrorSideEffects(context, options)
 
         return Promise.reject(new ApiRequestError(context))
@@ -336,6 +341,10 @@ export const createRequestClient = (
         businessCode: payload.businessCode,
         errors: payload.errors,
       })
+      context.requestPath = new URL(
+        error.config?.url || '/',
+        'http://api.local'
+      ).pathname
       await handleErrorSideEffects(context, options)
 
       return Promise.reject(new ApiRequestError(context))

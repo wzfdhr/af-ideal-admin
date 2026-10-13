@@ -1,3 +1,4 @@
+import { startMessagingWorker } from './messaging-worker'
 import { startWorkflowTimerWorker } from './workflow-timer-worker'
 import { createPool } from './database'
 import { startWorker } from './notification'
@@ -7,10 +8,12 @@ const pool = createPool()
 const stop = startWorker(pool)
 const stopFiles = startFileWorker(pool)
 const stopTimers = startWorkflowTimerWorker(pool)
+const stopMessaging = startMessagingWorker(pool)
 const shutdown = async () => {
   await stop()
   await stopFiles()
   await stopTimers()
+  await stopMessaging()
   await pool.end()
 }
 process.once('SIGTERM', shutdown)

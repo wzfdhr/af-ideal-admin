@@ -15,6 +15,7 @@ import {
   WORKFLOW_TIMER_PERMISSIONS,
   LOW_CODE_PERMISSIONS,
   MENU_PERMISSIONS,
+  MESSAGING_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -30,6 +31,20 @@ export const initializePlatformDemo = async (pool: Pool) => {
     throw new Error('A dedicated demo database is required')
   await seedDemo(pool)
   await transaction(pool, async (client) => {
+    await client.query(
+      "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT code) FROM jsonb_array_elements(permissions || $1::jsonb) code) WHERE user_id IN('a-employee','b-employee','a-manager-1','a-manager-2','b-manager-1','b-manager-2')",
+      [
+        JSON.stringify([
+          MESSAGING_PERMISSIONS.subscriptionRead,
+          MESSAGING_PERMISSIONS.subscriptionUpdate,
+          MESSAGING_PERMISSIONS.announcementRead,
+        ]),
+      ]
+    )
+    await client.query(
+      "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT code) FROM jsonb_array_elements(permissions || $1::jsonb) code) WHERE user_id IN('a-manager-1','a-manager-2','b-manager-1','b-manager-2')",
+      [JSON.stringify([MESSAGING_PERMISSIONS.templateApprove])]
+    )
     await client.query(
       "UPDATE memberships SET permissions=permissions || $1::jsonb WHERE user_id IN ('a-manager-1','a-manager-2','b-manager-1','b-manager-2') AND status='enabled' AND NOT (permissions ? 'workflow:transfer')",
       [JSON.stringify([WORKFLOW_RECOVERY_PERMISSIONS.transfer])]
@@ -62,6 +77,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(WORKFLOW_TIMER_PERMISSIONS),
           ...Object.values(LOW_CODE_PERMISSIONS),
           ...Object.values(MENU_PERMISSIONS),
+          ...Object.values(MESSAGING_PERMISSIONS),
         ]),
       ]
     )

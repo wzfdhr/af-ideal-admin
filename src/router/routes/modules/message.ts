@@ -1,5 +1,6 @@
 import { defaultLayout } from '@/router/constants'
 import { MESSAGE_PERMISSIONS } from '@/constants/message'
+import { dataMode } from '../../../../config/data-mode'
 import { AppRouteRecordRaw } from '../../types'
 
 const messageRoutes: AppRouteRecordRaw = {
@@ -35,7 +36,10 @@ const messageRoutes: AppRouteRecordRaw = {
         requireAuth: true,
         roles: ['*'],
         access: {
-          permissions: [MESSAGE_PERMISSIONS.subscribe],
+          permissions:
+            dataMode === 'reference'
+              ? ['message:subscription:read']
+              : [MESSAGE_PERMISSIONS.subscribe],
         },
       },
     },
@@ -48,7 +52,32 @@ const messageRoutes: AppRouteRecordRaw = {
         requireAuth: true,
         roles: ['*'],
         access: {
-          permissions: [MESSAGE_PERMISSIONS.template],
+          permissions:
+            dataMode === 'reference'
+              ? [
+                  'message:template:list',
+                  'message:template:approve',
+                  'message:send:list',
+                  'message:send:create',
+                ]
+              : [MESSAGE_PERMISSIONS.template],
+          mode: 'any',
+        },
+      },
+    },
+    {
+      path: 'announcements',
+      name: 'messageAnnouncements',
+      component: () => import('@/views/message/announcements/index.vue'),
+      meta: {
+        locale: 'menu.message.announcements',
+        requireAuth: true,
+        access: {
+          permissions: [
+            'message:announcement:list',
+            'message:announcement:read',
+          ],
+          mode: 'any',
         },
       },
     },

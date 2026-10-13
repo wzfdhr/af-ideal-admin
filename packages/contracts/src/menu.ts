@@ -87,6 +87,51 @@ export const createR1Menu = (permissions: string[]) => {
       ],
     },
   ]
+  const message = entries.find((entry) => entry.name === 'message')
+  const messagePages = [
+    {
+      name: 'messageTemplates',
+      path: 'templates',
+      componentKey: 'MessageTemplatesPage',
+      locale: 'menu.message.templates',
+      permissions: [
+        'message:template:list',
+        'message:template:approve',
+        'message:send:list',
+        'message:send:create',
+      ],
+    },
+    {
+      name: 'messageSubscriptions',
+      path: 'subscriptions',
+      componentKey: 'MessageSubscriptionsPage',
+      locale: 'menu.message.subscriptions',
+      permissions: ['message:subscription:read'],
+    },
+    {
+      name: 'messageAnnouncements',
+      path: 'announcements',
+      componentKey: 'MessageAnnouncementsPage',
+      locale: 'menu.message.announcements',
+      permissions: ['message:announcement:list', 'message:announcement:read'],
+    },
+  ].filter(
+    (page) =>
+      permissions.includes('*') ||
+      page.permissions.some((code) => permissions.includes(code))
+  )
+  messagePages.forEach((page) =>
+    message?.children?.push({
+      name: page.name,
+      path: page.path,
+      componentKey: page.componentKey,
+      meta: {
+        requireAuth: true,
+        locale: page.locale,
+        access: { permissions: page.permissions, mode: 'any' },
+      },
+    })
+  )
   if (
     ['workflow:todo', 'workflow:recover', 'workflow:timer:read', '*'].some(
       (code) => permissions.includes(code)

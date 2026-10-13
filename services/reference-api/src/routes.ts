@@ -301,19 +301,34 @@ export const registerBusiness = (
   server.get('/api/messages/notifications', async (request) =>
     ok(
       request,
-      await listNotifications(pool, await auth(request), request.query)
+      await authorizedTransaction(
+        pool,
+        await auth(request),
+        'message:list',
+        (db, current) => listNotifications(db, current, request.query)
+      )
     )
   )
   server.post('/api/messages/notifications/read-all', async (request) =>
     ok(
       request,
-      await readAllNotifications(pool, await auth(request), request.body)
+      await authorizedTransaction(
+        pool,
+        await auth(request),
+        'message:batch-read',
+        (db, current) => readAllNotifications(db, current, request.body)
+      )
     )
   )
   server.post('/api/messages/notifications/:id/read', async (request) =>
     ok(
       request,
-      await readNotification(pool, await auth(request), parameterId(request))
+      await authorizedTransaction(
+        pool,
+        await auth(request),
+        'message:read',
+        (db, current) => readNotification(db, current, parameterId(request))
+      )
     )
   )
   server.get('/api/audit/events', async (request) => {

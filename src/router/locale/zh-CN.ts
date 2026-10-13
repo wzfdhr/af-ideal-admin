@@ -1,4 +1,5 @@
 export default {
+  'menu.message.announcements': '公告发布与阅读',
   'menu.lowCode': '业务页面',
   'menu.lowCode.runtime': '已发布业务页',
 

@@ -23,6 +23,7 @@ interface NotificationRow {
   link: string
   read_at: Date | null
   created_at: Date
+  source?: string
 }
 const notificationDto = (row: NotificationRow) => ({
   id: row.id,
@@ -32,7 +33,7 @@ const notificationDto = (row: NotificationRow) => ({
   link: row.link,
   status: row.read_at ? 'read' : 'unread',
   priority: 'normal',
-  source: 'workflow',
+  source: row.source || 'workflow',
   createdAt: row.created_at.toISOString(),
   ...(row.read_at ? { readAt: row.read_at.toISOString() } : {}),
 })
@@ -53,7 +54,7 @@ export const listNotifications = async (
     `%${page.keyword}%`,
   ]
   const filter =
-    "WHERE tenant_id=$1 AND recipient_id=$2 AND ($3='' OR category=$3) AND ($4='' OR ($4='read' AND read_at IS NOT NULL) OR ($4='unread' AND read_at IS NULL)) AND title ILIKE $5"
+    "WHERE tenant_id=$1 AND recipient_id=$2 AND ($3='' OR category=$3) AND ($4='' OR ($4='read' AND read_at IS NOT NULL) OR ($4='unread' AND read_at IS NULL)) AND title ILIKE $5 AND af_messaging_notification_visible(tenant_id,recipient_id,id)"
   const total = one(
     await rows<{ total: string }>(
       db,
@@ -63,12 +64,12 @@ export const listNotifications = async (
   )
   const items = await rows<NotificationRow>(
     db,
-    `SELECT * FROM notifications ${filter} ORDER BY created_at DESC,id LIMIT $6 OFFSET $7`,
+    `SELECT n.*,(SELECT o.payload->>'source' FROM outbox o WHERE o.tenant_id=n.tenant_id AND o.id=n.event_id) AS source FROM notifications n ${filter} ORDER BY created_at DESC,id LIMIT $6 OFFSET $7`,
     [...params, page.pageSize, page.offset]
   )
   const unread = await rows<{ category: string; total: string }>(
     db,
-    'SELECT category,count(*) AS total FROM notifications WHERE tenant_id=$1 AND recipient_id=$2 AND read_at IS NULL GROUP BY category',
+    'SELECT category,count(*) AS total FROM notifications WHERE tenant_id=$1 AND recipient_id=$2 AND read_at IS NULL AND af_messaging_notification_visible(tenant_id,recipient_id,id) GROUP BY category',
     [actor.tenantId, actor.userId]
   )
   const categoryUnread: Record<string, number> = {
@@ -97,10 +98,18 @@ export const readNotification = async (
 ) => {
   const updated = await rows<NotificationRow>(
     db,
-    'UPDATE notifications SET read_at=COALESCE(read_at,now()) WHERE tenant_id=$1 AND id=$2 AND recipient_id=$3 RETURNING *',
+    'UPDATE notifications SET read_at=COALESCE(read_at,now()) WHERE tenant_id=$1 AND id=$2 AND recipient_id=$3 AND af_messaging_notification_visible(tenant_id,recipient_id,id) RETURNING *',
     [actor.tenantId, id, actor.userId]
   )
-  return notificationDto(one(updated))
+  const row = one(updated)
+  const origin = one(
+    await rows<{ source: string | null }>(
+      db,
+      "SELECT payload->>'source' AS source FROM outbox WHERE tenant_id=$1 AND id=(SELECT event_id FROM notifications WHERE tenant_id=$1 AND id=$2)",
+      [actor.tenantId, id]
+    )
+  )
+  return notificationDto({ ...row, source: origin.source || 'workflow' })
 }
 export const readAllNotifications = async (
   db: Database,
@@ -110,7 +119,7 @@ export const readAllNotifications = async (
   const body = record(input || {})
   const category = typeof body.category === 'string' ? body.category : ''
   const result = await db.query(
-    "UPDATE notifications SET read_at=now() WHERE tenant_id=$1 AND recipient_id=$2 AND read_at IS NULL AND ($3='' OR category=$3)",
+    "UPDATE notifications SET read_at=now() WHERE tenant_id=$1 AND recipient_id=$2 AND read_at IS NULL AND ($3='' OR category=$3) AND af_messaging_notification_visible(tenant_id,recipient_id,id)",
     [actor.tenantId, actor.userId, category]
   )
   return { updated: result.rowCount || 0 }

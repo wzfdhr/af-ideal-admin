@@ -111,6 +111,7 @@ export default defineConfig(({ command, mode }) => {
           proxy: {
             [apiBaseUrl]: {
               target: apiProxyTarget,
+              ws: true,
               changeOrigin: true,
             },
           },

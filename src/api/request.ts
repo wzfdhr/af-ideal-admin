@@ -26,6 +26,7 @@ const redirectToLogin = () => {
 }
 
 const redirectToNoPermission = (context: ApiErrorContext) => {
+  if (context.requestPath?.includes('/messaging/')) return
   if (
     [
       'SCOPE_DELEGATION',

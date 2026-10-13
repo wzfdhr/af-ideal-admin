@@ -447,4 +447,32 @@ describe('createRequestClient', () => {
     expect(unauthorized).not.toHaveBeenCalled()
     expect(Message.error).not.toHaveBeenCalled()
   })
+  it('reports only a request path for recoverable command errors and never retains query secrets', async () => {
+    const onForbidden = vi.fn()
+    const onError = vi.fn()
+    createRequestClient({
+      baseURL: '/api',
+      timeout: 15000,
+      authHeaderName: 'X-Access-Token',
+      getToken: () => null,
+      onForbidden,
+      onError,
+    })
+    await expect(
+      axiosMock.responseSuccessHandler?.({
+        config: {
+          url: '/messaging/send-jobs?token=private-token&email=private-contact',
+        },
+        data: { code: 403, data: null, message: '权限已撤销' },
+      } as AxiosResponse)
+    ).rejects.toThrow('权限已撤销')
+    expect(onForbidden).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestPath: '/messaging/send-jobs',
+        kind: 'forbidden',
+      })
+    )
+    expect(JSON.stringify(onError.mock.calls)).not.toContain('private-token')
+    expect(JSON.stringify(onError.mock.calls)).not.toContain('private-contact')
+  })
 })
