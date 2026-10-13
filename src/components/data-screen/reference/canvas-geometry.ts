@@ -31,10 +31,11 @@ export const CANVAS_LAYER_ACTIONS = [
 ] as const
 export const CANVAS_RECT_PROPERTIES = ['x', 'y', 'width', 'height'] as const
 
-export type CanvasResizeHandle = (typeof CANVAS_RESIZE_HANDLES)[number]
-export type CanvasAlignment = (typeof CANVAS_ALIGNMENTS)[number]
-export type CanvasLayerAction = (typeof CANVAS_LAYER_ACTIONS)[number]
-export type CanvasRectProperty = (typeof CANVAS_RECT_PROPERTIES)[number]
+type CanvasOption<T extends readonly string[]> = T[number]
+export type CanvasResizeHandle = CanvasOption<typeof CANVAS_RESIZE_HANDLES>
+export type CanvasAlignment = CanvasOption<typeof CANVAS_ALIGNMENTS>
+export type CanvasLayerAction = CanvasOption<typeof CANVAS_LAYER_ACTIONS>
+export type CanvasRectProperty = CanvasOption<typeof CANVAS_RECT_PROPERTIES>
 
 export interface CanvasRect {
   x: number
