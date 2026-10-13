@@ -41,7 +41,7 @@
 | FP-023 | 公告、订阅、模板/变量、审批及授权收件范围持久化 | FP-005 | 消息规划 | 进行中 |
 | FP-024 | 发送任务、重试去重、实时推送重鉴权、重启及发送审计 | FP-016/023 | 消息规划 | 进行中 |
 | FP-025 | 真实报表查询、字段口径/脱敏及趋势/分布/明细 | FP-006/010 | T-354 | 进行中 |
-| FP-026 | 异步真实导出、授权下载、进度/失败、归档/审计 | FP-021/025 | T-354/614 | 未开始 |
+| FP-026 | 异步真实导出、授权下载、进度/失败、归档/审计 | FP-021/025 | T-354/614 | 进行中 |
 | FP-027 | 可启停的定时报表、重启恢复、唯一执行及告警 | FP-016/026 | 报表规划 | 未开始 |
 | FP-028 | 大屏画布/布局快照/主题、保存重开、预览/发布/回滚 | FP-018/025 | T-353 | 未开始 |
 | FP-029 | 运营/销售/设备三套模板及真实刷新、过期/空/错误/全屏 | FP-028 | T-611 | 未开始 |
@@ -554,3 +554,9 @@
 
 - full-browser.log完整49条真实浏览器通过，包含本次报告及原R1/应用/流程/消息/菜单/文件扫描/权限回归；mock-browser和smoke-browser各3通过。旧10888未运行代理错误仍只属于Mock边界，不当作真实API结果。lint-release保持0错误/19警告。当前需提交该实现并实际运行对应远端CI。
 - verify-reporting-recovery.mjs实际在明确预期本地专属库、API10890下创建合成设备源/真实draft业务记录及未发布报告，再用pg_export_snapshot一致性快照执行pg_dump/pg_restore。recovery-database.log及database-copy/report.json证明37表计数和24迁移校验和一致、原session保持；仅恢复库保存/发布/查询1条真实记录，12.34金额字符串及固定别名未丢，改名/停用/启用后原库原名/未发布/无恢复版保持。随机恢复库清理后才写成功报告。拒绝URL query/hash覆盖连接host，源库名须匹配明确预期，禁止原af_admin_r1库；未改其他源数据库。此是现有PostgreSQL内独立库恢复，不是新机器或完整文件bytes恢复。
+
+### FP-025 实现提交与实际远端门禁
+
+- 实现 SHA `ae3a6135a7f1ec115e6016202c94520eed73100e` 已推送开发分支。实际 [CI 38354881054](https://github.com/wzfdhr/af-ideal-admin/actions/runs/38354881054) 的 headSha 精确匹配，verify 与 real-business 均 success：594 单测、60 契约/25 领域、207 数据库/API、49 完整真实浏览器、两组三项 Mock/smoke、类型/构建/lint 实际通过。当前保留 19 项 lint 警告，未将原 Mock 代理错误作为真实后端结果。
+- 已下载 `test-results/full-product/reporting-20261013/ci-38354881054/real-business-evidence`，保存最终 remote-ci.json、artifact 元数据、完整 workflow.log；verification-manifest.json 记录实际提交、检查边界及日志 SHA256。此次只有 real-business-evidence artifact；frontend 空 artifact 未称为下载完成，其 verify 步骤由 workflow 日志保留。
+- 后续证据文档提交不改该报告查询实现。继续 FP-026 的耐久实际 CSV/XLSX/PDF 导出、扫描、授权下载与归档，再推进 FP-027 持久调度；固定来源版、完整视觉/容量、新部署/兼容回退、外部条件及正式交付保持开放，整个 Goal 维持 active。
