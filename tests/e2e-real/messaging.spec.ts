@@ -29,6 +29,71 @@ const confirm = async (page: Page, keyboard = false) => {
   } else await dialog.getByRole('button', { name: '确认', exact: true }).click()
   await expect(dialog).not.toBeVisible()
 }
+const messagingJobPage = async (page: Page) => {
+  const text = await page
+    .getByRole('navigation', { name: '发送任务分页', exact: true })
+    .locator('span')
+    .innerText()
+  const match = /^第 (\d+) 页 \/ 共 (\d+) 项$/.exec(text.trim())
+  expect(match).toBeTruthy()
+  return { current: Number(match?.[1]), total: Number(match?.[2]) }
+}
+const waitForMessagingJobPage = (page: Page, current: number) =>
+  page.waitForResponse((response) => {
+    const url = new URL(response.url())
+    return (
+      response.request().method() === 'GET' &&
+      url.pathname === '/api/messaging/send-jobs' &&
+      url.searchParams.get('current') === String(current) &&
+      url.searchParams.get('pageSize') === '20'
+    )
+  })
+// UI pagination must advance sequentially and verify each server-backed page before continuing.
+/* eslint-disable no-await-in-loop */
+const openMessagingJobFromDirectory = async (page: Page, jobId: string) => {
+  const navigation = page.getByRole('navigation', {
+    name: '发送任务分页',
+    exact: true,
+  })
+  let state = await messagingJobPage(page)
+  while (state.current > 1) {
+    const previous = navigation.getByRole('button', {
+      name: '上一页',
+      exact: true,
+    })
+    await expect(previous).toBeEnabled()
+    const expectedPage = state.current - 1
+    const loaded = waitForMessagingJobPage(page, expectedPage)
+    await previous.click()
+    expect((await loaded).status()).toBe(200)
+    await expect(navigation.locator('span')).toContainText(
+      `第 ${expectedPage} 页`
+    )
+    state = await messagingJobPage(page)
+  }
+  const maximumPages = Math.max(1, Math.ceil(state.total / 20))
+  for (let current = 1; current <= maximumPages; current += 1) {
+    const job = page.getByTestId(`messaging-job-${jobId}`)
+    if ((await job.count()) === 1) {
+      await job.click()
+      return
+    }
+    if (current === maximumPages) break
+    const next = navigation.getByRole('button', {
+      name: '下一页',
+      exact: true,
+    })
+    await expect(next).toBeEnabled()
+    const loaded = waitForMessagingJobPage(page, current + 1)
+    await next.click()
+    expect((await loaded).status()).toBe(200)
+    await expect(navigation.locator('span')).toContainText(
+      `第 ${current + 1} 页`
+    )
+  }
+  throw new Error(`发送任务目录未返回已创建任务 ${jobId}`)
+}
+/* eslint-enable no-await-in-loop */
 const uiResponse = (page: Page, endpoint: string, method: string) =>
   page.waitForResponse(
     (response) =>
@@ -453,6 +518,8 @@ test('real templates require another reviewer, immutable sends persist inbox plu
     await expect(admin.getByTestId('messaging-queued-receipt')).toContainText(
       '当前站内写入 0'
     )
+    await employee.getByTestId('message-keyword').fill(title)
+    await employee.getByTestId('message-query').click()
     const inboxRow = employee
       .locator('tbody tr')
       .filter({ hasText: `${title} 真实员工` })
@@ -500,8 +567,11 @@ test('real templates require another reviewer, immutable sends persist inbox plu
     await expect(
       inboxRow.getByRole('button', { name: '标为已读', exact: true })
     ).toHaveCount(0)
+    const currentJobPage = await messagingJobPage(admin)
+    const refreshedJobs = waitForMessagingJobPage(admin, currentJobPage.current)
     await admin.getByTestId('messaging-jobs-refresh').click()
-    await admin.getByTestId(`messaging-job-${queued.id}`).click()
+    expect((await refreshedJobs).status()).toBe(200)
+    await openMessagingJobFromDirectory(admin, queued.id)
     await expect(admin.getByTestId('messaging-job-detail')).toContainText(
       '站内已写入'
     )

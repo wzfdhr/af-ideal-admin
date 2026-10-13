@@ -45,6 +45,8 @@ test('equipment template uses shared designers, true saved records and the commo
     await editor.getByLabel('初始模板').selectOption('equipment')
     await editor.getByRole('button', { name: '确定', exact: true }).click()
     await expect(editor).not.toBeVisible()
+    await admin.getByLabel('查询应用').fill(code)
+    await admin.getByRole('button', { name: '查询', exact: true }).click()
     const appRow = admin.locator('tbody tr').filter({ hasText: code })
     await appRow.getByRole('button', { name: '配置', exact: true }).click()
     await expect(
@@ -87,7 +89,28 @@ test('equipment template uses shared designers, true saved records and the commo
     ).toBeVisible()
     await login(first, 'a-manager-1')
     await first.goto('/Scalability/workflowCenter')
-    await first.locator(`a[href="/business/records/${id}"]`).click()
+    const taskList = first.getByTestId('leave-runtime')
+    const taskLink = taskList.locator(`a[href="/business/records/${id}"]`)
+    const findTask = async (remaining = 100): Promise<void> => {
+      expect(
+        remaining,
+        'submitted equipment task must be reachable through real pagination'
+      ).toBeGreaterThan(0)
+      await expect(taskList.locator('.arco-spin-loading')).toHaveCount(0)
+      if (await taskLink.count()) return
+      const next = taskList.locator('.arco-pagination-item-next')
+      await expect(next).not.toHaveClass(/arco-pagination-item-disabled/)
+      const loaded = first.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/workflow-todos' &&
+          response.request().method() === 'GET'
+      )
+      await next.click()
+      expect((await loaded).status()).toBe(200)
+      await findTask(remaining - 1)
+    }
+    await findTask()
+    await taskLink.click()
     await expect(first).toHaveURL(url)
     await expect(first.getByTestId('business-total')).toHaveText('0.30 元')
     await first.getByLabel('处理意见').fill('设备信息已核实')
