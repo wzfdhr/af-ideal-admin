@@ -1,5 +1,9 @@
 <template>
-  <main class="audit-log-page" data-testid="audit-log-page">
+  <ReferenceAuditLog v-if="dataMode === 'reference'" />
+  <main v-else class="audit-log-page" data-testid="audit-log-page">
+    <p class="audit-log-page__demo" data-testid="audit-mock-boundary">
+      开发演示数据（Mock）· 这些记录不是服务端事实
+    </p>
     <p v-if="error" role="alert">
       {{ error }}
       <button type="button" @click="loadLogs">重试</button>
@@ -151,6 +155,8 @@ import {
   type AuditEventQuery,
   type AuditEventRecord,
 } from '@/api/audit'
+import { dataMode } from '../../../../config/data-mode'
+import ReferenceAuditLog from './reference.vue'
 
 const route = useRoute()
 const error = ref('')
@@ -291,8 +297,15 @@ const formatDetail = (detail?: Record<string, unknown>) => {
   return JSON.stringify(sanitizeDetailValue(detail))
 }
 
-onMounted(loadLogs)
-watch(() => route?.query?.targetId, loadLogs)
+onMounted(() => {
+  if (dataMode === 'mock') loadLogs()
+})
+watch(
+  () => route?.query?.targetId,
+  () => {
+    if (dataMode === 'mock') loadLogs()
+  }
+)
 </script>
 
 <style scoped lang="scss">
@@ -301,6 +314,15 @@ watch(() => route?.query?.targetId, loadLogs)
   padding: 24px;
   color: #1d2129;
   background: #f5f7fb;
+}
+
+.audit-log-page__demo {
+  padding: 10px 12px;
+  margin: 0 0 14px;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 4px;
 }
 
 .audit-log-page__header {

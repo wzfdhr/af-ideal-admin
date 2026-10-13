@@ -1,4 +1,10 @@
 import request from '@/api/request'
+import type {
+  AuditCatalogueV1,
+  AuditEventPageV1,
+  AuditEventRecordV1,
+  AuditQueryV1,
+} from '@af-admin/contracts'
 
 export type AuditEventType = 'operation' | 'security' | 'permission' | 'export'
 export type AuditResult = 'success' | 'failure'
@@ -49,6 +55,10 @@ export interface AuditEventPageResult {
   total: number
 }
 
+export type ServerAuditEventRecord = AuditEventRecordV1
+export type ServerAuditEventPage = AuditEventPageV1
+export type ServerAuditQuery = AuditQueryV1
+
 export const createAuditEvent = async (payload: AuditEventPayload) => {
   const response = await request.post<AuditEventRecord>(
     '/audit/events',
@@ -63,3 +73,9 @@ export const fetchAuditEvents = async (params: AuditEventQuery) => {
   })
   return response.data
 }
+
+export const fetchAuditEventPage = async (params: AuditQueryV1) =>
+  (await request.get<AuditEventPageV1>('/audit/events', { params })).data
+
+export const fetchAuditCatalogue = async () =>
+  (await request.get<AuditCatalogueV1>('/audit/catalogue')).data

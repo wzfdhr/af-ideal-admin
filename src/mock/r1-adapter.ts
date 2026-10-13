@@ -29,7 +29,16 @@ export const installR1MockAdapter = (client: AxiosInstance) => {
         selected || (userId?.startsWith('b-') ? 'tenant-b' : 'tenant-a')
       const url = new URL(request.url || '/', 'http://demo.local')
       Object.entries(request.params || {}).forEach(([key, value]) => {
-        if (value !== undefined) url.searchParams.set(key, String(value))
+        if (value === undefined) return
+        if (
+          url.pathname === '/audit/events' &&
+          request.method?.toLowerCase() === 'get' &&
+          Array.isArray(value)
+        ) {
+          value.forEach((item) => url.searchParams.append(key, String(item)))
+          return
+        }
+        url.searchParams.set(key, String(value))
       })
       const body =
         typeof request.data === 'string'

@@ -325,7 +325,7 @@ test('real production frontend supports saved drafts, two reviewers, result noti
     await login(auditor, 'a-auditor')
     const id = url.split('/').pop()
     await auditor.goto(`/audit/logs?targetId=${id}`)
-    await expect(auditor.getByTestId('audit-log-page')).toBeVisible()
+    await expect(auditor.getByTestId('audit-v1-page')).toBeVisible()
     await expect(auditor.locator('tbody')).toContainText('submit')
     await expect(auditor.locator('tbody')).not.toContainText(
       '浏览器完整链路验收'

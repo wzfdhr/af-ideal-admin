@@ -287,7 +287,7 @@ viewports.forEach((viewport) => {
       })
       await login(page, 'a-auditor')
       await page.goto('/audit/logs')
-      await expect(page.getByTestId('audit-log-page')).toBeVisible()
+      await expect(page.getByTestId('audit-v1-page')).toBeVisible()
       await page.screenshot({
         path: `test-results/r1-ux/${viewport.width}-audit.png`,
         fullPage: true,
