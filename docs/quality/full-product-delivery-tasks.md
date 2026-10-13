@@ -40,7 +40,7 @@
 | FP-022 | 设备领用第二模板，复用配置/审批/附件/通知/审计及记录增量 | FP-019/021 | LA-042 | 进行中 |
 | FP-023 | 公告、订阅、模板/变量、审批及授权收件范围持久化 | FP-005 | 消息规划 | 进行中 |
 | FP-024 | 发送任务、重试去重、实时推送重鉴权、重启及发送审计 | FP-016/023 | 消息规划 | 进行中 |
-| FP-025 | 真实报表查询、字段口径/脱敏及趋势/分布/明细 | FP-006/010 | T-354 | 未开始 |
+| FP-025 | 真实报表查询、字段口径/脱敏及趋势/分布/明细 | FP-006/010 | T-354 | 进行中 |
 | FP-026 | 异步真实导出、授权下载、进度/失败、归档/审计 | FP-021/025 | T-354/614 | 未开始 |
 | FP-027 | 可启停的定时报表、重启恢复、唯一执行及告警 | FP-016/026 | 报表规划 | 未开始 |
 | FP-028 | 大屏画布/布局快照/主题、保存重开、预览/发布/回滚 | FP-018/025 | T-353 | 未开始 |
@@ -525,3 +525,16 @@
 - 收件人选择器按授权姓名搜索，显示完整人数/已选数量并使用240px可滚动区域，过滤不截断目录或清除隐藏选择；新原生父form单测确认搜索Enter取消默认提交、Space与完整选择保持。unit-keyboard-final.log最终551项通过，build-release-final.log完整构建、types-release-final.log全workspace类型通过，lint-keyboard-final.log无错误/17警告；新增声明顺序已只读核对，无初始化前调用。原完整门禁full-browser-release-final.log的48条全部通过，最后Enter修补需另跑消息目标用例并由本次远端完整CI确认。
 - database-copy-release-final.log再次真实恢复23迁移/24表、接续pending审核、持久化一次消息并实际WS ACK，原库仍pending且无恢复库job。并行撞上浏览器登录限流的恢复尝试429保留在database-copy-overlapped-rate-limit.log；完整浏览器结束后独立重跑成功，未放宽限流或重置业务数据。额外对Node integration .mjs施加浏览器ESLint配置的试查存在CommonJS导入/循环风格错误，保留upgrade-style-final.log；未改现有门禁配置，正常源码门禁和新恢复脚本/WS源码独立检查通过。
 - browser-keyboard-final.log最终消息用例再次通过，实际搜索Enter后无确认弹窗且真实GET任务总数/ID未变，清除搜索仍保留勾选；再完成真实审核/发送/ACK/公告/订阅闭环。最终sender-delivery-1280、sender-composer-1280、receiver-center-1280及reader-revoked-1280按实际浏览器截图保存，已核对实际站内/实时事实及输入/列表可读。完整48条本地回归在这项键盘修补前通过，对应最终源码还须本次远端完整48条确认。
+
+### FP-023/024 实现提交与实际远端门禁
+
+- 实现SHA `2e31e470897f7cd6b1ad0341f136dd9b8ba5e5b0` 已推送开发分支。实际CI38346937816的headSha精确匹配，verify/real-business均success：[对应CI](https://github.com/wzfdhr/af-ideal-admin/actions/runs/38346937816)。远端完整48条真实浏览器包含最后搜索Enter/任务ID不变检查，197项数据库/API、551单测、49契约/25领域、类型/构建/lint（0错误/17警告）及两组三项Mock/smoke实际通过，没有引用旧菜单提交结果替代。
+- 已归档 `test-results/full-product/messaging-20261013/remote-ci.json`、完整workflow.log、artifact元数据及 `ci-38346937816/real-business-evidence`，包含真实integration/browser日志与最终四张消息页面截图。此次只有real-business-evidence文件artifact；frontend未产生独立artifact，其实际verify步骤由完整workflow日志保留，未将空artifact称为已下载。verification-manifest.json保存匹配实现SHA、检查边界及本地/远端/恢复证据摘要。
+- 后续文档提交仅追加证据和报表方案，不修改该消息实现。未合并、创建正式tag、公开发布或部署客户生产；邮件、全套视觉/容量、物理数据库/新部署/兼容回退与正式交付保持开放，FP-023/024及全产品Goal继续进行中。
+
+### FP-025/026/027 下一批真实报表
+
+- 已保存 `docs/architecture/full-product-reporting-design.md`，独立只读调研确认现有reports/export/schedule仅Mock，无真实API/表/文件；原占位下载及客户端scenario不能作为验收。拆为受控真实查询/固定与自定义快照、真实生成/扫描/授权下载/归档、持久周期运行/恢复/告警，CSV首条路径不删除后续XLSX/PDF及原冻结要求。
+- 首源为真实generic业务记录；将抽取record-access当前授权谓词，让本人/真实审核参与/抄送三条路径与撤权规则统一作用于明细和聚合。来源同租户release绑定、旧字段按原快照解释；应用管理/报告权限不扩大记录权，关键词/分组/排序/导出不得利用隐藏字段。
+- 文件字节可复用LocalObjectStore，但普通owner-only附件会绕过报表/字段撤权，必须增加专属制品授权或完整文件绑定，并扩展对象清理引用避免合法归档误删。实际export审计由服务端事务产生，原telemetry不当作导出事实；定时接收者不得下载发起者更宽范围文件。
+- 已开始 `packages/contracts/src/reporting.ts` 的闭合v1定义/查询契约，当前未提交、未接共享index/API/UI，仍在必要边界校验阶段；不能据此称真实报表已可查询。FP-025标进行中，FP-026/027仍未开始实现；下一步完成契约失败回归、服务端当前授权查询及真实页面，再沿依赖推进导出和调度。
