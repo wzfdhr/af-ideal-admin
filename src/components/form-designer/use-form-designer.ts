@@ -1,5 +1,8 @@
-import { ref, computed, Ref } from 'vue'
+import { ref, computed, Ref, watch, onBeforeUnmount } from 'vue'
 import { useClipboard } from '@vueuse/core'
+import { useUserStore } from '@/store'
+import { getToken } from '@/services/auth'
+import { tenantScope } from '@/services/tenant-context'
 import { createCommandRetry } from '@/services/command-retry'
 import {
   createFormSchema,
@@ -29,9 +32,41 @@ export const useFormDesignerActions = (
   formId: Ref<string>
 ) => {
   const retry = createCommandRetry()
-  const draftChoices = ref<
-    Awaited<ReturnType<typeof fetchFormSchemas>>['list']
-  >([])
+  type DraftChoice = Awaited<
+    ReturnType<typeof fetchFormSchemas>
+  >['list'][number]
+  const user = dataMode === 'reference' ? useUserStore() : undefined
+  const draftPage = ref<DraftChoice[]>([])
+  const selectedDraft = ref<Pick<DraftChoice, 'id' | 'name' | 'revision'>>()
+  const draftChoices = computed(() => {
+    const selected = selectedDraft.value
+    if (!selected) return draftPage.value
+    if (!draftPage.value.some((item) => item.id === selected.id))
+      return [selected, ...draftPage.value]
+    return draftPage.value.map((item) =>
+      item.id === selected.id ? selected : item
+    )
+  })
+  const draftKeyword = ref('')
+  const draftCurrent = ref(1)
+  const draftPageSize = ref(20)
+  const draftTotal = ref(0)
+  const catalogueLoading = ref(false)
+  const catalogueError = ref('')
+  let catalogueGeneration = 0
+  let loadGeneration = 0
+  let identityGeneration = 0
+  let disposed = false
+  const scope = () => ({
+    tenant: tenantScope.snapshot(),
+    token: getToken(),
+    identity: identityGeneration,
+  })
+  const currentScope = (captured: ReturnType<typeof scope>) =>
+    !disposed &&
+    captured.identity === identityGeneration &&
+    captured.token === getToken() &&
+    tenantScope.isCurrent(captured.tenant)
   const draftRevision = ref<number>()
   const source = computed(() => exportFormSchema(ast.value))
   const actionMessage = ref('')
@@ -69,36 +104,110 @@ export const useFormDesignerActions = (
     dataSourceEditorVisible.value = true
   }
 
+  const searchDrafts = async (current = 1) => {
+    const captured = scope()
+    const generation = ++catalogueGeneration
+    const requestedPage = Math.max(1, Math.floor(current))
+    catalogueLoading.value = true
+    catalogueError.value = ''
+    try {
+      const page = await fetchFormSchemas({
+        current: requestedPage,
+        pageSize: draftPageSize.value,
+        keyword: draftKeyword.value.trim(),
+      })
+      if (!currentScope(captured) || generation !== catalogueGeneration)
+        return undefined
+      draftPage.value = page.list
+      draftTotal.value = page.total
+      draftCurrent.value = requestedPage
+      return page
+    } catch (error) {
+      if (currentScope(captured) && generation === catalogueGeneration)
+        catalogueError.value = getErrorMessage(error, '草稿目录加载失败')
+    } finally {
+      if (!disposed && generation === catalogueGeneration)
+        catalogueLoading.value = false
+    }
+    return undefined
+  }
+  const changeDraftPageSize = async (size: number) => {
+    if (![20, 100].includes(size)) return
+    draftPageSize.value = size
+    await searchDrafts(1)
+  }
   const loadDraft = async (id = formId.value) => {
+    if (saving.value || creating.value) return
+    const captured = scope()
+    const generation = ++loadGeneration
     loading.value = true
     actionMessage.value = ''
     actionError.value = ''
-
     try {
       let target = id
-      if (dataMode === 'reference') {
-        const page = await fetchFormSchemas({ current: 1, pageSize: 100 })
-        draftChoices.value = page.list
-        target = target || page.list[0]?.id || ''
-        if (!target) {
-          formId.value = ''
-          draftRevision.value = undefined
-          ast.value = migrateFormSchema({})
-          return
-        }
+      if (dataMode === 'reference' && !target) {
+        const page = await searchDrafts()
+        if (!currentScope(captured) || generation !== loadGeneration) return
+        target = page?.list[0]?.id || ''
+        if (!target) return
       }
       const result = await getFormSchemaDetail(target)
+      if (!currentScope(captured) || generation !== loadGeneration) return
+      const schema = migrateFormSchema(result.schema)
       draftRevision.value = result.revision
+      selectedDraft.value = {
+        id: result.id,
+        name: result.name,
+        revision: result.revision,
+      }
       retry.clear()
       formId.value = result.id
-      ast.value = migrateFormSchema(result.schema)
+      ast.value = schema
       actionMessage.value = '加载成功'
     } catch (error) {
-      actionError.value = getErrorMessage(error, '加载失败')
+      if (currentScope(captured) && generation === loadGeneration)
+        actionError.value = getErrorMessage(error, '加载失败')
     } finally {
-      loading.value = false
+      if (!disposed && generation === loadGeneration) loading.value = false
     }
   }
+  const clearIdentity = () => {
+    identityGeneration += 1
+    catalogueGeneration += 1
+    loadGeneration += 1
+    draftPage.value = []
+    selectedDraft.value = undefined
+    draftRevision.value = undefined
+    draftKeyword.value = ''
+    draftCurrent.value = 1
+    draftTotal.value = 0
+    formId.value = ''
+    ast.value = migrateFormSchema({})
+    retry.clear()
+    actionMessage.value = ''
+    actionError.value = ''
+    catalogueError.value = ''
+    loading.value = false
+    catalogueLoading.value = false
+    creating.value = false
+    saving.value = false
+    publishing.value = false
+    previewVisible.value = false
+    dataSourceEditorVisible.value = false
+    importVisible.value = false
+    importSource.value = ''
+    importError.value = ''
+  }
+  if (user)
+    watch(
+      () => [user.id, user.tenantId, user.permissions.join('|')],
+      clearIdentity,
+      { flush: 'sync' }
+    )
+  onBeforeUnmount(() => {
+    disposed = true
+    identityGeneration += 1
+  })
 
   const showImportSchema = () => {
     importSource.value = ''
@@ -121,6 +230,8 @@ export const useFormDesignerActions = (
   }
 
   const createDraft = async (name = '未命名表单') => {
+    if (creating.value || saving.value || loading.value) return
+    const captured = scope()
     creating.value = true
     actionMessage.value = ''
     actionError.value = ''
@@ -131,7 +242,13 @@ export const useFormDesignerActions = (
         dataMode === 'reference'
           ? await createFormSchema(input, retry.key('create', input))
           : await createFormSchema(input)
+      if (!currentScope(captured)) return
       draftRevision.value = result.revision
+      selectedDraft.value = {
+        id: result.id,
+        name: result.name || name,
+        revision: result.revision,
+      }
       retry.complete('create')
       formId.value = result.id
       if (result.schema) {
@@ -139,13 +256,16 @@ export const useFormDesignerActions = (
       }
       actionMessage.value = '创建成功'
     } catch (failure) {
-      actionError.value = getErrorMessage(failure, '创建失败，输入已保留')
+      if (currentScope(captured))
+        actionError.value = getErrorMessage(failure, '创建失败，输入已保留')
     } finally {
-      creating.value = false
+      if (currentScope(captured)) creating.value = false
     }
   }
 
   const saveDraft = async () => {
+    if (saving.value || creating.value || loading.value) return
+    const captured = scope()
     saving.value = true
     actionMessage.value = ''
     actionError.value = ''
@@ -164,18 +284,22 @@ export const useFormDesignerActions = (
           draftRevision.value,
           retry.key('save', input)
         )
+        if (!currentScope(captured)) return
         draftRevision.value = result.revision
+        if (selectedDraft.value) selectedDraft.value.revision = result.revision
         retry.complete('save')
       } else await saveFormSchema(formId.value, ast.value)
-      actionMessage.value = '保存成功'
+      if (currentScope(captured)) actionMessage.value = '保存成功'
     } catch (failure) {
-      actionError.value = getErrorMessage(failure, '保存失败，输入已保留')
+      if (currentScope(captured))
+        actionError.value = getErrorMessage(failure, '保存失败，输入已保留')
     } finally {
-      saving.value = false
+      if (currentScope(captured)) saving.value = false
     }
   }
 
   const publishCurrent = async () => {
+    const captured = scope()
     publishing.value = true
     actionMessage.value = ''
     actionError.value = ''
@@ -183,6 +307,7 @@ export const useFormDesignerActions = (
     try {
       if (dataMode === 'reference') {
         const app = await getFormApplication(formId.value)
+        if (!currentScope(captured)) return
         if (!app)
           throw new Error(
             '此草稿尚未关联应用，请在应用中心配置并发布应用表单与流程'
@@ -197,11 +322,12 @@ export const useFormDesignerActions = (
       const validatedSchema = migrateFormSchema(ast.value)
       ast.value = validatedSchema
       await publishFormSchema(formId.value, validatedSchema)
-      actionMessage.value = '发布成功'
+      if (currentScope(captured)) actionMessage.value = '发布成功'
     } catch (error) {
-      actionError.value = getErrorMessage(error, '发布失败')
+      if (currentScope(captured))
+        actionError.value = getErrorMessage(error, '发布失败')
     } finally {
-      publishing.value = false
+      if (currentScope(captured)) publishing.value = false
     }
   }
 
@@ -246,6 +372,14 @@ export const useFormDesignerActions = (
     importVisible,
     loadDraft,
     draftChoices,
+    draftKeyword,
+    draftCurrent,
+    draftPageSize,
+    draftTotal,
+    catalogueLoading,
+    catalogueError,
+    searchDrafts,
+    changeDraftPageSize,
     loading,
     publishCurrent,
     publishing,

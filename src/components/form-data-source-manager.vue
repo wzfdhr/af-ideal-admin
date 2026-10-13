@@ -1,6 +1,17 @@
 <template>
   <section v-if="canList" data-testid="form-data-source-manager">
     <h3>受控数据源</h3>
+    <form @submit.prevent="searchSources">
+      <label>
+        搜索数据源
+        <input
+          v-model="sourceKeyword"
+          aria-label="搜索数据源"
+          maxlength="100"
+        />
+      </label>
+      <button type="submit">搜索数据源</button>
+    </form>
     <PermissionButton
       :permission="[
         P.create,
@@ -15,6 +26,8 @@
     </PermissionButton>
     <ProTable
       ref="table"
+      :key="contextGeneration"
+      :default-page-size="20"
       row-key="id"
       :columns="columns"
       :fetch-data="fetchSources"
@@ -170,6 +183,10 @@ const editing = ref('')
 const editorError = ref('')
 const queryError = ref('')
 const dictionarySearch = ref('')
+const sourceKeyword = ref('')
+const contextGeneration = ref(0)
+let editGeneration = 0
+let dictionaryGeneration = 0
 const dictionaries = ref<SystemDictionaryRecord[]>([])
 const model = ref<FormDataSourceInput>({
   code: '',
@@ -183,8 +200,13 @@ const preview = ref<Awaited<ReturnType<typeof queryFormDataSource>>>()
 let querySequence = 0
 const retry = createCommandRetry()
 watch(
-  () => [user.tenantId, user.id],
+  () => [user.tenantId, user.id, user.permissions.join('|')],
   () => {
+    contextGeneration.value += 1
+    editGeneration += 1
+    dictionaryGeneration += 1
+    sourceKeyword.value = ''
+    saving.value = false
     querySequence += 1
     preview.value = undefined
     visible.value = false
@@ -204,33 +226,63 @@ watch(
     table.value?.reset({}).catch(() => {
       /* ProTable retains its own request error. */
     })
-  }
+  },
+  { flush: 'sync' }
 )
 const unregister = registerDirtyCheck(() => visible.value)
-onBeforeUnmount(unregister)
+onBeforeUnmount(() => {
+  contextGeneration.value += 1
+  editGeneration += 1
+  dictionaryGeneration += 1
+  querySequence += 1
+  unregister()
+})
 const fetchSources = async (params: ProTableFetchParams) => {
+  const context = contextGeneration.value
   const result = await fetchFormDataSources({
     current: params.current,
-    pageSize: params.pageSize,
+    pageSize: Math.min(100, Math.max(1, params.pageSize)),
+    keyword:
+      typeof params.filters.keyword === 'string' ? params.filters.keyword : '',
   })
+  if (context !== contextGeneration.value) return { list: [], total: 0 }
   return { ...result, list: result.list.map((source) => ({ ...source })) }
 }
+const searchSources = async () => {
+  queryError.value = ''
+  await table.value
+    ?.reset({ keyword: sourceKeyword.value.trim() })
+    .catch(() => {
+      /* ProTable displays the current request error. */
+    })
+}
 const loadDictionaries = async () => {
+  const context = contextGeneration.value
+  const generation = ++dictionaryGeneration
   try {
-    dictionaries.value = (
-      await fetchSystemDictionaries({
-        current: 1,
-        pageSize: 100,
-        dictName: dictionarySearch.value,
-        dictStatus: 'enabled',
-      })
-    ).list
+    const { list } = await fetchSystemDictionaries({
+      current: 1,
+      pageSize: 100,
+      dictName: dictionarySearch.value,
+      dictStatus: 'enabled',
+    })
+    if (
+      context === contextGeneration.value &&
+      generation === dictionaryGeneration
+    )
+      dictionaries.value = list
   } catch (failure) {
+    if (
+      context !== contextGeneration.value ||
+      generation !== dictionaryGeneration
+    )
+      return
     editorError.value =
       failure instanceof Error ? failure.message : '无法搜索字典'
   }
 }
 const create = () => {
+  editGeneration += 1
   editing.value = ''
   retry.clear()
   editorError.value = ''
@@ -247,8 +299,12 @@ const create = () => {
   loadDictionaries()
 }
 const edit = async (id: string) => {
+  const context = contextGeneration.value
+  const generation = ++editGeneration
   try {
     const source = await getFormDataSource(id)
+    if (context !== contextGeneration.value || generation !== editGeneration)
+      return
     editing.value = id
     retry.clear()
     editorError.value = ''
@@ -263,12 +319,15 @@ const edit = async (id: string) => {
     }
     visible.value = true
   } catch (failure) {
+    if (context !== contextGeneration.value || generation !== editGeneration)
+      return
     queryError.value =
       failure instanceof Error ? failure.message : '无法读取数据源'
   }
 }
 const save = async () => {
   if (saving.value) return
+  const context = contextGeneration.value
   saving.value = true
   editorError.value = ''
   try {
@@ -278,6 +337,7 @@ const save = async () => {
       retry.key('save', input),
       editing.value || undefined
     )
+    if (context !== contextGeneration.value) return
     retry.complete('save')
     visible.value = false
     querySequence += 1
@@ -285,10 +345,11 @@ const save = async () => {
     Message.success('数据源已保存')
     await table.value?.reload()
   } catch (failure) {
+    if (context !== contextGeneration.value) return
     editorError.value =
       failure instanceof Error ? failure.message : '保存失败，输入已保留'
   } finally {
-    saving.value = false
+    if (context === contextGeneration.value) saving.value = false
   }
 }
 const query = async (id: string) => {

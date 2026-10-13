@@ -18,6 +18,26 @@ test('real dictionary metadata and typed options survive reopening, reject stale
   const suffix = randomUUID().slice(0, 8)
   const name = `设备类别-${suffix}`
   const type = `device-${suffix}`
+  const findCreatedDictionary = async () => {
+    await page
+      .locator('.dict-system-page__query')
+      .getByPlaceholder('请输入字典类型')
+      .fill(type)
+    const response = page.waitForResponse((value) => {
+      const url = new URL(value.url())
+      return (
+        url.pathname === '/api/system/dictionaries' &&
+        url.searchParams.get('dictType') === type &&
+        value.request().method() === 'GET'
+      )
+    })
+    await page.getByRole('button', { name: '搜索', exact: true }).click()
+    const result = await response
+    expect(result.status()).toBe(200)
+    const { data } = await result.json()
+    expect(data.total).toBe(1)
+    expect(data.list[0].dictType).toBe(type)
+  }
   try {
     await login(page, 'a-admin')
     await page.goto('/system/dictSystem')
@@ -28,6 +48,7 @@ test('real dictionary metadata and typed options survive reopening, reject stale
     await editor.getByPlaceholder('请输入描述').fill('真实选项持久化')
     await editor.getByRole('button', { name: '确定', exact: true }).click()
     await expect(editor).not.toBeVisible()
+    await findCreatedDictionary()
     const row = page.locator('tbody tr').filter({ hasText: name })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: '选项', exact: true }).click()
@@ -57,6 +78,7 @@ test('real dictionary metadata and typed options survive reopening, reject stale
     await page.keyboard.press('Escape')
     await expect(options).not.toBeVisible()
     await page.reload()
+    await findCreatedDictionary()
     await row.getByRole('button', { name: '选项', exact: true }).click()
     await expect(options.getByLabel('选项1标签', { exact: true })).toHaveValue(
       '笔记本'

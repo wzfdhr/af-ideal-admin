@@ -172,6 +172,23 @@ test('controlled form sources save, reopen and publish immutable choices, then a
       await employee.close()
     }
     await page.goto('/Scalability/formDesign')
+    await page.getByLabel('搜索表单草稿', { exact: true }).fill(name)
+    const matchingDrafts = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return (
+        url.pathname === '/api/form-schemas' &&
+        url.searchParams.get('keyword') === name &&
+        response.request().method() === 'GET'
+      )
+    })
+    await page.getByRole('button', { name: '搜索草稿', exact: true }).click()
+    const searched = await matchingDrafts
+    expect(searched.status()).toBe(200)
+    expect(
+      (await searched.json()).data.list.some(
+        (item: { id: string }) => item.id === app.formDraftId
+      )
+    ).toBe(true)
     await page
       .getByLabel('真实表单草稿', { exact: true })
       .selectOption(app.formDraftId)

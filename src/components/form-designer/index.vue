@@ -22,12 +22,59 @@
         <a-divider />
         <div class="m-4">
           <div class="font-bold">操作</div>
+          <form
+            v-if="!embedded && dataMode === 'reference'"
+            @submit.prevent="searchDrafts(1)"
+          >
+            <label>
+              搜索表单草稿
+              <input
+                v-model="draftKeyword"
+                aria-label="搜索表单草稿"
+                maxlength="100"
+              />
+            </label>
+            <button type="submit" :disabled="catalogueLoading">搜索草稿</button>
+            <p v-if="catalogueError" role="alert">{{ catalogueError }}</p>
+            <div>
+              <button
+                type="button"
+                :disabled="catalogueLoading || draftCurrent <= 1"
+                @click="searchDrafts(draftCurrent - 1)"
+              >
+                上一页草稿
+              </button>
+              <span>第 {{ draftCurrent }} 页，共 {{ draftTotal }} 条</span>
+              <button
+                type="button"
+                :disabled="
+                  catalogueLoading || draftCurrent * draftPageSize >= draftTotal
+                "
+                @click="searchDrafts(draftCurrent + 1)"
+              >
+                下一页草稿
+              </button>
+              <select
+                :value="draftPageSize"
+                aria-label="每页草稿数"
+                @change="
+                  changeDraftPageSize(
+                    Number(($event.target as HTMLSelectElement).value)
+                  )
+                "
+              >
+                <option :value="20">20 条</option>
+                <option :value="100">100 条</option>
+              </select>
+            </div>
+          </form>
           <label v-if="!embedded && dataMode === 'reference'">
             表单草稿
             <select
-              v-model="formId"
+              :value="formId"
               aria-label="真实表单草稿"
-              @change="loadDraft()"
+              :disabled="creating || saving"
+              @change="loadDraft(($event.target as HTMLSelectElement).value)"
             >
               <option
                 v-for="draft in draftChoices"
@@ -61,6 +108,7 @@
               v-if="!embedded"
               long
               :loading="saving"
+              :disabled="loading || creating"
               @click="saveDraft"
             >
               保存草稿
@@ -205,6 +253,8 @@ import { useFormDesigner, useFormDesignerActions } from './use-form-designer'
 // imported type used in template incorrectly throws warning
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { migrateFormSchema } from './schema'
+// Used by the typed template slot.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { WidgetsConfig } from './types'
 import type { VersionedFormSchema } from './schema'
 
@@ -232,6 +282,14 @@ const {
   importVisible,
   loadDraft,
   draftChoices,
+  draftKeyword,
+  draftCurrent,
+  draftPageSize,
+  draftTotal,
+  catalogueLoading,
+  catalogueError,
+  searchDrafts,
+  changeDraftPageSize,
   loading,
   publishCurrent,
   publishing,

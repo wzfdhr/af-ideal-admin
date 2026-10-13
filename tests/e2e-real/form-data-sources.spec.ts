@@ -55,6 +55,25 @@ test('form designer registers, reopens and queries a real authorized source with
     await page.goto('/leave/application')
     await page.getByRole('button', { name: '编辑数据源', exact: true }).click()
     const manager = page.getByTestId('form-data-source-manager')
+    const findCreatedSource = async () => {
+      await manager.getByLabel('搜索数据源', { exact: true }).fill(code)
+      const queried = page.waitForResponse((response) => {
+        const url = new URL(response.url())
+        return (
+          url.pathname === '/api/form-data-sources' &&
+          url.searchParams.get('keyword') === code &&
+          response.request().method() === 'GET'
+        )
+      })
+      await manager
+        .getByRole('button', { name: '搜索数据源', exact: true })
+        .click()
+      const response = await queried
+      expect(response.status()).toBe(200)
+      const { data } = await response.json()
+      expect(data.total).toBe(1)
+      expect(data.list[0].code).toBe(code)
+    }
     await manager
       .getByRole('button', { name: '登记字典数据源', exact: true })
       .click()
@@ -74,6 +93,7 @@ test('form designer registers, reopens and queries a real authorized source with
       .getByRole('button', { name: '保存数据源', exact: true })
       .click()
     await expect(editor).not.toBeVisible()
+    await findCreatedSource()
     const row = manager.locator('tbody tr').filter({ hasText: code })
     await expect(row).toBeVisible()
     await row.getByRole('button', { name: '查询预览', exact: true }).click()
@@ -85,6 +105,7 @@ test('form designer registers, reopens and queries a real authorized source with
     )
     await page.reload()
     await page.getByRole('button', { name: '编辑数据源', exact: true }).click()
+    await findCreatedSource()
     await row.getByRole('button', { name: '维护数据源', exact: true }).click()
     await expect(editor.getByLabel('数据源名称', { exact: true })).toHaveValue(
       name
@@ -155,6 +176,22 @@ test('form designer registers, reopens and queries a real authorized source with
       await login(b, 'b-admin')
       await b.goto('/leave/application')
       await b.getByRole('button', { name: '编辑数据源', exact: true }).click()
+      const otherManager = b.getByTestId('form-data-source-manager')
+      await otherManager.getByLabel('搜索数据源', { exact: true }).fill(code)
+      const otherQuery = b.waitForResponse((response) => {
+        const url = new URL(response.url())
+        return (
+          url.pathname === '/api/form-data-sources' &&
+          url.searchParams.get('keyword') === code &&
+          response.request().method() === 'GET'
+        )
+      })
+      await otherManager
+        .getByRole('button', { name: '搜索数据源', exact: true })
+        .click()
+      const otherResult = await otherQuery
+      expect(otherResult.status()).toBe(200)
+      expect((await otherResult.json()).data.total).toBe(0)
       await expect(
         b
           .getByTestId('form-data-source-manager')
