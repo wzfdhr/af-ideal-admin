@@ -1,8 +1,13 @@
 import {
   AUDIT_PERMISSIONS,
   AUDIT_PROJECTION_VERSION,
+  AUDIT_EXPORT_MAX_ROWS,
+  AUDIT_EXPORT_MAX_SNAPSHOT_BYTES,
+  DomainError,
+  parseAuditQuery,
 } from '@af-admin/contracts'
-import { one, rows } from './support'
+import { requirePermission } from '@af-admin/workflow-core'
+import { one, rows, contentCanonical } from './support'
 import { auditPolicyRows, projectAuditDetail } from './audit-policy'
 import type {
   AuditQueryV1,
@@ -11,6 +16,7 @@ import type {
   AuditActorField,
   AuditEventType,
   AuditResult,
+  AuditExportSnapshotV1,
 } from '@af-admin/contracts'
 import type { Database } from './support'
 import type { Actor } from './auth'
@@ -58,10 +64,11 @@ const dto = (row: ProjectedRow): AuditEventRecordV1 => {
 }
 
 /** Actor/field projection, filtering, total and page share the same PostgreSQL statement snapshot. */
-export const queryAuditEvents = async (
+const runAuditQuery = async (
   db: Database,
   actor: Actor,
-  query: AuditQueryV1
+  query: AuditQueryV1,
+  internal?: { eventIds?: readonly string[]; capture: boolean }
 ): Promise<AuditEventPageV1> => {
   const result = one(
     await rows<{ queried_at: Date; total: string; items: ProjectedRow[] }>(
@@ -76,11 +83,14 @@ export const queryAuditEvents = async (
           SELECT r.created_by AS owner_id FROM report_schedule_runs r WHERE p."ownerKind"='schedule' AND e.target_type='report-schedule' AND r.tenant_id=e.tenant_id AND r.id=e.target_id
           UNION ALL SELECT s.created_by FROM report_schedules s WHERE p."ownerKind"='schedule' AND e.target_type='report-schedule' AND s.tenant_id=e.tenant_id AND s.id=e.target_id
           UNION ALL SELECT j.created_by FROM report_export_jobs j WHERE p."ownerKind"='export' AND e.target_type='report-export' AND j.tenant_id=e.tenant_id AND j.id=e.target_id
+          UNION ALL SELECT j.created_by FROM audit_export_jobs j WHERE p."ownerKind"='audit-export' AND e.target_type='audit-export' AND j.tenant_id=e.tenant_id AND j.id=e.target_id
+          UNION ALL SELECT m.user_id FROM memberships m WHERE p."ownerKind"='membership' AND e.target_type='membership' AND m.tenant_id=e.tenant_id AND m.user_id=e.target_id
           UNION ALL SELECT j.created_by FROM message_recipients r JOIN message_send_jobs j ON j.tenant_id=r.tenant_id AND j.id=r.job_id WHERE p."ownerKind"='message' AND e.target_type='message-recipient' AND r.tenant_id=e.tenant_id AND r.id=e.target_id
           UNION ALL SELECT r.applicant_id FROM workflow_timers t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id JOIN business_records r ON r.tenant_id=i.tenant_id AND r.id=i.request_id WHERE p."ownerKind"='timer' AND e.target_type='workflow-timer' AND t.tenant_id=e.tenant_id AND t.id=e.target_id
         ) owners
       ) background ON e.actor_id IS NULL
       WHERE e.tenant_id=$1 AND af_historical_member_scope_visible($1,$2,'audit:read',COALESCE(e.actor_id,background.owner_id))
+        AND ($16::text[] IS NULL OR e.id=ANY($16::text[]))
         AND ($3='' OR e.module=$3) AND ($4='' OR e.trace_id=$4)
         AND (NULLIF($8,'')::date IS NULL OR e.created_at >= (NULLIF($8,'')::date::timestamp AT TIME ZONE $10))
         AND (NULLIF($9,'')::date IS NULL OR e.created_at < ((NULLIF($9,'')::date+1)::timestamp AT TIME ZONE $10))
@@ -119,8 +129,9 @@ export const queryAuditEvents = async (
         query.operatorName,
         JSON.stringify(auditPolicyRows),
         `%${query.operatorName.replace(/[!%_]/g, '!$&')}%`,
-        query.pageSize,
-        (query.current - 1) * query.pageSize,
+        internal?.capture ? AUDIT_EXPORT_MAX_ROWS + 1 : query.pageSize,
+        internal?.capture ? 0 : (query.current - 1) * query.pageSize,
+        internal?.eventIds || null,
       ]
     )
   )
@@ -137,3 +148,103 @@ export const queryAuditEvents = async (
   }
 }
 export const auditReadPermission = AUDIT_PERMISSIONS.read
+
+/** The HTTP reader retains its original bounded paging; capture options are server-only. */
+export const queryAuditEvents = (
+  db: Database,
+  actor: Actor,
+  query: AuditQueryV1
+) => runAuditQuery(db, actor, query)
+/** Identity-filter text is metadata of the immutable capture principal, even when no facts matched. */
+export const assertAuditIdentityQueryAccess = async (
+  db: Database,
+  actor: Actor,
+  query: AuditQueryV1,
+  capturePrincipalId = actor.userId
+) => {
+  requirePermission(actor.permissions, AUDIT_PERMISSIONS.read)
+  if (
+    query.operatorName &&
+    !one(
+      await rows<{ visible: boolean }>(
+        db,
+        "SELECT af_member_field_visible($1,$2,'audit:read',$3,'name') AS visible",
+        [actor.tenantId, actor.userId, capturePrincipalId]
+      )
+    ).visible
+  )
+    throw new DomainError(
+      403,
+      'AUDIT_EXPORT_QUERY_METADATA_FORBIDDEN',
+      '当前无审计查询身份元信息读取权限'
+    )
+}
+export const captureAuditEvents = async (
+  db: Database,
+  actor: Actor,
+  input: AuditQueryV1
+): Promise<AuditExportSnapshotV1> => {
+  requirePermission(actor.permissions, AUDIT_PERMISSIONS.read)
+  const query = parseAuditQuery(input)
+  await assertAuditIdentityQueryAccess(db, actor, query)
+  const result = await runAuditQuery(db, actor, query, { capture: true })
+  if (result.total > AUDIT_EXPORT_MAX_ROWS)
+    throw new DomainError(
+      422,
+      'AUDIT_EXPORT_TOO_MANY_ROWS',
+      '完整审计导出最多2000条，请缩小筛选范围'
+    )
+  if (result.total !== result.list.length)
+    throw new DomainError(
+      409,
+      'AUDIT_EXPORT_CAPTURE_INCOMPLETE',
+      '审计事实捕获不完整'
+    )
+  const snapshot: AuditExportSnapshotV1 = {
+    version: 1,
+    producerVersion: 1,
+    projectionVersion: 1,
+    source: 'server',
+    query,
+    queriedAt: result.queriedAt,
+    dataCutoffAt: result.queriedAt,
+    rows: result.list,
+    total: result.total,
+  }
+  if (
+    Buffer.byteLength(contentCanonical(snapshot), 'utf8') >
+    AUDIT_EXPORT_MAX_SNAPSHOT_BYTES
+  )
+    throw new DomainError(
+      422,
+      'AUDIT_EXPORT_SNAPSHOT_TOO_LARGE',
+      '审计导出快照超过2MiB'
+    )
+  return snapshot
+}
+export const recheckAuditEventIds = async (
+  db: Database,
+  actor: Actor,
+  ids: readonly string[],
+  timeZone: string
+) => {
+  requirePermission(actor.permissions, AUDIT_PERMISSIONS.read)
+  if (
+    !Array.isArray(ids) ||
+    ids.length > AUDIT_EXPORT_MAX_ROWS ||
+    new Set(ids).size !== ids.length ||
+    ids.some(
+      (id) =>
+        typeof id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}$/.test(id)
+    )
+  )
+    throw new DomainError(
+      422,
+      'AUDIT_EXPORT_MANIFEST_INVALID',
+      '审计事实标识清单无效'
+    )
+  return runAuditQuery(db, actor, parseAuditQuery({ timeZone }), {
+    capture: true,
+    eventIds: ids,
+  })
+}

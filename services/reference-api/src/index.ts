@@ -8,6 +8,7 @@ import { registerReportExportRoutes } from './report-exports'
 import { registerReportSchedules } from './report-schedules'
 import { registerDataScreens } from './data-screens'
 import { registerAudit } from './audit'
+import { registerAuditExports } from './audit-exports'
 import { registerMenuResources } from './menu-resources'
 import { registerPackagePages } from './package-pages'
 import { registerLowCodeSources } from './low-code-sources'
@@ -158,6 +159,7 @@ export const createServer = (
   registerReportSchedules(server, pool, fault)
   registerDataScreens(server, pool, fault)
   registerAudit(server, pool, fault)
+  registerAuditExports(server, pool, fault, files)
   if (!database)
     server.addHook('onClose', async () => {
       await pool.end()

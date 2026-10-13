@@ -3,6 +3,10 @@ import { REPORTING_PERMISSIONS } from './reporting'
 import { REPORT_EXPORT_PERMISSIONS } from './report-exports'
 import { REPORT_SCHEDULE_PERMISSIONS } from './report-schedules'
 import { DATA_SCREEN_PERMISSIONS } from './data-screens'
+import {
+  AUDIT_EXPORT_PERMISSIONS,
+  AUDIT_RETENTION_PERMISSIONS,
+} from './audit-governance'
 
 export interface PermissionDefinition {
   code: string
@@ -10,6 +14,25 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  ...Object.entries(AUDIT_EXPORT_PERMISSIONS).map(([key, code]) => ({
+    code,
+    title: (
+      {
+        list: '查看审计导出',
+        create: '创建审计导出',
+        cancel: '取消审计导出',
+        retry: '重试审计导出',
+        archive: '归档审计导出',
+        download: '下载审计导出',
+      } as Record<string, string>
+    )[key],
+    module: '审计治理',
+  })),
+  {
+    code: AUDIT_RETENTION_PERMISSIONS.manage,
+    title: '管理审计保留策略',
+    module: '审计治理',
+  },
   ...Object.entries(DATA_SCREEN_PERMISSIONS).map(([key, code]) => ({
     code,
     title: (

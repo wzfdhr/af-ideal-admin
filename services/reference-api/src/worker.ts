@@ -1,5 +1,6 @@
 import { startMessagingWorker } from './messaging-worker'
 import { startReportExportWorker } from './report-export-jobs'
+import { startAuditExportWorker } from './audit-export-jobs'
 import { startReportScheduleWorker } from './report-schedules-worker'
 import { startWorkflowTimerWorker } from './workflow-timer-worker'
 import { createPool } from './database'
@@ -12,6 +13,7 @@ const stopFiles = startFileWorker(pool)
 const stopTimers = startWorkflowTimerWorker(pool)
 const stopMessaging = startMessagingWorker(pool)
 const stopExports = startReportExportWorker(pool)
+const stopAuditExports = startAuditExportWorker(pool)
 const stopSchedules = startReportScheduleWorker(pool)
 const shutdown = async () => {
   await stop()
@@ -20,6 +22,7 @@ const shutdown = async () => {
   await stopMessaging()
   await stopSchedules()
   await stopExports()
+  await stopAuditExports()
   await pool.end()
 }
 process.once('SIGTERM', shutdown)

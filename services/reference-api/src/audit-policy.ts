@@ -7,7 +7,14 @@ interface AuditRule {
   eventType: AuditEventType
   detail: Record<string, DetailKind>
   failure: boolean
-  ownerKind: '' | 'schedule' | 'export' | 'message' | 'timer'
+  ownerKind:
+    | ''
+    | 'schedule'
+    | 'export'
+    | 'message'
+    | 'timer'
+    | 'audit-export'
+    | 'membership'
 }
 const rules: AuditRule[] = []
 const register = (
@@ -46,6 +53,13 @@ register(
   'permission'
 )
 register('system', ['user.password-reset'], {}, 'security')
+register(
+  'system',
+  ['demo.audit-export-initialize'],
+  { revision: 'integer', addedCount: 'integer' },
+  'permission',
+  'membership'
+)
 register(
   'system',
   [
@@ -240,6 +254,37 @@ register(
   true
 )
 register(
+  'audit-export',
+  [
+    'created',
+    'claimed',
+    'rendered',
+    'completed',
+    'cancel',
+    'retry',
+    'archive',
+    'download',
+    'expired',
+  ].map((action) => `audit-export.${action}`),
+  { code: 'code', stage: 'word', attempt: 'integer', archived: 'boolean' },
+  'export',
+  'audit-export'
+)
+register(
+  'audit-export',
+  [
+    'failed',
+    'blocked',
+    'infected',
+    'retry-scheduled',
+    'attempts-exhausted',
+  ].map((action) => `audit-export.${action}`),
+  { code: 'code', stage: 'word', attempt: 'integer' },
+  'export',
+  'audit-export',
+  true
+)
+register(
   'data-screen',
   [
     'created',
@@ -328,6 +373,7 @@ const moduleLabels: Record<string, string> = {
   'low-code': '低代码页面',
   'report': '真实报表',
   'report-export': '报表导出',
+  'audit-export': '审计导出',
   'report-schedule': '报表调度',
   'data-screen': '真实大屏',
   'messaging': '消息治理',

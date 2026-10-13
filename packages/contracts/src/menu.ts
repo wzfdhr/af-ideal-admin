@@ -1,3 +1,5 @@
+import { AUDIT_EXPORT_PERMISSIONS } from './audit-governance'
+
 export interface CapabilityMenuNode {
   path: string
   name: string
@@ -203,23 +205,48 @@ export const createR1Menu = (permissions: string[]) => {
         },
       ],
     })
-  if (permissions.includes('audit:read') || permissions.includes('*'))
+  const auditExportAccess = Object.values(AUDIT_EXPORT_PERMISSIONS)
+  const canReadAudit =
+    permissions.includes('audit:read') || permissions.includes('*')
+  const canUseAuditExports =
+    permissions.includes('*') ||
+    auditExportAccess.some((code) => permissions.includes(code))
+  if (canReadAudit || canUseAuditExports)
     entries.push({
       path: '/audit',
       name: 'audit',
       componentKey: 'DefaultLayout',
       meta: { requireAuth: true, locale: 'menu.audit', order: 8 },
       children: [
-        {
-          path: 'logs',
-          name: 'auditLogs',
-          componentKey: 'AuditLogs',
-          meta: {
-            requireAuth: true,
-            locale: 'menu.audit.logs',
-            access: { permissions: ['audit:read'] },
-          },
-        },
+        ...(canReadAudit
+          ? [
+              {
+                path: 'logs',
+                name: 'auditLogs',
+                componentKey: 'AuditLogs',
+                meta: {
+                  requireAuth: true,
+                  locale: 'menu.audit.logs',
+                  access: { permissions: ['audit:read'] },
+                },
+              },
+            ]
+          : []),
+        ...(canUseAuditExports
+          ? [
+              {
+                path: 'exports',
+                name: 'auditExportJobs',
+                componentKey: 'AuditExportJobs',
+                meta: {
+                  requireAuth: true,
+                  locale: 'menu.audit.exports',
+              order: 1,
+                  access: { permissions: auditExportAccess },
+                },
+              },
+            ]
+          : []),
       ],
     })
   if (

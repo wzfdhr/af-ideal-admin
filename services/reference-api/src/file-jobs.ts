@@ -139,7 +139,7 @@ export const cleanupFileObjects = async (
     })
   }, Promise.resolve())
   const referenced = await pool.query<{ object_key: string }>(
-    "SELECT object_key FROM stored_files WHERE status<>'deleted' UNION SELECT object_key FROM file_parts UNION SELECT object_key FROM report_export_jobs WHERE retention_until>now() UNION SELECT object_key FROM report_export_artifacts WHERE status<>'expired'"
+    "SELECT object_key FROM stored_files WHERE status<>'deleted' UNION SELECT object_key FROM file_parts UNION SELECT object_key FROM report_export_jobs WHERE retention_until>now() UNION SELECT object_key FROM report_export_artifacts WHERE status<>'expired' UNION SELECT object_key FROM audit_export_jobs WHERE bytes_purged_at IS NULL UNION SELECT object_key FROM audit_export_artifacts WHERE purged_at IS NULL"
   )
   const keys = new Set(referenced.rows.map((row) => row.object_key))
   const old = await store.objectsOlderThan(new Date(Date.now() - 86400000))
