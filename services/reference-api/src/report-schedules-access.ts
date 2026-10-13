@@ -144,7 +144,18 @@ export const scheduleEvent = async (
     `report-schedule.${action}`,
     'report-schedule',
     runId || scheduleId,
-    'success',
+    [
+      'run.failed',
+      'run.blocked',
+      'run.partial-failed',
+      'run.resolve-failed',
+      'run.attempts-exhausted',
+      'recipient.failed',
+      'recipient.blocked',
+      'recipient.attempts-exhausted',
+    ].includes(action)
+      ? 'failure'
+      : 'success',
     detail
   )
 }

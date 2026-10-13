@@ -41,7 +41,7 @@ import {
   readNotification,
   readAllNotifications,
 } from './notification'
-import { rows, one, pageQuery, noFault, authorizedTransaction } from './support'
+import { rows, noFault, authorizedTransaction } from './support'
 import type { Pool } from 'pg'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { FaultInjector } from './support'
@@ -331,123 +331,6 @@ export const registerBusiness = (
       )
     )
   )
-  server.get('/api/audit/events', async (request) => {
-    const actor = await auth(request)
-    requirePermission(actor.permissions, 'audit:read')
-    const page = pageQuery(request.query)
-    const query = record(request.query)
-    const result = typeof query.result === 'string' ? query.result : ''
-    const module = typeof query.module === 'string' ? query.module : ''
-    const target = typeof query.targetId === 'string' ? query.targetId : ''
-    const operatorName =
-      typeof query.operatorName === 'string'
-        ? query.operatorName.slice(0, 100)
-        : ''
-    const eventType = typeof query.eventType === 'string' ? query.eventType : ''
-    const dateInput = query.dateRange || query['dateRange[]']
-    let dates: unknown[] = []
-    if (Array.isArray(dateInput)) dates = dateInput
-    else if (typeof dateInput === 'string') dates = [dateInput]
-    if (dates.length > 2)
-      throw new DomainError(422, 'VALIDATION_ERROR', '审计日期筛选无效')
-    const boundary = (value: unknown, end = false) => {
-      if (value === undefined || value === '') return null
-      if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value))
-        throw new DomainError(422, 'VALIDATION_ERROR', '审计日期筛选无效')
-      const date = Date.parse(`${value}T00:00:00+08:00`)
-      if (
-        !Number.isFinite(date) ||
-        new Date(Date.parse(`${value}T00:00:00Z`))
-          .toISOString()
-          .slice(0, 10) !== value
-      )
-        throw new DomainError(422, 'VALIDATION_ERROR', '审计日期筛选无效')
-      return new Date(date + (end ? 86400000 : 0)).toISOString()
-    }
-    const params = [
-      actor.tenantId,
-      result,
-      module,
-      target,
-      `%${operatorName}%`,
-      eventType,
-      boundary(dates[0]),
-      boundary(dates[1], true),
-    ]
-    const filter =
-      "WHERE tenant_id=$1 AND ($2='' OR result=$2) AND ($3='' OR module=$3) AND ($4='' OR target_id=$4 OR detail->>'requestId'=$4 OR detail->>'instanceId'=$4) AND actor_name ILIKE $5 AND ($6='' OR (CASE WHEN module='auth' THEN 'security' WHEN module='report-export' THEN 'export' ELSE 'operation' END)=$6) AND ($7::timestamptz IS NULL OR created_at>=$7) AND ($8::timestamptz IS NULL OR created_at<$8)"
-    const count = one(
-      await rows<{ total: string }>(
-        pool,
-        `SELECT count(*) AS total FROM audit_events ${filter}`,
-        params
-      )
-    )
-    const items = await rows<{
-      id: string
-      actor_id: string
-      actor_name: string
-      module: string
-      action: string
-      result: string
-      target_type: string
-      target_id: string
-      trace_id: string
-      created_at: Date
-      detail: Record<string, unknown>
-    }>(
-      pool,
-      `SELECT * FROM audit_events ${filter} ORDER BY created_at DESC,id LIMIT $9 OFFSET $10`,
-      [...params, page.pageSize, page.offset]
-    )
-    return ok(request, {
-      total: Number(count.total),
-      list: items.map((row) => ({
-        id: row.id,
-        operator: { id: row.actor_id, name: row.actor_name },
-        module: row.module,
-        action: row.action,
-        eventType:
-          (
-            { 'auth': 'security', 'report-export': 'export' } as Record<
-              string,
-              string
-            >
-          )[row.module] || 'operation',
-        result: row.result,
-        target: { type: row.target_type, id: row.target_id },
-        traceId: row.trace_id,
-        occurredAt: row.created_at.toISOString(),
-        // Audit capability grants operational facts, not captured report data.
-        // Row counts and artifact fingerprints use the separately authorized job API.
-        detail:
-          row.module === 'report-export'
-            ? Object.fromEntries(
-                Object.entries(row.detail).filter(([detailKey]) =>
-                  [
-                    'code',
-                    'stage',
-                    'attempt',
-                    'format',
-                    'definitionVersionId',
-                    'archived',
-                  ].includes(detailKey)
-                )
-              )
-            : row.detail,
-        source: 'server',
-      })),
-    })
-  })
-  server.post('/api/audit/events', async (request) => {
-    const actor = await auth(request)
-    const id = randomUUID()
-    await pool.query(
-      'INSERT INTO client_telemetry (tenant_id,id,actor_id,trace_id) VALUES ($1,$2,$3,$4)',
-      [actor.tenantId, id, actor.userId, request.id]
-    )
-    return ok(request, { id, source: 'browser' })
-  })
   server.get('/api/outbox/failures', async (request) => {
     const actor = await auth(request)
     requirePermission(actor.permissions, 'application:configure')

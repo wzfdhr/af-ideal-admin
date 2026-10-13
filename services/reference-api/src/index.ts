@@ -7,6 +7,7 @@ import { registerReporting } from './reporting'
 import { registerReportExportRoutes } from './report-exports'
 import { registerReportSchedules } from './report-schedules'
 import { registerDataScreens } from './data-screens'
+import { registerAudit } from './audit'
 import { registerMenuResources } from './menu-resources'
 import { registerPackagePages } from './package-pages'
 import { registerLowCodeSources } from './low-code-sources'
@@ -98,7 +99,15 @@ export const createServer = (
       )
         await alertConfigurationAdmins(pool, actor)
     } catch {
-      // Reporting cannot change the original command failure or reveal payloads.
+      // Keep the original failure while emitting a bounded diagnostic without payloads.
+      process.stderr.write(
+        `${JSON.stringify({
+          traceId: request.id,
+          component: 'audit',
+          stage: 'request.failure.persist',
+          code: 'AUDIT_PERSIST_FAILED',
+        })}\n`
+      )
     }
     reply.status(failure.status).send({
       code: failure.status,
@@ -148,6 +157,7 @@ export const createServer = (
   registerReportExportRoutes(server, pool, fault, files)
   registerReportSchedules(server, pool, fault)
   registerDataScreens(server, pool, fault)
+  registerAudit(server, pool, fault)
   if (!database)
     server.addHook('onClose', async () => {
       await pool.end()
