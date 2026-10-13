@@ -5,6 +5,17 @@ export interface PermissionDefinition {
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
   ...[
+    ['list', '查看菜单资源'],
+    ['detail', '查看菜单资源详情'],
+    ['create', '创建菜单资源'],
+    ['update', '维护菜单资源'],
+    ['delete', '删除菜单资源'],
+  ].map(([action, title]) => ({
+    code: `system:menu:${action}`,
+    title,
+    module: '菜单资源',
+  })),
+  ...[
     ['list', '查看数据源登记'],
     ['create', '登记受控数据源'],
     ['update', '维护与启停数据源'],

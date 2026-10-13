@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { demoIdentities, LEAVE_FORM, serialWorkflow } from '@af-admin/contracts'
+import { initializeMenuResources } from './menu-resources'
 import { createPool, transaction } from './database'
 import { digest, hashPassword } from './security'
 import type { Pool } from 'pg'
@@ -93,6 +94,8 @@ export const seedDemo = async (pool: Pool) => {
         )
       }
     }, Promise.resolve())
+    await initializeMenuResources(client, 'tenant-a')
+    await initializeMenuResources(client, 'tenant-b')
   })
 }
 

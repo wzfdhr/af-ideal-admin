@@ -4,6 +4,7 @@ import { filterAccessibleMenus, type MenuLikeNode } from '@/services/access'
 import { useMenuStore, useUserStore } from '@/store'
 import { filterR1Menus } from '@/services/r1-menu'
 import { menuFromServer } from '@config'
+import { dataMode } from '../../../config/data-mode'
 import type { RouteRecordRaw } from 'vue-router'
 
 const useMenuTree = () => {
@@ -11,7 +12,9 @@ const useMenuTree = () => {
   const userStore = useUserStore()
 
   const appRoute = computed(() =>
-    menuFromServer ? menuStore.asyncMenu : appClientMenus
+    menuFromServer || (dataMode === 'reference' && userStore.tenants.length)
+      ? menuStore.asyncMenu
+      : appClientMenus
   )
 
   const menuTree = computed(() => {

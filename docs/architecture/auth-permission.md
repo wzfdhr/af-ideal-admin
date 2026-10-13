@@ -133,3 +133,17 @@ route access.
 
 - `true`: route to `not-allowed`.
 - `false`: route to the first accessible route for the current role.
+
+
+## Persistent tenant navigation increment (FP-007)
+
+Production/reference mode loads `/navigation/state` on protected navigation and checks `/navigation/access/:name` using the current session. Explicit development Mock retains the configured local tree. `menuFromServer` still controls legacy Mock server-menu mode; a tenant context by itself does not select the new backend protocol.
+
+`menu_resources` owns a tenant-qualified identity, parent, type, registration key or button permission, order, status, revision and deletion tombstone. `/system/menus` commands require the corresponding permission, version and idempotency key; mutations, receipt and success audit commit together. The immutable route catalogue supplies components, paths and base permissions. Custom captions are plain text. Multiple references to the same registered page have separate menu identities and a controlled `targetRouteName`; access is available only while at least one reference and its ancestors are enabled and the actor holds the page's base capability.
+
+Button resources control the visibility of operations on their registered page, including aliases. They never grant business capabilities or rewrite the user's canonical authorization state. PermissionButton, the permission directive and UI predicates apply current visibility rules; backend business/object/field authorization remains independent. Menu management, workplace and self-service credential entries and their ancestors remain reachable for an actor who holds their actual capabilities. Generic resource edits cannot weaken base permissions or replace component bindings.
+
+Migration 022 initializes existing tenants once; explicit new-platform/demo initialization creates the same defaults without restoring tombstones or overwriting customization. Disable/delete/restore retain versioned facts. Preserve 022 and a compatible execution service on rollback; do not auto-drop resource facts. Reverting just the client to the old static menu would ignore tenant navigation restrictions and is not a validated compatible rollback. Current evidence and remaining deployment/performance gates are in `full-product-delivery-tasks.md`.
+
+
+Menu configuration metadata uses current creator/member scope for list, detail, parent choices, writes and replayed receipts. Default shared resources have no personal creator and require complete scope within the current tenant for configuration access. Parent changes and disable/delete validate affected descendants; a scoped editor cannot move or disable an unseen subtree. Page-wide button policy requires complete tenant menu scope. These metadata rules do not replace runtime page/business permissions; navigation exposes only registered pages the actor is entitled to visit.

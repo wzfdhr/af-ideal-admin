@@ -13,7 +13,7 @@ const checkPermission = (el: HTMLElement, binding: DirectiveBinding) => {
 
   const hasAccess = canAccessByRequirement(requirement, {
     roles: userStore.role ? [userStore.role] : [],
-    permissions: userStore.permissions,
+    permissions: userStore.availablePermissions,
   })
   if (!hasAccess && el.parentNode) {
     el.parentNode.removeChild(el)

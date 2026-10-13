@@ -41,7 +41,7 @@ import {
   exportApplicationPackage,
 } from '@/api/application-packages'
 import { errorMessage } from '@/views/leave/shared'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 import type { ManagedApplication } from '@af-admin/contracts'
 
 const props = defineProps<{ app?: ManagedApplication; visible: boolean }>()

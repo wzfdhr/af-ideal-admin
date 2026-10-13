@@ -151,7 +151,7 @@ import type {
   ProTableFetchParams,
 } from '@/components/pro-table/types'
 import type { SystemDictionaryRecord } from '@/api/system/dictionary'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 import {
   FORM_DATA_SOURCE_PERMISSIONS as P,
   DICTIONARY_PERMISSIONS,

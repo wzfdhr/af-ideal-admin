@@ -270,8 +270,8 @@ import {
   withdrawLeaveRequest,
   decideLeaveTask,
 } from '@/api/leave'
+import { hasPermission } from '@/services/ui-permissions'
 import { calculateHalfDayUnits, parseLeaveFields } from '@af-admin/contracts'
-import { hasPermission } from '@af-admin/workflow-core'
 import {
   statusLabels,
   actionLabels,

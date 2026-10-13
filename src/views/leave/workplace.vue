@@ -72,7 +72,7 @@ import type {
 } from '@/components/pro-table/types'
 import useUserStore from '@/store/modules/user'
 import { fetchLeaveTasks, fetchLeaveRequests } from '@/api/leave'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 import { errorMessage } from './shared'
 
 const user = useUserStore()

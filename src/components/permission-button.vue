@@ -65,7 +65,7 @@ const requirement = computed<AccessRequirement | undefined>(() => {
 const allowed = computed(() =>
   canAccessByRequirement(requirement.value, {
     roles: userStore.role ? [userStore.role] : [],
-    permissions: userStore.permissions,
+    permissions: userStore.availablePermissions,
   })
 )
 

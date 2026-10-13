@@ -14,6 +14,7 @@ import {
   resetTenantContext,
   tenantScope,
 } from '@/services/tenant-context'
+import { PLATFORM_PERMISSION_CATALOGUE } from '@af-admin/contracts'
 import type { UserRole } from '@config'
 import type { TenantContext } from '@af-admin/contracts'
 
@@ -45,8 +46,16 @@ const useUserStore = defineStore('user', {
   }),
 
   getters: {
-    userInfo(state: UserState): UserState {
-      return { ...state }
+    availablePermissions(state): string[] {
+      const denied = useMenuStore().hiddenPermissions || []
+      if (!denied.length) return state.permissions
+      const owned = state.permissions.includes('*')
+        ? PLATFORM_PERMISSION_CATALOGUE.map((item) => item.code)
+        : state.permissions
+      return owned.filter((code) => !denied.includes(code))
+    },
+    userInfo(state): UserState {
+      return { ...state, permissions: state.permissions }
     },
   },
 

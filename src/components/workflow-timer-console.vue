@@ -70,7 +70,7 @@ import { useUserStore } from '@/store'
 import { workflowTimers } from '@/api/workflow-timers'
 import type { TimerEntry } from '@/api/workflow-timers'
 import { errorMessage } from '@/views/leave/shared'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 import WorkflowTimerRecovery from './workflow-timer-recovery.vue'
 
 const user = useUserStore()

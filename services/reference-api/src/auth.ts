@@ -1,6 +1,5 @@
 import {
   DomainError,
-  createR1Menu,
   onlyKeys,
   record,
   text,
@@ -332,14 +331,4 @@ export const registerAuth = (server: FastifyInstance, pool: Pool) => {
     // A switch validates membership but never changes another tab's session default.
     return { code: 20000, data: selected, traceId: request.id }
   })
-  const menu = async (request: FastifyRequest) => {
-    const actor = await authenticate(pool, request)
-    return {
-      code: 20000,
-      data: createR1Menu(actor.permissions),
-      traceId: request.id,
-    }
-  }
-  server.get('/api/user/menu', menu)
-  server.post('/api/user/menu', menu)
 }

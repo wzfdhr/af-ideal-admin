@@ -11,6 +11,7 @@ import {
   serialWorkflow,
   text,
 } from '@af-admin/contracts'
+import { initializeMenuResources } from './menu-resources'
 import { createPool, transaction } from './database'
 import { hashPassword } from './security'
 import type { Pool } from 'pg'
@@ -117,6 +118,7 @@ export const initializePilot = async (pool: Pool, input: unknown) => {
       tenantId,
       tenantName,
     ])
+    await initializeMenuResources(client, tenantId)
     const platformCapabilities =
       body.platformGovernance === true
         ? (

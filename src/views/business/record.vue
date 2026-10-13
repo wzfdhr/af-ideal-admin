@@ -180,7 +180,7 @@ import {
   actionLabels,
   businessCode,
 } from '@/views/leave/shared'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 import {
   computeBusinessFields,
   validateBusinessFields,

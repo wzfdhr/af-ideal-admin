@@ -17,7 +17,7 @@ import LeaveRuntime from '@/components/workflow-runtime/leave-runtime.vue'
 import useUserStore from '@/store/modules/user'
 import WorkflowTimerConsole from '@/components/workflow-timer-console.vue'
 import WorkflowRecoveryConsole from '@/components/workflow-recovery-console.vue'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 
 const user = useUserStore()
 const canViewTimers = computed(() =>

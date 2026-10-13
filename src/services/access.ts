@@ -10,6 +10,7 @@ export interface AccessRequirement {
 }
 
 export interface MenuLikeMeta {
+  targetRouteName?: string
   requireAuth?: boolean
   roles?: string[]
   access?: AccessRequirement

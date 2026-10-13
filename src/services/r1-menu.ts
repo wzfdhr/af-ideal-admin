@@ -29,6 +29,7 @@ const pagePermissions: Record<string, string[]> = {
   dictSystem: ['system:dict:list'],
   positionSystem: ['system:position:list', 'system:organization:assign'],
   userSystem: ['system:user:list'],
+  menuSystem: ['system:menu:list'],
   roleSystem: ['system:role:list'],
   dataPermissionCenter: ['data-permission:view'],
 }
@@ -51,7 +52,11 @@ export const filterR1Menus = (
     const children = node.children
       ? filterR1Menus(node.children, permissions)
       : []
-    if (!children.length && !canVisitR1Page(node.name, permissions)) return []
+    if (
+      !children.length &&
+      !canVisitR1Page(node.meta?.targetRouteName || node.name, permissions)
+    )
+      return []
     if (node.name === 'formDesign' || node.name === 'workflowDesign') return []
     return [{ ...node, ...(node.children ? { children } : {}) }]
   })

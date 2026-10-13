@@ -137,8 +137,9 @@ import type {
   ProTableExpose,
   ProTableFetchParams,
 } from '@/components/pro-table/types'
+import { hasPermission } from '@/services/ui-permissions'
 import { POSITION_PERMISSIONS } from '@af-admin/contracts'
-import { departmentChoices, hasPermission } from '@af-admin/workflow-core'
+import { departmentChoices } from '@af-admin/workflow-core'
 import type { Position, PositionInput } from '@af-admin/contracts'
 
 const user = useUserStore()

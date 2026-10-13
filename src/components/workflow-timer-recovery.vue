@@ -70,7 +70,7 @@ import type { TimerEntry, TimerRecoverySlot } from '@/api/workflow-timers'
 import { createCommandRetry } from '@/services/command-retry'
 import { confirmR1Action } from '@/services/r1-confirm'
 import { errorMessage } from '@/views/leave/shared'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 
 const props = defineProps<{ timer: TimerEntry }>()
 const emit = defineEmits<{ (event: 'updated'): void }>()

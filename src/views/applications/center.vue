@@ -81,7 +81,7 @@ import type {
 import { createCommandRetry } from '@/services/command-retry'
 import { confirmR1Action } from '@/services/r1-confirm'
 import { registerDirtyCheck } from '@/services/tenant-context'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 import {
   APPLICATION_PERMISSIONS as P,
   parseApplicationCreate,

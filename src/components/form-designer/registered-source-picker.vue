@@ -36,11 +36,11 @@
 import { computed, inject, ref, onMounted, watch } from 'vue'
 import { useUserStore } from '@/store'
 import { fetchFormDataSources } from '@/api/form-data-sources'
+import { hasPermission } from '@/services/ui-permissions'
 import {
   FORM_DATA_SOURCE_PERMISSIONS as P,
   DICTIONARY_PERMISSIONS,
 } from '@af-admin/contracts'
-import { hasPermission } from '@af-admin/workflow-core'
 import { contextSymbol } from './types'
 import type { FormDesignerContext, IConfigSelect, IConfigRadio } from './types'
 import type { FormDataSource } from '@af-admin/contracts'

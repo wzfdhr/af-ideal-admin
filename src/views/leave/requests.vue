@@ -53,7 +53,7 @@ import type {
 } from '@/components/pro-table/types'
 import useUserStore from '@/store/modules/user'
 import { fetchLeaveRequests } from '@/api/leave'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 import { statusLabels, errorMessage } from './shared'
 
 const router = useRouter()

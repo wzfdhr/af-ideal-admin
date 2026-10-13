@@ -158,7 +158,7 @@ import { createCommandRetry } from '@/services/command-retry'
 import { confirmR1Action } from '@/services/r1-confirm'
 import { registerDirtyCheck } from '@/services/tenant-context'
 import useUserStore from '@/store/modules/user'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 import { ROLE_PERMISSIONS, parseRole } from '@af-admin/contracts'
 import type { ManagedRole } from '@af-admin/contracts'
 

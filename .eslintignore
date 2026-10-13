@@ -13,3 +13,6 @@ public
 *.md
 
 preload.js
+# Generated evidence and historical build copies are not current source.
+test-results
+coverage

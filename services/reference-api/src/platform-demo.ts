@@ -14,6 +14,7 @@ import {
   WORKFLOW_RECOVERY_PERMISSIONS,
   WORKFLOW_TIMER_PERMISSIONS,
   LOW_CODE_PERMISSIONS,
+  MENU_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -60,6 +61,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(WORKFLOW_RECOVERY_PERMISSIONS),
           ...Object.values(WORKFLOW_TIMER_PERMISSIONS),
           ...Object.values(LOW_CODE_PERMISSIONS),
+          ...Object.values(MENU_PERMISSIONS),
         ]),
       ]
     )

@@ -76,7 +76,7 @@ import PermissionButton from '@/components/permission-button.vue'
 import useUserStore from '@/store/modules/user'
 import { registerDirtyCheck } from '@/services/tenant-context'
 import { confirmR1Action } from '@/services/r1-confirm'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 
 const props = withDefaults(
   defineProps<{ recordId?: string; editable?: boolean }>(),

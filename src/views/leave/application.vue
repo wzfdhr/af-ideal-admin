@@ -237,7 +237,7 @@ import type {
 } from '@/api/leave-configuration'
 import { createCommandRetry } from '@/services/command-retry'
 import { registerDirtyCheck } from '@/services/tenant-context'
-import { hasPermission } from '@af-admin/workflow-core'
+import { hasPermission } from '@/services/ui-permissions'
 import { errorMessage, fieldErrors, stableSignature } from './shared'
 import type { Application } from '@af-admin/contracts'
 

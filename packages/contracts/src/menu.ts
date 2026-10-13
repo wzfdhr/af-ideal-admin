@@ -1,10 +1,13 @@
-interface CapabilityMenuNode {
+export interface CapabilityMenuNode {
   path: string
   name: string
   componentKey: string
   meta: {
     requireAuth: boolean
     locale: string
+    text?: string
+    targetRouteName?: string
+    hideInMenu?: boolean
     order?: number
     access?: { permissions: string[]; mode?: 'any' | 'all' }
   }
@@ -214,6 +217,28 @@ export const createR1Menu = (permissions: string[]) => {
           permissions: ['system:position:list', 'system:organization:assign'],
           mode: 'any' as const,
         },
+      },
+    }
+    if (system) system.children?.push(page)
+    else
+      entries.push({
+        path: '/system',
+        name: 'system',
+        componentKey: 'DefaultLayout',
+        meta: { requireAuth: true, locale: 'menu.system', order: 6 },
+        children: [page],
+      })
+  }
+  if (permissions.includes('system:menu:list') || permissions.includes('*')) {
+    const system = entries.find((entry) => entry.name === 'system')
+    const page: CapabilityMenuNode = {
+      path: 'menuSystem',
+      name: 'menuSystem',
+      componentKey: 'SystemMenuPage',
+      meta: {
+        requireAuth: true,
+        locale: 'menu.system.menu',
+        access: { permissions: ['system:menu:list'] },
       },
     }
     if (system) system.children?.push(page)

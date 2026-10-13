@@ -1,5 +1,12 @@
 <script lang="tsx">
-import { defineComponent, ref, h, computed, compile, PropType } from 'vue'
+import {
+  defineComponent,
+  ref,
+  h,
+  computed,
+  resolveComponent,
+  PropType,
+} from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { listenRouteChange } from '@/utils/route-listener'
@@ -27,7 +34,7 @@ export default defineComponent({
     const openKeys = ref<string[]>([])
     const selectedKeys = ref<string[]>([])
 
-    const menuTree = props.menu || menuPreset.value
+    const menuTree = computed(() => props.menu || menuPreset.value)
 
     const isCollpased = computed({
       get() {
@@ -60,7 +67,7 @@ export default defineComponent({
       }
 
       // trigger router change
-      router.push({ name: item.name })
+      router.push({ name: (item.meta?.targetRouteName as string) || item.name })
     }
 
     const findMenuOpenKeys = (name: string) => {
@@ -84,7 +91,7 @@ export default defineComponent({
         }
       }
 
-      menuTree.forEach((el: RouteRecordRaw) => {
+      menuTree.value.forEach((el: RouteRecordRaw) => {
         if (found) return
         backTrace(el, [el.name as string], name)
       })
@@ -118,7 +125,7 @@ export default defineComponent({
         if (_route) {
           _route.forEach((el) => {
             const icon = el?.meta?.icon
-              ? () => h(compile(`<${el?.meta?.icon}/>`))
+              ? () => h(resolveComponent(el?.meta?.icon as string))
               : null
 
             const node =
@@ -127,8 +134,7 @@ export default defineComponent({
                   key={el?.name}
                   v-slots={{
                     title: () =>
-                      el?.meta?.text ||
-                      h(compile(t((el?.meta?.locale as string) || ''))),
+                      el?.meta?.text || t((el?.meta?.locale as string) || ''),
                     icon,
                   }}
                 >
@@ -157,7 +163,7 @@ export default defineComponent({
         return nodes
       }
 
-      return travel(menuTree)
+      return travel(menuTree.value)
     }
 
     const setCollapse = (val: boolean) => {
@@ -175,6 +181,9 @@ export default defineComponent({
         style="height: 100%"
         onCollapse={setCollapse}
       >
+        {menuStore.navigationError ? (
+          <p role="alert">{menuStore.navigationError}</p>
+        ) : null}
         {renderSubMenu()}
       </a-menu>
     )

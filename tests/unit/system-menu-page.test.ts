@@ -2,7 +2,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { defineComponent, h, nextTick, onMounted, ref } from 'vue'
-import MenuSystemPage from '@/views/system/menuSystem/index.vue'
+import MenuSystemPage from '@/views/system/menuSystem/mock.vue'
 import type { ProTableFetchParams } from '@/components/pro-table/types'
 import type { PropType } from 'vue'
 
