@@ -13,7 +13,11 @@
         :default-value="widget.config.defaultValue"
         :placeholder="widget.config.placeholder"
         :allow-clear="widget.config.allowClear"
-        :max-length="widget.config.maxLength"
+        :max-length="
+          widget.config.valueType === 'coordinate'
+            ? 11
+            : widget.config.maxLength
+        "
         :show-word-limit="widget.config.showWordLimit"
         :readonly="widget.config.readonly"
         :disabled="widget.config.disabled"

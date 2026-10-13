@@ -15,10 +15,31 @@
   <a-form-item label="提示文字">
     <a-input v-model="widget.placeholder" allow-clear />
   </a-form-item>
+  <a-form-item label="字段类型">
+    <select
+      :value="widget.valueType || 'text'"
+      aria-label="字段类型"
+      @change="changeValueType"
+    >
+      <option value="text">文本</option>
+      <option value="integer">非负整数</option>
+      <option value="decimal">非负金额（两位小数）</option>
+      <option value="coordinate">经纬坐标（最多六位小数）</option>
+    </select>
+  </a-form-item>
+  <a-form-item v-if="widget.valueType === 'coordinate'" label="坐标轴">
+    <select v-model="widget.coordinateAxis" aria-label="坐标轴">
+      <option value="longitude">经度（-180 至 180）</option>
+      <option value="latitude">纬度（-90 至 90）</option>
+    </select>
+  </a-form-item>
+  <p v-if="widget.valueType === 'coordinate'">
+    输入十进制坐标，最多六位小数。保存时去除末尾零；切换为坐标会清除原数值范围和字段校验。
+  </p>
   <a-form-item label="默认值">
     <a-input v-model="widget.defaultValue" allow-clear />
   </a-form-item>
-  <a-form-item label="输入长度限制">
+  <a-form-item v-if="widget.valueType !== 'coordinate'" label="输入长度限制">
     <a-input-number
       v-model="widget.maxLength"
       placeholder="显示输入计数需要长度限制"
@@ -66,12 +87,14 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, PropType } from 'vue'
+import { computed, inject, PropType } from 'vue'
 import { dataMode } from '../../../../config/data-mode'
 import { inputEventNames } from '../utils'
-import type { IConfigInput } from '../types'
+import { contextSymbol } from '../types'
+import type { IConfigInput, FormDesignerContext } from '../types'
 
 const emit = defineEmits(['update:widgetCofnig'])
+const ctx = inject<FormDesignerContext>(contextSymbol)
 
 const props = defineProps({
   widgetConfig: {
@@ -86,4 +109,19 @@ const widget = computed({
     emit('update:widgetCofnig', val)
   },
 })
+const changeValueType = (event: Event) => {
+  const { value } = event.target as HTMLSelectElement
+  if (!['text', 'integer', 'decimal', 'coordinate'].includes(value)) return
+  widget.value.valueType = value as NonNullable<
+    IConfigInput['config']['valueType']
+  >
+  if (value === 'coordinate') {
+    widget.value.coordinateAxis = 'longitude'
+    delete widget.value.validation
+    delete widget.value.min
+    delete widget.value.max
+    if (ctx)
+      (ctx.ast.value as typeof ctx.ast.value & { version: number }).version = 2
+  } else delete widget.value.coordinateAxis
+}
 </script>

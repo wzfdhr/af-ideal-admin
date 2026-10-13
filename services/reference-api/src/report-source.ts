@@ -13,6 +13,7 @@ import type {
   ReportingSourceCatalogue,
   ReportingVisibleField,
   ReportingValueType,
+  CoordinateAxis,
   Release,
 } from '@af-admin/contracts'
 import type { Actor } from './auth'
@@ -32,7 +33,11 @@ export interface ReportingSourceBinding {
 }
 export type ReportingFieldMap = Record<
   string,
-  { rawUid: string; valueType: ReportingValueType }
+  {
+    rawUid: string
+    valueType: ReportingValueType
+    coordinateAxis?: CoordinateAxis
+  }
 >
 export const reportingFieldKey = (reference: ReportingFieldReference) =>
   `${reference.kind}:${reference.id}`
@@ -90,7 +95,13 @@ export const reportingFieldMap = (
       )
       .map((field) => [
         field.reference.id,
-        { rawUid: field.rawUid as string, valueType: field.valueType },
+        {
+          rawUid: field.rawUid as string,
+          valueType: field.valueType,
+          ...(field.coordinateAxis
+            ? { coordinateAxis: field.coordinateAxis }
+            : {}),
+        },
       ])
   )
 export const reportingFieldAvailable = (
@@ -114,6 +125,7 @@ export const reportingCatalogue = (
       key: field.key,
       label: field.label,
       valueType: field.valueType,
+      ...(field.coordinateAxis ? { coordinateAxis: field.coordinateAxis } : {}),
       searchable: field.searchable,
       sortable: field.sortable,
     })),
@@ -212,13 +224,14 @@ export const captureReportingSource = async (
     const supported =
       primitive &&
       !registered &&
-      [undefined, 'text', 'integer', 'decimal'].includes(
+      [undefined, 'text', 'integer', 'decimal', 'coordinate'].includes(
         widget.config.valueType as string | undefined
       )
     let valueType: ReportingValueType = 'text'
     if (widget.type === 'date-picker') valueType = 'date'
     else if (widget.config.valueType === 'integer') valueType = 'integer'
     else if (widget.config.valueType === 'decimal') valueType = 'decimal'
+    else if (widget.config.valueType === 'coordinate') valueType = 'coordinate'
     fields.push({
       reference: { kind: 'field', id: alias },
       key: `field:${alias}`,
@@ -227,6 +240,9 @@ export const captureReportingSource = async (
           ? widget.config.label.slice(0, 100)
           : widget.name,
       valueType,
+      ...(valueType === 'coordinate'
+        ? { coordinateAxis: widget.config.coordinateAxis as CoordinateAxis }
+        : {}),
       searchable: supported && valueType === 'text',
       sortable: supported,
       rawUid: widget.uid,

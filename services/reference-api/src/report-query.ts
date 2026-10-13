@@ -49,6 +49,7 @@ const visibleDto = (field: ReportingFieldBinding): ReportingVisibleField => ({
   key: field.key,
   label: field.label,
   valueType: field.valueType,
+  ...(field.coordinateAxis ? { coordinateAxis: field.coordinateAxis } : {}),
   searchable: field.searchable,
   sortable: field.sortable,
 })
@@ -167,7 +168,13 @@ const runReportingVersion = async (
         raw = `CASE WHEN jsonb_typeof(${json})='number' AND ${value} ~ '^[0-9]{1,9}$' THEN (${value})::numeric ELSE NULL END`
       else if (field.valueType === 'decimal')
         raw = `CASE WHEN jsonb_typeof(${json})='string' AND ${value} ~ '^[0-9]{1,10}([.][0-9]{1,2})?$' THEN ${value} ELSE NULL END`
-      else
+      else if (field.valueType === 'coordinate') {
+        const bounds = { longitude: 180, latitude: 90 }
+        const limit = field.coordinateAxis ? bounds[field.coordinateAxis] : 0
+        raw = limit
+          ? `CASE WHEN jsonb_typeof(${json})='string' AND ${value} ~ '^-?(0|[1-9][0-9]{0,2})([.][0-9]{0,5}[1-9])?$' AND ${value}<>'-0' THEN CASE WHEN abs((${value})::numeric)<=${limit} THEN ${value} ELSE NULL END ELSE NULL END`
+          : 'NULL::text'
+      } else
         raw = `CASE WHEN jsonb_typeof(${json})='string' THEN ${value} ELSE NULL END`
     }
     let allowed = 'true'
@@ -219,6 +226,8 @@ const runReportingVersion = async (
     return `COALESCE(${column.alias}::text,'') ILIKE ${keywordParameter} ESCAPE '!'`
   })
   const predicate = query.keyword ? `(${searchSql.join(' OR ')})` : 'true'
+  const limit = bind(exporting ? REPORT_EXPORT_MAX_ROWS + 1 : query.pageSize)
+  const preflightParameters = exporting ? [...parameters] : []
   const values = Array.from(columns.values()).flatMap((column) => [
     `${bind(column.field.key)}::text`,
     `to_jsonb(${column.alias})`,
@@ -226,24 +235,22 @@ const runReportingVersion = async (
   const valuesSql = values.length
     ? `jsonb_build_object(${values.join(',')})`
     : "'{}'::jsonb"
-  const limit = bind(exporting ? REPORT_EXPORT_MAX_ROWS + 1 : query.pageSize)
   const offset = bind(exporting ? 0 : (query.current - 1) * query.pageSize)
   const direction = query.sort.direction === 'asc' ? 'ASC' : 'DESC'
-  const sortExpression =
-    sort.valueType === 'decimal'
-      ? `(${sortColumn.alias})::numeric`
-      : sortColumn.alias
-  const sql = `WITH authorized AS MATERIALIZED (
-    SELECT r.id,r.applicant_id,r.status,r.created_at${
-      projections.length ? `,${projections.join(',')}` : ''
-    },${hiddenExpression} AS hidden_field_keys
+  const sortExpression = ['decimal', 'coordinate'].includes(sort.valueType)
+    ? `(${sortColumn.alias})::numeric`
+    : sortColumn.alias
+  const authorizedSql = `SELECT r.id,r.applicant_id,r.status,r.created_at${
+    projections.length ? `,${projections.join(',')}` : ''
+  },${hiddenExpression} AS hidden_field_keys
     FROM business_records r WHERE r.tenant_id=$1 AND r.application_release_id=$3 AND r.record_kind='generic'
       AND af_record_visible($1,$2,r.id)
       ${secondaryActor ? `AND af_record_visible($1,${secondaryUser},r.id)` : ''}
       AND r.created_at >= ($5::date::timestamp AT TIME ZONE $4)
       AND r.created_at < (($6::date+1)::timestamp AT TIME ZONE $4)
-      AND (cardinality($7::text[])=0 OR r.status=ANY($7::text[]))
-  ), matching AS MATERIALIZED (SELECT * FROM authorized WHERE ${predicate}),
+      AND (cardinality($7::text[])=0 OR r.status=ANY($7::text[]))`
+  const sql = `WITH authorized AS MATERIALIZED (${authorizedSql}),
+  matching AS MATERIALIZED (SELECT * FROM authorized WHERE ${predicate}),
   page AS (SELECT id,applicant_id,${valuesSql} AS values,hidden_field_keys,row_number() OVER(ORDER BY ${sortExpression} ${direction} NULLS LAST,id ASC) AS position FROM matching ORDER BY ${sortExpression} ${direction} NULLS LAST,id ASC LIMIT ${limit} OFFSET ${offset}),
   daily AS (SELECT to_char(created_at AT TIME ZONE $4,'YYYY-MM-DD') AS day,count(*) AS total FROM matching GROUP BY day),
   statuses AS (SELECT status,count(*) AS total FROM matching GROUP BY status)
@@ -263,6 +270,26 @@ const runReportingVersion = async (
       ? "SET LOCAL statement_timeout='15000ms'"
       : "SET LOCAL statement_timeout='5000ms'"
   )
+  if (exporting) {
+    // Reject an over-limit set before sorting and serializing its full snapshot.
+    // The full query keeps the same bound check in case rows change after this statement.
+    const bounded = one(
+      await rows<{ total: string }>(
+        db,
+        `WITH authorized AS (${authorizedSql})
+        SELECT count(*) AS total FROM (
+          SELECT 1 FROM authorized WHERE ${predicate} LIMIT ${limit}
+        ) bounded`,
+        preflightParameters
+      )
+    )
+    if (Number(bounded.total) > REPORT_EXPORT_MAX_ROWS)
+      throw new DomainError(
+        422,
+        'REPORT_EXPORT_TOO_MANY_ROWS',
+        `导出最多支持${REPORT_EXPORT_MAX_ROWS}条匹配记录，请缩小筛选范围`
+      )
+  }
   const result = one(
     await rows<{
       queried_at: Date

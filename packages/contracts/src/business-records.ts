@@ -3,6 +3,8 @@ import {
   textValidationError,
   isCalendarDate,
   comparisonError,
+  normalizeCoordinate,
+  coordinateValidationError,
 } from './form-behavior'
 import { DomainError, record, invalid, parseForm } from './schemas'
 import type { FormValidation } from './form-behavior'
@@ -67,6 +69,16 @@ export const validateBusinessFields = (
       !['string', 'number'].includes(typeof value)
     )
       invalid(widget.uid, `${label}数值类型无效`)
+    if (config.valueType === 'coordinate') {
+      const normalized = normalizeCoordinate(value, config.coordinateAxis)
+      if (normalized === undefined)
+        invalid(
+          widget.uid,
+          `${label}：${coordinateValidationError(value, config.coordinateAxis)}`
+        )
+      result[widget.uid] = normalized as string
+      return
+    }
     if (config.valueType === 'integer') {
       const raw = String(value)
       if (!/^\d{1,9}$/.test(raw)) invalid(widget.uid, `${label}需为非负整数`)

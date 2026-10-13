@@ -105,3 +105,34 @@ export const comparisonError = (
     return '字段比较不满足已发布规则'
   return undefined
 }
+
+export type CoordinateAxis = 'longitude' | 'latitude'
+
+// Store exact decimal text; conversion to floating point belongs only at display boundaries.
+export const normalizeCoordinate = (
+  value: unknown,
+  axis: unknown
+): string | undefined => {
+  if (
+    (axis !== 'longitude' && axis !== 'latitude') ||
+    typeof value !== 'string' ||
+    value.trim() !== value ||
+    !/^-?(?:0|[1-9][0-9]{0,2})(?:\.[0-9]{1,6})?$/.test(value)
+  )
+    return undefined
+  const negative = value.startsWith('-')
+  const [whole, fraction = ''] = (negative ? value.slice(1) : value).split('.')
+  const micros = Number(whole) * 1000000 + Number(fraction.padEnd(6, '0'))
+  if (micros > (axis === 'longitude' ? 180 : 90) * 1000000) return undefined
+  const tail = fraction.replace(/0+$/, '')
+  return `${negative && micros !== 0 ? '-' : ''}${whole}${
+    tail ? `.${tail}` : ''
+  }`
+}
+
+export const coordinateValidationError = (value: unknown, axis: unknown) => {
+  if (normalizeCoordinate(value, axis) !== undefined) return undefined
+  return axis === 'longitude'
+    ? '经度需为-180至180之间、最多六位小数的坐标'
+    : '纬度需为-90至90之间、最多六位小数的坐标'
+}

@@ -10,15 +10,17 @@ import type {
 export const workflowConditionFields = (input: unknown) => {
   const form = parseForm(input)
   return [
-    ...form.widgetsConfig.map((field) => ({
-      id: field.uid,
-      label: String(field.config.label || field.name),
-      valueType:
-        field.type === 'date-picker'
-          ? ('date' as const)
-          : ((field.config.valueType ||
-              'text') as WorkflowPredicate['valueType']),
-    })),
+    ...form.widgetsConfig
+      .filter((field) => field.config.valueType !== 'coordinate')
+      .map((field) => ({
+        id: field.uid,
+        label: String(field.config.label || field.name),
+        valueType:
+          field.type === 'date-picker'
+            ? ('date' as const)
+            : ((field.config.valueType ||
+                'text') as WorkflowPredicate['valueType']),
+      })),
     ...(form.formConfig.computedFields || []).map((rule) => ({
       id: rule.id,
       label: `计算金额 ${rule.id}`,

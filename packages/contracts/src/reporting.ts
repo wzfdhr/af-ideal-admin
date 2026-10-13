@@ -37,9 +37,9 @@ export const REPORTING_BUSINESS_STATUSES = [
   'withdrawn',
 ] as const
 
-export type BusinessRecordStatus = typeof REPORTING_BUSINESS_STATUSES[number]
+export type BusinessRecordStatus = (typeof REPORTING_BUSINESS_STATUSES)[number]
 export type ReportingKind = 'trend' | 'distribution' | 'detail'
-export type ReportingMetadataField = typeof REPORTING_METADATA_FIELDS[number]
+export type ReportingMetadataField = (typeof REPORTING_METADATA_FIELDS)[number]
 export type ReportingFieldReference =
   | { kind: 'metadata'; id: ReportingMetadataField }
   | { kind: 'field'; id: string }
@@ -322,6 +322,7 @@ export type ReportingValueType =
   | 'text'
   | 'integer'
   | 'decimal'
+  | 'coordinate'
   | 'date'
   | 'datetime'
   | 'status'
@@ -330,6 +331,7 @@ export interface ReportingVisibleField {
   key: string
   label: string
   valueType: ReportingValueType
+  coordinateAxis?: 'longitude' | 'latitude'
   searchable: boolean
   sortable: boolean
 }

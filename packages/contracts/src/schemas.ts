@@ -1,3 +1,4 @@
+import { normalizeCoordinate } from './form-behavior'
 import type { WorkflowTimer } from './workflow-timers'
 
 export type Json = null | boolean | number | string | Json[] | JsonObject
@@ -630,6 +631,7 @@ export const parseForm = (input: unknown): FormSchema => {
       'optionsType',
       ...(version === 2
         ? [
+            'coordinateAxis',
             'optionsSourceKey',
             'validation',
             'behavior',
@@ -652,9 +654,36 @@ export const parseForm = (input: unknown): FormSchema => {
     ])
     if (
       config.valueType !== undefined &&
-      !['text', 'integer', 'decimal'].includes(String(config.valueType))
+      ![
+        'text',
+        'integer',
+        'decimal',
+        ...(version === 2 ? ['coordinate'] : []),
+      ].includes(String(config.valueType))
     )
       invalid(uid, '字段数值类型不受支持')
+    if (
+      String(config.valueType) === 'coordinate' &&
+      config.valueType !== 'coordinate'
+    )
+      invalid(uid, '坐标数值类型必须为字符串')
+    if (config.valueType === 'coordinate') {
+      if (
+        config.coordinateAxis !== 'longitude' &&
+        config.coordinateAxis !== 'latitude'
+      )
+        invalid(uid, '坐标必须声明经度或纬度轴')
+      if (config.min !== undefined || config.max !== undefined)
+        invalid(uid, '坐标范围由经纬轴固定，不支持自定义数值范围')
+      if (
+        config.defaultValue !== undefined &&
+        config.defaultValue !== '' &&
+        normalizeCoordinate(config.defaultValue, config.coordinateAxis) ===
+          undefined
+      )
+        invalid(uid, '默认坐标格式或范围无效')
+    } else if (config.coordinateAxis !== undefined)
+      invalid(uid, '仅坐标字段可声明经纬轴')
     if (
       ['min', 'max'].some(
         (key) =>
@@ -731,7 +760,19 @@ export const parseForm = (input: unknown): FormSchema => {
         'widget.type'
       ),
       name: text(widget.name, 'widget.name', 100),
-      config: jsonValue(config) as JsonObject,
+      config: jsonValue({
+        ...config,
+        ...(config.valueType === 'coordinate' &&
+        config.defaultValue !== undefined &&
+        config.defaultValue !== ''
+          ? {
+              defaultValue: normalizeCoordinate(
+                config.defaultValue,
+                config.coordinateAxis
+              ),
+            }
+          : {}),
+      }) as JsonObject,
     }
   })
   if (
@@ -761,7 +802,7 @@ export const parseForm = (input: unknown): FormSchema => {
     )
       invalid(id, '条件引用、运算符或字面值无效，不支持循环或级联')
     if (
-      target?.config.valueType === 'decimal' ||
+      ['decimal', 'coordinate'].includes(String(target?.config.valueType)) ||
       ['textarea', 'date-picker'].includes(target?.type || '')
     )
       invalid(id, '条件驱动字段需为普通输入或单选')
@@ -802,6 +843,8 @@ export const parseForm = (input: unknown): FormSchema => {
       )
         invalid(widget.uid, '文本校验只能用于输入文本')
       if (rules.compare !== undefined) {
+        if (config.valueType === 'coordinate')
+          invalid(widget.uid, '坐标字段不支持比较规则')
         const compare = record(rules.compare, 'compare')
         onlyKeys(compare, ['field', 'operator'])
         const target = widgetsConfig.find(

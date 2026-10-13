@@ -5,7 +5,8 @@ import type { FormValidation, FormBehavior } from '@af-admin/contracts'
 export interface StructuredFieldRules {
   validation?: FormValidation
   behavior?: FormBehavior
-  valueType?: 'text' | 'integer' | 'decimal'
+  valueType?: 'text' | 'integer' | 'decimal' | 'coordinate'
+  coordinateAxis?: 'longitude' | 'latitude'
 }
 
 export type InputEvent = 'input' | 'change' | 'focus' | 'blur'
@@ -43,6 +44,8 @@ export interface DataSourceConfig {
 export type DataSourceType = 'fixed' | 'remote' | 'registered'
 
 export interface IOptInput extends StructuredFieldRules {
+  min?: number
+  max?: number
   id?: string
   required?: boolean
   disabled?: boolean

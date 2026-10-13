@@ -12,7 +12,11 @@
         v-model="ctx[widget.uid]"
         :placeholder="widget.config.placeholder"
         :allow-clear="widget.config.allowClear"
-        :max-length="widget.config.maxLength"
+        :max-length="
+          widget.config.valueType === 'coordinate'
+            ? 11
+            : widget.config.maxLength
+        "
         :show-word-limit="widget.config.showWordLimit"
         :readonly="widget.config.readonly"
         :disabled="widget.config.disabled"
@@ -329,6 +333,7 @@ import {
 import {
   formFieldState,
   textValidationError,
+  coordinateValidationError,
   comparisonError,
   isCalendarDate,
 } from '@af-admin/contracts'
@@ -432,6 +437,7 @@ const structured = computed(
       validation?: FormValidation
       behavior?: FormBehavior
       valueType?: string
+      coordinateAxis?: string
     }
 )
 const fieldState = computed(() => formFieldState(structured.value, ctx.value))
@@ -442,6 +448,8 @@ const computedRules = computed<FieldRule[]>(() => [
       if (value === undefined || value === null || value === '')
         return callback()
       const config = structured.value
+      if (config.valueType === 'coordinate')
+        return callback(coordinateValidationError(value, config.coordinateAxis))
       if (
         props.widget.type === 'date-picker' &&
         (!props.widget.config.modeSelection ||

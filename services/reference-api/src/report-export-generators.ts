@@ -6,7 +6,7 @@ import ExcelJS from 'exceljs'
 import PDFDocument from 'pdfkit'
 import { create as createFont } from 'fontkit'
 import { unzipSync, zipSync } from 'fflate'
-import { DomainError } from '@af-admin/contracts'
+import { DomainError, normalizeCoordinate } from '@af-admin/contracts'
 import type {
   Json,
   ReportingExportSnapshot,
@@ -281,6 +281,12 @@ const numericValue = (
   field: ReportingVisibleField
 ): ExcelJS.CellValue => {
   if (value === null || value === undefined) return null
+  if (field.valueType === 'coordinate') {
+    const coordinate = normalizeCoordinate(value, field.coordinateAxis)
+    return coordinate !== undefined && coordinate === value
+      ? Number(coordinate)
+      : excelLiteralText(valueText(value))
+  }
   if (typeof value === 'number' && Number.isFinite(value)) return value
   if (
     field.valueType === 'decimal' &&
@@ -466,10 +472,12 @@ const generateXlsx = async (
       if (cell.value instanceof Date)
         cell.numFmt =
           field.valueType === 'date' ? 'yyyy-mm-dd' : 'yyyy-mm-dd hh:mm:ss.000'
-      else if (typeof cell.value === 'number')
-        cell.numFmt =
-          field.valueType === 'decimal' ? '0.00' : '0.###############'
-      else cell.numFmt = '@'
+      else if (typeof cell.value === 'number') {
+        const formats: Partial<
+          Record<ReportingVisibleField['valueType'], string>
+        > = { decimal: '0.00', coordinate: '0.######' }
+        cell.numFmt = formats[field.valueType] || '0.###############'
+      } else cell.numFmt = '@'
     })
   })
   records.autoFilter = {

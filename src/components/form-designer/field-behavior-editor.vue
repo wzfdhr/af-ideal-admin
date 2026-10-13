@@ -27,7 +27,7 @@
         </select>
       </label>
     </template>
-    <label>
+    <label v-if="widget.config.valueType !== 'coordinate'">
       比较字段
       <select
         :value="rules.compare?.field || ''"
@@ -149,12 +149,13 @@ const drivers = computed(() =>
       !item.config.disabled &&
       !('readonly' in item.config && item.config.readonly) &&
       !['date-picker', 'textarea'].includes(item.type) &&
-      item.config.valueType !== 'decimal'
+      !['decimal', 'coordinate'].includes(String(item.config.valueType))
   )
 )
 const comparable = computed(() =>
   fields.value.filter(
     (item) =>
+      item.config.valueType !== 'coordinate' &&
       !item.config.behavior &&
       item.type === props.widget.type &&
       item.config.valueType === props.widget.config.valueType
