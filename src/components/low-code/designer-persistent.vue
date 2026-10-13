@@ -12,8 +12,40 @@
         <input v-model="newName" aria-label="生成页面名称" maxlength="100" />
       </label>
       <label>
+        查找已发布业务应用
+        <input
+          v-model.trim="applicationKeyword"
+          aria-label="查找生成页面业务应用"
+          data-testid="persistent-application-keyword"
+          maxlength="100"
+          @keydown.enter.prevent="searchApplications"
+        />
+      </label>
+      <a-button
+        :disabled="applicationLoading"
+        data-testid="persistent-application-search"
+        @click="searchApplications"
+      >
+        查询应用
+      </a-button>
+      <label>
+        每页数量
+        <select
+          v-model.number="applicationPageSize"
+          aria-label="生成页面应用目录每页数量"
+          @change="changeApplicationPageSize"
+        >
+          <option :value="20">20</option>
+          <option :value="100">100</option>
+        </select>
+      </label>
+      <label>
         已发布业务应用
-        <select v-model="applicationReleaseId" aria-label="生成页面业务发布版">
+        <select
+          :value="applicationReleaseId"
+          aria-label="生成页面业务发布版"
+          @change="changeApplicationSelection"
+        >
           <option value="">选择业务应用发布版</option>
           <option
             v-for="app in applications"
@@ -24,8 +56,38 @@
           </option>
         </select>
       </label>
+      <p data-testid="persistent-application-directory-state">
+        当前目录第 {{ applicationPage }} / {{ applicationPageCount }} 页，共
+        {{ applicationTotal }} 条
+      </p>
+      <div class="directory-actions">
+        <a-button
+          :disabled="applicationLoading || applicationPage <= 1"
+          data-testid="persistent-application-previous"
+          @click="changeApplicationPage(-1)"
+        >
+          上一页
+        </a-button>
+        <a-button
+          :disabled="
+            applicationLoading ||
+            applicationPage * applicationPageSize >= applicationTotal
+          "
+          data-testid="persistent-application-next"
+          @click="changeApplicationPage(1)"
+        >
+          下一页
+        </a-button>
+      </div>
+      <p
+        v-if="selectedApplication"
+        data-testid="persistent-application-selection"
+      >
+        当前已选：{{ selectedApplication.name }} ·
+        {{ selectedApplication.code }}
+      </p>
       <a-button
-        :disabled="busy || !applicationReleaseId"
+        :disabled="busy || !applicationReleaseId || !selectedApplication"
         data-testid="persistent-page-generate"
         @click="generate"
       >
@@ -288,7 +350,7 @@ import type {
   ProTableExpose,
   ProTableFetchParams,
 } from '@/components/pro-table/types'
-import { listApplications } from '@/api/application-center'
+import { getApplication, listApplications } from '@/api/application-center'
 import {
   fetchPersistentPages,
   getPersistentPage,
@@ -306,6 +368,8 @@ import type {
 } from '@/api/low-code-runtime'
 import { createCommandRetry } from '@/services/command-retry'
 import { confirmR1Action } from '@/services/r1-confirm'
+import { getToken } from '@/services/auth'
+import { tenantScope } from '@/services/tenant-context'
 import { errorMessage, stableSignature } from '@/views/leave/shared'
 import { hasPermission } from '@/services/ui-permissions'
 import { parseLowCodePage } from '@af-admin/contracts'
@@ -328,6 +392,13 @@ const name = ref('')
 const newName = ref('业务管理页')
 const applicationReleaseId = ref('')
 const applications = ref<ManagedApplication[]>([])
+const selectedApplication = ref<ManagedApplication>()
+const applicationKeyword = ref('')
+const applicationSearch = ref('')
+const applicationPage = ref(1)
+const applicationPageSize = ref<20 | 100>(20)
+const applicationTotal = ref(0)
+const applicationLoading = ref(false)
 const sources = ref<LowCodeSource[]>([])
 const busy = ref(false)
 const error = ref('')
@@ -341,7 +412,29 @@ const previewDefinition = ref<LowCodeRuntimeDefinition>()
 const previewSchema = ref<LowCodePageV2>()
 const previewKey = ref(0)
 const retry = createCommandRetry()
+const contextGeneration = ref(0)
 let ticket = 0
+let applicationRequest = 0
+let operationGeneration = 0
+let previewGeneration = 0
+const captureScope = () => ({
+  context: contextGeneration.value,
+  token: getToken(),
+  tenant: tenantScope.snapshot(),
+  userId: user.id,
+  tenantId: user.tenantId,
+  permissions: user.permissions.join('|'),
+})
+const currentScope = (captured: ReturnType<typeof captureScope>) =>
+  captured.context === contextGeneration.value &&
+  captured.token === getToken() &&
+  captured.userId === user.id &&
+  captured.tenantId === user.tenantId &&
+  captured.permissions === user.permissions.join('|') &&
+  tenantScope.isCurrent(captured.tenant)
+const applicationPageCount = computed(() =>
+  Math.max(1, Math.ceil(applicationTotal.value / applicationPageSize.value))
+)
 const dirty = computed(() =>
   Boolean(
     current.value &&
@@ -369,8 +462,18 @@ const operationLabels: Record<string, string> = {
 }
 const can = (code: string) => hasPermission(user.permissions, code)
 const fetchPages = async ({ current: page, pageSize }: ProTableFetchParams) => {
-  const result = await fetchPersistentPages(page, pageSize)
-  return { list: result.list.map((item) => ({ ...item })), total: result.total }
+  const captured = captureScope()
+  try {
+    const result = await fetchPersistentPages(page, pageSize)
+    if (!currentScope(captured)) return { list: [], total: 0 }
+    return {
+      list: result.list.map((item) => ({ ...item })),
+      total: result.total,
+    }
+  } catch (failure) {
+    if (!currentScope(captured)) return { list: [], total: 0 }
+    throw failure
+  }
 }
 const openRuntime = (page?: PersistentPage) => {
   if (page) router.push(`/low-code/pages/${encodeURIComponent(page.id)}/run`)
@@ -422,6 +525,65 @@ const changePermission = (event: Event) => {
   if (value) selectedMaterial.value.permissionCode = value
   else delete selectedMaterial.value.permissionCode
 }
+const loadApplicationDirectory = async (
+  captured = captureScope()
+): Promise<boolean> => {
+  const request = ++applicationRequest
+  if (!currentScope(captured)) return false
+  applicationLoading.value = true
+  try {
+    const result = await listApplications({
+      current: applicationPage.value,
+      pageSize: applicationPageSize.value,
+      keyword: applicationSearch.value,
+      status: 'enabled',
+    })
+    if (request !== applicationRequest || !currentScope(captured)) return false
+    applications.value = result.list.filter(
+      (app) => app.businessKind === 'generic' && Boolean(app.activeReleaseId)
+    )
+    applicationTotal.value = result.total
+    return true
+  } catch (failure) {
+    if (request === applicationRequest && currentScope(captured))
+      error.value = errorMessage(failure)
+    return false
+  } finally {
+    if (request === applicationRequest) applicationLoading.value = false
+  }
+}
+const searchApplications = async () => {
+  applicationSearch.value = applicationKeyword.value.trim()
+  applicationPage.value = 1
+  await loadApplicationDirectory()
+}
+const changeApplicationPage = async (change: -1 | 1) => {
+  const next = applicationPage.value + change
+  if (next < 1 || next > applicationPageCount.value) return
+  applicationPage.value = next
+  await loadApplicationDirectory()
+}
+const changeApplicationPageSize = async () => {
+  applicationPage.value = 1
+  await loadApplicationDirectory()
+}
+const applicationAvailable = (app: ManagedApplication) =>
+  app.tenantId === user.tenantId &&
+  app.status === 'enabled' &&
+  app.businessKind === 'generic' &&
+  Boolean(app.activeReleaseId)
+const changeApplicationSelection = async (event: Event) => {
+  const releaseId = (event.target as HTMLSelectElement).value
+  applicationReleaseId.value = releaseId
+  selectedApplication.value = applications.value.find(
+    (app) => app.activeReleaseId === releaseId
+  )
+  const query = { ...route.query }
+  if (selectedApplication.value)
+    query.applicationId = selectedApplication.value.id
+  else delete query.applicationId
+  await router.replace({ query })
+}
 const importJson = () => {
   try {
     draft.value = parseLowCodePage(JSON.parse(jsonText.value))
@@ -435,18 +597,20 @@ const importJson = () => {
 const exportJson = () => {
   jsonText.value = JSON.stringify(draft.value, null, 2)
 }
-async function edit(id: string, force = false) {
+async function edit(id: string, force = false, captured = captureScope()) {
+  if (!currentScope(captured)) return
   if (
     !force &&
     dirty.value &&
     !(await confirmR1Action('当前有未保存配置，确认切换页面？'))
   )
     return
+  if (!currentScope(captured)) return
   const seq = ++ticket
   error.value = ''
   try {
     const page = await getPersistentPage(id)
-    if (seq !== ticket) return
+    if (!currentScope(captured) || seq !== ticket) return
     current.value = page
     draft.value = JSON.parse(JSON.stringify(page.schema))
     name.value = page.name
@@ -457,40 +621,72 @@ async function edit(id: string, force = false) {
     previewDefinition.value = undefined
     retry.clear()
   } catch (failure) {
-    if (seq === ticket) error.value = errorMessage(failure)
+    if (currentScope(captured) && seq === ticket)
+      error.value = errorMessage(failure)
   }
 }
 const execute = async (
   operation: string,
   body: unknown,
-  fn: (key: string) => Promise<void>
+  fn: (
+    key: string,
+    captured: ReturnType<typeof captureScope>,
+    generation: number
+  ) => Promise<void>
 ) => {
   if (busy.value) return
+  const captured = captureScope()
+  const generation = ++operationGeneration
   busy.value = true
   error.value = ''
   message.value = ''
   try {
-    await fn(retry.key(operation, body))
+    await fn(retry.key(operation, body), captured, generation)
+    if (!currentScope(captured) || generation !== operationGeneration) return
     retry.complete(operation)
   } catch (failure) {
-    error.value = errorMessage(failure)
+    if (currentScope(captured) && generation === operationGeneration)
+      error.value = errorMessage(failure)
   } finally {
-    busy.value = false
+    if (generation === operationGeneration) busy.value = false
   }
 }
 const generate = () =>
   execute(
     'generate',
     { name: newName.value, applicationReleaseId: applicationReleaseId.value },
-    async (key) => {
+    async (key, captured, generation) => {
+      if (!selectedApplication.value)
+        throw new Error('请选择真实业务应用发布版')
+      if (!currentScope(captured)) return
+      const selected = await getApplication(selectedApplication.value.id)
+      if (
+        !currentScope(captured) ||
+        !applicationAvailable(selected) ||
+        selected.activeReleaseId !== applicationReleaseId.value
+      )
+        throw new Error('所选业务应用发布版已变化，请重新查询并选择')
+      if (!currentScope(captured)) return
       const page = await generatePersistentPage(
         newName.value,
-        applicationReleaseId.value,
+        selected.activeReleaseId,
         key
       )
+      if (!currentScope(captured)) return
       await table.value?.reload()
-      await initializeSources()
-      await edit(page.id, true)
+      if (!currentScope(captured)) return
+      await initializeSources(captured)
+      if (!currentScope(captured)) return
+      await edit(page.id, true, captured)
+      if (!currentScope(captured)) return
+      await router.replace({
+        query: {
+          ...route.query,
+          applicationId: selected.id,
+          pageId: page.id,
+        },
+      })
+      if (!currentScope(captured) || generation !== operationGeneration) return
       message.value = '已生成独立业务管理页草稿'
     }
   )
@@ -502,11 +698,13 @@ const save = async () => {
     schema: draft.value,
     expectedRevision: page.revision,
   }
-  await execute('save', body, async (key) => {
+  await execute('save', body, async (key, captured) => {
     await savePersistentPage(page, name.value, draft.value, key)
-    await edit(page.id, true)
+    if (!currentScope(captured)) return
+    await edit(page.id, true, captured)
+    if (!currentScope(captured)) return
     await table.value?.reload()
-    message.value = '配置已保存'
+    if (currentScope(captured)) message.value = '配置已保存'
   })
 }
 const publish = async () => {
@@ -518,26 +716,35 @@ const publish = async () => {
   )
     return
   const page = current.value
-  await execute('publish', { revision: page.revision }, async (key) => {
-    const release = await publishPersistentPage(page, key)
-    await edit(page.id, true)
-    await table.value?.reload()
-    message.value = `页面发布成功，v${release.releaseVersion}`
-  })
+  await execute(
+    'publish',
+    { revision: page.revision },
+    async (key, captured) => {
+      const release = await publishPersistentPage(page, key)
+      if (!currentScope(captured)) return
+      await edit(page.id, true, captured)
+      if (!currentScope(captured)) return
+      await table.value?.reload()
+      if (currentScope(captured))
+        message.value = `页面发布成功，v${release.releaseVersion}`
+    }
+  )
 }
 const preview = async () => {
   if (!current.value || !draft.value) return
+  const captured = captureScope()
+  const generation = ++previewGeneration
   error.value = ''
   try {
     const schema = parseLowCodePage(draft.value)
-    previewDefinition.value = await previewPersistentPage(
-      current.value.id,
-      schema
-    )
+    const result = await previewPersistentPage(current.value.id, schema)
+    if (!currentScope(captured) || generation !== previewGeneration) return
+    previewDefinition.value = result
     previewSchema.value = JSON.parse(JSON.stringify(schema))
     previewKey.value += 1
   } catch (failure) {
-    error.value = errorMessage(failure)
+    if (currentScope(captured) && generation === previewGeneration)
+      error.value = errorMessage(failure)
   }
 }
 const rollout = async () => {
@@ -557,7 +764,7 @@ const rollout = async () => {
       percent: percent.value,
       revision: page.revision,
     },
-    async (key) => {
+    async (key, captured) => {
       await rolloutPersistentPage(
         page,
         baseReleaseId.value,
@@ -565,8 +772,9 @@ const rollout = async () => {
         rolloutReleaseId.value ? percent.value : 0,
         key
       )
-      await edit(page.id, true)
-      message.value = '运行版本已应用'
+      if (!currentScope(captured)) return
+      await edit(page.id, true, captured)
+      if (currentScope(captured)) message.value = '运行版本已应用'
     }
   )
 }
@@ -582,12 +790,13 @@ async function archive(page: PersistentPage) {
   await execute(
     'archive',
     { id: page.id, revision: page.revision },
-    async (key) => {
+    async (key, captured) => {
       await archivePersistentPage(
         page,
         page.status === 'enabled' ? 'archived' : 'enabled',
         key
       )
+      if (!currentScope(captured)) return
       if (current.value?.id === page.id) {
         current.value = undefined
         draft.value = undefined
@@ -596,10 +805,15 @@ async function archive(page: PersistentPage) {
     }
   )
 }
-async function initializeSources() {
-  sources.value = (await persistentLowCodeSources()).list
+async function initializeSources(captured = captureScope()) {
+  if (!currentScope(captured)) return false
+  const result = await persistentLowCodeSources()
+  if (!currentScope(captured)) return false
+  sources.value = result.list
+  return true
 }
 const initialize = async () => {
+  const captured = captureScope()
   const seq = ++ticket
   current.value = undefined
   draft.value = undefined
@@ -607,36 +821,56 @@ const initialize = async () => {
   error.value = ''
   retry.clear()
   try {
-    const [apps, catalogue] = await Promise.all([
-      listApplications({ current: 1, pageSize: 100 }),
+    const pageId =
+      typeof route.query.pageId === 'string' ? route.query.pageId : ''
+    const selectedId =
+      typeof route.query.applicationId === 'string'
+        ? route.query.applicationId
+        : ''
+    const [, catalogue, restoredSelection] = await Promise.all([
+      loadApplicationDirectory(captured),
       persistentLowCodeSources(),
+      selectedId ? getApplication(selectedId) : Promise.resolve(undefined),
     ])
-    if (seq !== ticket) return
-    applications.value = apps.list.filter(
-      (app) =>
-        app.businessKind === 'generic' &&
-        app.status === 'enabled' &&
-        app.activeReleaseId
-    )
+    if (!currentScope(captured) || seq !== ticket) return
     sources.value = catalogue.list
-    if (typeof route.query.pageId === 'string')
-      await edit(route.query.pageId, true)
+    if (restoredSelection) {
+      if (!applicationAvailable(restoredSelection))
+        throw new Error('已保存的业务应用选择当前不可用')
+      selectedApplication.value = restoredSelection
+      applicationReleaseId.value = restoredSelection.activeReleaseId || ''
+    }
+    const openedPageId = (current.value as PersistentPage | undefined)?.id
+    if (pageId && pageId !== openedPageId) await edit(pageId, true, captured)
   } catch (failure) {
-    if (seq === ticket) error.value = errorMessage(failure)
+    if (currentScope(captured) && seq === ticket)
+      error.value = errorMessage(failure)
   }
 }
 watch(
-  () => [user.id, user.tenantId],
+  () => [user.id, user.tenantId, user.permissions.join('|')],
   () => {
+    contextGeneration.value += 1
     ticket += 1
+    applicationRequest += 1
+    operationGeneration += 1
+    previewGeneration += 1
     busy.value = false
+    applicationLoading.value = false
+    applicationKeyword.value = ''
+    applicationSearch.value = ''
+    applicationPage.value = 1
+    applicationTotal.value = 0
+    applications.value = []
+    applicationReleaseId.value = ''
+    selectedApplication.value = undefined
     initialize()
   }
 )
 watch(
   () => route.query.pageId,
   (id) => {
-    if (typeof id === 'string') edit(id)
+    if (typeof id === 'string' && id !== current.value?.id) edit(id)
   }
 )
 onBeforeRouteLeave(
@@ -645,7 +879,13 @@ onBeforeRouteLeave(
 )
 onMounted(initialize)
 onUnmounted(() => {
+  contextGeneration.value += 1
   ticket += 1
+  applicationRequest += 1
+  operationGeneration += 1
+  previewGeneration += 1
+  busy.value = false
+  applicationLoading.value = false
   retry.clear()
 })
 </script>

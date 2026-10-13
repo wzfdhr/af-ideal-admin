@@ -81,10 +81,12 @@ test('configured low-code business page saves and reopens, then all five actions
     await expect(
       admin.getByTestId('persistent-low-code-designer')
     ).toBeVisible()
-    await admin.getByLabel('生成页面名称', { exact: true }).fill(name)
+    await admin.getByTestId('persistent-application-keyword').fill(app.app.code)
+    await admin.getByTestId('persistent-application-keyword').press('Enter')
     await admin
       .getByLabel('生成页面业务发布版', { exact: true })
       .selectOption(app.release.id)
+    await admin.getByLabel('生成页面名称', { exact: true }).fill(name)
     const created = admin.waitForResponse(
       (value) =>
         value.url().includes('/api/low-code/pages/from-application') &&
@@ -121,11 +123,20 @@ test('configured low-code business page saves and reopens, then all five actions
     await editor
       .getByRole('button', { name: '校验并载入配置', exact: true })
       .click()
+    const savedResponse = admin.waitForResponse(
+      (value) =>
+        new URL(value.url()).pathname === `/api/low-code/pages/${page.id}` &&
+        value.request().method() === 'PUT'
+    )
     await editor.getByTestId('persistent-page-save').click()
+    const saved = (await (await savedResponse).json()).data
+    expect(saved.schema.title).toBe(title)
     await expect(admin.getByText('配置已保存', { exact: true })).toBeVisible()
     await admin.reload()
-    const row = admin.locator('tbody tr').filter({ hasText: name })
-    await row.getByRole('button', { name: '编辑配置', exact: true }).click()
+    await expect(
+      admin.getByTestId('persistent-application-selection')
+    ).toContainText(app.app.code)
+    await expect(editor).toBeVisible()
     await expect(
       editor.getByLabel('低代码页面标题', { exact: true })
     ).toHaveValue(title)

@@ -26,6 +26,12 @@ export const listApplications = async (params: {
       { params }
     )
   ).data
+export const getApplication = async (id: string) =>
+  (
+    await request.get<ManagedApplication>(
+      `/application-center/${encodeURIComponent(id)}`
+    )
+  ).data
 export const createApplication = async (body: unknown, key: string) =>
   (
     await request.post<ManagedApplication>('/application-center', body, {
