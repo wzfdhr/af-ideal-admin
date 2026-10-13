@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { test, expect } from '@playwright/test'
 import submitLogin from './helpers/login'
-import type { Page } from '@playwright/test'
+import type { Page, Response } from '@playwright/test'
 
 const login = async (page: Page, user: string) => {
   await page.goto('/login')
@@ -88,29 +88,65 @@ test('equipment template uses shared designers, true saved records and the commo
       employee.getByRole('heading', { name: '审批中', exact: true })
     ).toBeVisible()
     await login(first, 'a-manager-1')
+    const initialTasks = first.waitForResponse((response) => {
+      const requestUrl = new URL(response.url())
+      return (
+        requestUrl.pathname === '/api/workflow-todos' &&
+        requestUrl.searchParams.get('current') === '1' &&
+        response.request().method() === 'GET'
+      )
+    })
     await first.goto('/Scalability/workflowCenter')
     const taskList = first.getByTestId('leave-runtime')
-    const taskLink = taskList.locator(`a[href="/business/records/${id}"]`)
-    const findTask = async (remaining = 100): Promise<void> => {
-      expect(
-        remaining,
-        'submitted equipment task must be reachable through real pagination'
-      ).toBeGreaterThan(0)
+    const detailPath = new URL(url).pathname
+    const findTask = async (response: Response): Promise<void> => {
+      expect(response.status()).toBe(200)
+      const requestUrl = new URL(response.url())
+      const current = Number(requestUrl.searchParams.get('current'))
+      const pageSize = Number(requestUrl.searchParams.get('pageSize'))
+      const data = (await response.json()).data as {
+        list: {
+          requestId: string
+          recordLink: string
+          businessKind: string
+        }[]
+        total: number
+      }
+      const index = data.list.findIndex(
+        (task) =>
+          task.requestId === id &&
+          task.recordLink === detailPath &&
+          task.businessKind === 'generic'
+      )
       await expect(taskList.locator('.arco-spin-loading')).toHaveCount(0)
-      if (await taskLink.count()) return
+      if (index >= 0) {
+        const taskLink = taskList
+          .locator('tbody tr')
+          .nth(index)
+          .getByRole('link', { name: '查看并处理', exact: true })
+        await expect(taskLink).toHaveAttribute('href', detailPath)
+        await taskLink.click()
+        return
+      }
+      expect(
+        current * pageSize,
+        'the assigned equipment task must exist within the server-reported todo total'
+      ).toBeLessThan(data.total)
       const next = taskList.locator('.arco-pagination-item-next')
       await expect(next).not.toHaveClass(/arco-pagination-item-disabled/)
-      const loaded = first.waitForResponse(
-        (response) =>
-          new URL(response.url()).pathname === '/api/workflow-todos' &&
-          response.request().method() === 'GET'
-      )
+      const loaded = first.waitForResponse((nextResponse) => {
+        const nextUrl = new URL(nextResponse.url())
+        return (
+          nextUrl.pathname === '/api/workflow-todos' &&
+          nextUrl.searchParams.get('current') === String(current + 1) &&
+          nextUrl.searchParams.get('pageSize') === String(pageSize) &&
+          nextResponse.request().method() === 'GET'
+        )
+      })
       await next.click()
-      expect((await loaded).status()).toBe(200)
-      await findTask(remaining - 1)
+      await findTask(await loaded)
     }
-    await findTask()
-    await taskLink.click()
+    await findTask(await initialTasks)
     await expect(first).toHaveURL(url)
     await expect(first.getByTestId('business-total')).toHaveText('0.30 元')
     await first.getByLabel('处理意见').fill('设备信息已核实')
