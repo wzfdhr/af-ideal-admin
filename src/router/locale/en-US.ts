@@ -46,6 +46,7 @@ export default {
   'menu.message.templates': 'Templates',
   'menu.audit': 'Audit center',
   'menu.audit.logs': 'Audit logs',
+  'menu.audit.exports': 'Audit exports',
   'menu.tenant': 'Tenants',
   'menu.tenant.center': 'Tenant center',
   'menu.resource': 'Resource center',
