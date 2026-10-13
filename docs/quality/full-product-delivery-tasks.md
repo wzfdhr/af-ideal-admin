@@ -693,7 +693,9 @@
 ### FP-031 真实页面与31版数据库、字节恢复（接续）
 
 - 新增两条真实归档浏览器验收最终 `browser-retention-fifth` 2/2、29.2秒。以22/2/1不同合成原始事实分别完成CSV/XLSX/PDF，真实正常worker、ClamAV和下载大小/MIME/SHA、候选ID及V2 all/hot/archived均通过；取消、字段撤权、跨租户、真实网络失败后恢复、blocked后恢复重入再retry和最终治理权限撤销均通过。字段撤权触发全局403路由至not-allowed，页面私密详情/摘要/扫描身份清空，服务器受限DTO仍验证；没有注入成功响应。精确本轮用户/角色通过真实API清理，读回activeUsers=0/activeRoles=0，六个运行均completed/cancelled，策略保持disabled。1440及1280证据已检查。
-- 31版恢复首轮run `4593e328-baa0-4c2e-98c0-5691f6de917c` 在目标库名65字节被PG截至63字节时失败。目标库/store及源自有pending取消均已确认，uncertain/race为空；三项已完成见证与永久成员遵守365天制品生命周期保留。未覆盖失败证据。工具改为随机43字节名称，运行前精确UTF-8长度及63字节上限guard，CREATE/连接/DROP使用同一变量。
+- 31版恢复首轮run `4593e328-baa0-4c2e-98c0-5691f6de917c` 在目标库名65字节被PG截断至63字节时失败。目标库/store及源自有pending取消均已确认，uncertain/race为空；三项已完成见证与永久成员遵守365天制品生命周期保留。未覆盖失败证据。工具改为随机43字节名称，运行前精确UTF-8长度及63字节上限guard，CREATE/连接/DROP使用同一变量。
 - 新冻结脚本SHA256 `4d65cf76d46c42ce7563743b65632fcd046d32e830e050c5b93c955b63a1994e` 实际恢复run `2dc80aae-25c6-43ec-a17a-11942be3ebac` verified：83表计数与内容摘要、31迁移校验和相同，PGDMP 6,252,716 bytes/SHA256 `d45df33649f343a0ce081cf4d4796a74d9c591c2b6fe872601dc6bc4027b78e9`；八类引用去重复制113个对象、2,297,257 bytes。报告SHA256 `be5a8478ab3f35759ab41837bdfcea94afd8602bfe7dc06d637d58aa8579b374`，证据 `test-results/full-product/audit-retention-20261013/database-and-file-copy/2dc80aae-25c6-43ec-a17a-11942be3ebac/`。
 - 恢复保留原会话及三项新源见证的run/batch/candidate/snapshot/bytes，三格式下载与v1/all/hot/archived和目标当前字段撤权/还原通过；仅目标exact-owned scope接续第四项queued任务，重放无第二制品/成员/完成事实，源pending无目标效果并最后API取消。源原始审计事实和disabled策略未改，临时目标库与store确认移除后才verified。8个仅预留对象单列；原41个历史缺失对象五元组仍精确相同，未伪造修复。此为同一物理PG内独立库/store恢复；新物理环境、客户部署、兼容二进制回退和最终正式交付仍开放。
 - 最终完整59条真实浏览器回归已启动；此前782单测、346数据库/API、类型/构建/lint通过不代替本次最终完整浏览器及对应远端CI。FP-032并行实现真实租户草稿/不可变active版/clean PNG-JPEG绑定/自有会员偏好与shell消费，032仍pending、只在自有随机测试库应用，未迁移Source或称品牌验收完成。整个原始Goal保持active。
+
+- `retention-full-browser.log` 最终59/59（9.0分钟），新增归档2项与原R1及其他全模块通过，未在活动运行中重启Source或替换web构建。实现/验收提交b3a6a4cb8ac2bfe2f347a86d7ddcb5959e3a78a5已推送；实际CI38483364681 verify成功，real-business数据库345/346、浏览器未执行。唯一失败为database-constraints迁移清单仍止030，正式031实际正确新增而测试期望未同步；不能将候选pending预应用时的旧期望成功移用到正式迁移。补显式031期望后，独立随机库正常migrate/readiness/repeat与租户数据库约束专项通过；完整artifact/failure.log保留，正在对应修复提交重跑远端门禁。
