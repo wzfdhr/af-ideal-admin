@@ -4,6 +4,7 @@ import {
   REPORTING_PERMISSIONS,
   REPORT_EXPORT_PERMISSIONS,
   REPORT_SCHEDULE_PERMISSIONS,
+  DATA_SCREEN_PERMISSIONS,
 } from '@af-admin/contracts'
 import { dataMode } from '../../../../config/data-mode'
 import { AppRouteRecordRaw } from '../../types'
@@ -48,6 +49,17 @@ const userRoutes: AppRouteRecordRaw = {
         locale: 'menu.visualization.dataScreen',
         requireAuth: true,
         roles: ['*'],
+        ...(dataMode === 'reference'
+          ? {
+              access: {
+                permissions: [
+                  DATA_SCREEN_PERMISSIONS.list,
+                  DATA_SCREEN_PERMISSIONS.run,
+                ],
+                mode: 'any' as const,
+              },
+            }
+          : {}),
       },
     },
     {

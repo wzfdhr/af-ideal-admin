@@ -500,6 +500,22 @@ export const createR1Menu = (permissions: string[]) => {
         access: { permissions: scheduleAccess, mode: 'any' },
       },
     })
+  const screenAccess = ['screen:list', 'screen:run']
+  if (
+    permissions.includes('*') ||
+    screenAccess.some((code) => permissions.includes(code))
+  )
+    reportingPages.push({
+      path: 'dataScreen',
+      name: 'dataScreen',
+      componentKey: 'DataScreenPage',
+      meta: {
+        requireAuth: true,
+        locale: 'menu.visualization.dataScreen',
+        order: 2,
+        access: { permissions: screenAccess, mode: 'any' },
+      },
+    })
   if (reportingPages.length)
     entries.push({
       path: '/visualization',

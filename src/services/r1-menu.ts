@@ -24,6 +24,7 @@ const pagePermissions: Record<string, string[]> = {
   messageCenter: ['message:list'],
   reportCenter: ['report:list', 'report:query', 'report:export:list'],
   reportSchedules: ['report:schedule:list', 'report:schedule:run:read'],
+  dataScreen: ['screen:list', 'screen:run'],
   messageTemplates: [
     'message:template:list',
     'message:template:approve',

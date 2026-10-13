@@ -2,6 +2,7 @@ import { MESSAGING_PERMISSIONS } from './messaging'
 import { REPORTING_PERMISSIONS } from './reporting'
 import { REPORT_EXPORT_PERMISSIONS } from './report-exports'
 import { REPORT_SCHEDULE_PERMISSIONS } from './report-schedules'
+import { DATA_SCREEN_PERMISSIONS } from './data-screens'
 
 export interface PermissionDefinition {
   code: string
@@ -9,6 +10,22 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  ...Object.entries(DATA_SCREEN_PERMISSIONS).map(([key, code]) => ({
+    code,
+    title: (
+      {
+        list: '查看大屏配置',
+        create: '创建独立大屏',
+        update: '编辑大屏草稿',
+        publish: '发布大屏快照',
+        rollback: '切换大屏历史发布版',
+        toggle: '启停大屏',
+        archive: '归档大屏',
+        run: '运行授权大屏',
+      } as Record<string, string>
+    )[key],
+    module: '真实大屏',
+  })),
   ...Object.entries(REPORT_SCHEDULE_PERMISSIONS).map(([key, code]) => ({
     code,
     title: (
