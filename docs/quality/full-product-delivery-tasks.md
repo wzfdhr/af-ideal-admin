@@ -47,7 +47,7 @@
 | FP-029 | 运营/销售/设备三套模板及真实刷新、过期/空/错误/全屏 | FP-028 | T-611 | 进行中 |
 | FP-030 | 授权/发布/文件/导出/业务事实审计及失败/trace 检索 | FP-005/024/026 | T-402/404 | 进行中 |
 | FP-031 | 审计保留、归档、授权导出和恢复关联 | FP-030 | 审计规划 | 进行中 |
-| FP-032 | 品牌/Logo/主题/暗色/紧凑/语言偏好持久化及租户切换 | FP-020/005 | T-608/LA-045 | 未开始 |
+| FP-032 | 品牌/Logo/主题/暗色/紧凑/语言偏好持久化及租户切换 | FP-020/005 | T-608/LA-045 | 进行中 |
 | FP-033 | 关键业务语言、CJK、日期/数字、双主题/密度/分辨率和键盘 | FP-032 | 国际化规划 | 未开始 |
 | FP-034 | 插件 manifest、可信来源/签名、兼容、安装/隔离/失败回滚 | FP-005/018 | T-612/LA-044 | 未开始 |
 | FP-035 | 插件启停/卸载撤销注册、模板目录；不建交易平台 | FP-034/029 | T-612/LA-044 | 未开始 |
@@ -689,3 +689,11 @@
 - `before-031.dump` 已实际通过同一repeatable-read/pg_export_snapshot完成：Source76表、30迁移与001–030全部文件校验和一致，6,093,278 bytes，SHA256 `6043ad776f7e53c6b05bc00f6ad0723e43393000fa6a450d5fc80517dfb02dc7`。独立随机全量库显式预应用031.pending并使用自有临时store，Source库和原R1仍ready；实际31部署、真实浏览器、31恢复/最终CI仍待执行，整个Goal保持active。
 - `retention-integration-all-reviewed.log` 最终346/346（248.8秒），包括新增25项归档/权限/文件/进程回归及原R1全部模块；随机库确认移除，单测782/类型/构建/lint保持通过。随后只对专属Source执行已审查031，`source-031.json/log` 实际83表/31迁移，SHA256 `b8a8290720509617a87987615db074696701f2f0329785d5aeaa31c33ae6e1b7` 从此冻结，001–030未改。controlled菜单ALL四权限及预留/制品引用、实际worker接线已启用；管理权限仅对精确合成管理员audited CLI追加，不降低普通授权API边界。
 - 新Source API/worker重启加载实际31接线后10890与原R1 11888均ready200。真实归档UI两条候选开始验收；它们由实际角色操作产生22/2/1不同源事实，三个格式分别验证hot→archived成员、all仍在、真实下载与权限撤销，不能把Source迁移或单测写成UI通过。83表31版文件/成员关联恢复工具独立编写审查中，未执行；新物理环境、兼容回退、客户/正式交付仍开放。
+
+### FP-031 真实页面与31版数据库、字节恢复（接续）
+
+- 新增两条真实归档浏览器验收最终 `browser-retention-fifth` 2/2、29.2秒。以22/2/1不同合成原始事实分别完成CSV/XLSX/PDF，真实正常worker、ClamAV和下载大小/MIME/SHA、候选ID及V2 all/hot/archived均通过；取消、字段撤权、跨租户、真实网络失败后恢复、blocked后恢复重入再retry和最终治理权限撤销均通过。字段撤权触发全局403路由至not-allowed，页面私密详情/摘要/扫描身份清空，服务器受限DTO仍验证；没有注入成功响应。精确本轮用户/角色通过真实API清理，读回activeUsers=0/activeRoles=0，六个运行均completed/cancelled，策略保持disabled。1440及1280证据已检查。
+- 31版恢复首轮run `4593e328-baa0-4c2e-98c0-5691f6de917c` 在目标库名65字节被PG截至63字节时失败。目标库/store及源自有pending取消均已确认，uncertain/race为空；三项已完成见证与永久成员遵守365天制品生命周期保留。未覆盖失败证据。工具改为随机43字节名称，运行前精确UTF-8长度及63字节上限guard，CREATE/连接/DROP使用同一变量。
+- 新冻结脚本SHA256 `4d65cf76d46c42ce7563743b65632fcd046d32e830e050c5b93c955b63a1994e` 实际恢复run `2dc80aae-25c6-43ec-a17a-11942be3ebac` verified：83表计数与内容摘要、31迁移校验和相同，PGDMP 6,252,716 bytes/SHA256 `d45df33649f343a0ce081cf4d4796a74d9c591c2b6fe872601dc6bc4027b78e9`；八类引用去重复制113个对象、2,297,257 bytes。报告SHA256 `be5a8478ab3f35759ab41837bdfcea94afd8602bfe7dc06d637d58aa8579b374`，证据 `test-results/full-product/audit-retention-20261013/database-and-file-copy/2dc80aae-25c6-43ec-a17a-11942be3ebac/`。
+- 恢复保留原会话及三项新源见证的run/batch/candidate/snapshot/bytes，三格式下载与v1/all/hot/archived和目标当前字段撤权/还原通过；仅目标exact-owned scope接续第四项queued任务，重放无第二制品/成员/完成事实，源pending无目标效果并最后API取消。源原始审计事实和disabled策略未改，临时目标库与store确认移除后才verified。8个仅预留对象单列；原41个历史缺失对象五元组仍精确相同，未伪造修复。此为同一物理PG内独立库/store恢复；新物理环境、客户部署、兼容二进制回退和最终正式交付仍开放。
+- 最终完整59条真实浏览器回归已启动；此前782单测、346数据库/API、类型/构建/lint通过不代替本次最终完整浏览器及对应远端CI。FP-032并行实现真实租户草稿/不可变active版/clean PNG-JPEG绑定/自有会员偏好与shell消费，032仍pending、只在自有随机测试库应用，未迁移Source或称品牌验收完成。整个原始Goal保持active。
