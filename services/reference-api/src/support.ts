@@ -118,8 +118,9 @@ const canonical = (input: Json): Json => {
   }
   return input
 }
-export const contentHash = (input: unknown) =>
-  digest(JSON.stringify(canonical(JSON.parse(JSON.stringify(input)) as Json)))
+export const contentCanonical = (input: unknown) =>
+  JSON.stringify(canonical(JSON.parse(JSON.stringify(input)) as Json))
+export const contentHash = (input: unknown) => digest(contentCanonical(input))
 export const idempotent = <T>(
   pool: Pool,
   actor: Actor,

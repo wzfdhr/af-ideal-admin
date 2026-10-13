@@ -6,6 +6,7 @@ import { registerMessagingRealtime } from './messaging-realtime'
 import { registerReporting } from './reporting'
 import { registerReportExportRoutes } from './report-exports'
 import { registerReportSchedules } from './report-schedules'
+import { registerDataScreens } from './data-screens'
 import { registerMenuResources } from './menu-resources'
 import { registerPackagePages } from './package-pages'
 import { registerLowCodeSources } from './low-code-sources'
@@ -146,6 +147,7 @@ export const createServer = (
   registerReporting(server, pool, fault)
   registerReportExportRoutes(server, pool, fault, files)
   registerReportSchedules(server, pool, fault)
+  registerDataScreens(server, pool, fault)
   if (!database)
     server.addHook('onClose', async () => {
       await pool.end()

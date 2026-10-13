@@ -19,6 +19,7 @@ import {
   REPORTING_PERMISSIONS,
   REPORT_EXPORT_PERMISSIONS,
   REPORT_SCHEDULE_PERMISSIONS,
+  DATA_SCREEN_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -45,6 +46,10 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(REPORT_SCHEDULE_PERMISSIONS),
         ]),
       ]
+    )
+    await client.query(
+      "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT code) FROM jsonb_array_elements(permissions || $1::jsonb) code) WHERE user_id IN('a-employee','b-employee','a-manager-1','a-manager-2','b-manager-1','b-manager-2')",
+      [JSON.stringify([DATA_SCREEN_PERMISSIONS.run])]
     )
     await client.query(
       "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT code) FROM jsonb_array_elements(permissions || $1::jsonb) code) WHERE user_id IN('a-employee','b-employee','a-manager-1','a-manager-2','b-manager-1','b-manager-2')",
@@ -96,6 +101,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(REPORTING_PERMISSIONS),
           ...Object.values(REPORT_EXPORT_PERMISSIONS),
           ...Object.values(REPORT_SCHEDULE_PERMISSIONS),
+          ...Object.values(DATA_SCREEN_PERMISSIONS),
         ]),
       ]
     )
