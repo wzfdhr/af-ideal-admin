@@ -706,3 +706,56 @@ test('PDF stream size failure aborts before any oversized file can be returned',
       contracts.AUDIT_EXPORT_MAX_FILE_BYTES
   )
 })
+
+test('legitimate base64url leading dash and underscore opaque fact, actor, target and trace IDs survive all real formats', async () => {
+  const rows = ['-', '_'].map((prefix, index) =>
+    fact(`${prefix}auth_fact_${index}`, {
+      module: 'auth',
+      action: 'login',
+      eventType: 'security',
+      detail: {},
+      operator: { id: `${prefix}actor_${index}`, name: '实际身份事件' },
+      target: { type: 'session', id: `${prefix}target_${index}` },
+      traceId: `${prefix}trace_${index}`,
+    })
+  )
+  const input = snapshot({ rows, total: rows.length })
+  const csv = readCsv((await generateAuditExport('csv', input)).bytes)
+  const workbook = new ExcelJS.Workbook()
+  await workbook.xlsx.load((await generateAuditExport('xlsx', input)).bytes)
+  const pdf = readPdf((await generateAuditExport('pdf', input)).bytes)
+  rows.forEach((row, index) => {
+    // Leading '-' is an allowed identifier and is still neutralized for CSV formula consumers.
+    assert.equal(
+      csv[index + 1][0],
+      row.id.startsWith('-') ? `'${row.id}` : row.id
+    )
+    assert.equal(
+      workbook.getWorksheet('审计事实').getCell(index + 2, 1).value,
+      row.id
+    )
+    assert.ok(pdf.text.includes(row.id))
+    assert.ok(pdf.text.includes(row.operator.id))
+    assert.ok(pdf.text.includes(row.target.id))
+    assert.ok(pdf.text.includes(row.traceId))
+  })
+  for (const id of [
+    '__proto__',
+    'constructor',
+    'prototype',
+    '-path/escape',
+    '_x;SELECT',
+    `_${'a'.repeat(100)}`,
+  ])
+    await invalid(snapshot({ rows: [fact(id)], total: 1 }))
+  await invalid(
+    snapshot({
+      rows: [
+        fact('_valid', {
+          target: { type: '_unregistered-type', id: '_valid-target' },
+        }),
+      ],
+      total: 1,
+    })
+  )
+})

@@ -235,7 +235,9 @@ export const recheckAuditEventIds = async (
     new Set(ids).size !== ids.length ||
     ids.some(
       (id) =>
-        typeof id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,99}$/.test(id)
+        typeof id !== 'string' ||
+        !/^[A-Za-z0-9_-][A-Za-z0-9_.:-]{0,99}$/.test(id) ||
+        ['__proto__', 'prototype', 'constructor'].includes(id.toLowerCase())
     )
   )
     throw new DomainError(

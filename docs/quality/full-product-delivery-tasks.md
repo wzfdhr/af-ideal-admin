@@ -651,3 +651,27 @@
 
 - 最终页面9c5a6e8已提交，browser-target-key-final.log两条真实路径13.2秒通过：精确服务端响应/DOM分页、单边日期刷新重开、literal姓名+trace、当前成员字段脱敏、真实网络失败清空与解除后恢复、伪server telemetry不产生fact、双租户及撤权。新UI完整55条浏览器正在运行，最终对应远端CI与28恢复验证保持待结果。
 - 当前最终740单测（unit-all-key-final.log）、119契约（含下一阶段独立导出16项）/25领域、290数据库/API、生产构建、当前及锁定旧Vue类型/lint通过；Mock/smoke仍在运行。下一阶段生成器/恢复脚本只是未接线候选，不以类型、契约或renderer可用性代替扫描/授权/耐久任务/恢复/正式交付。
+
+- 审计最终完整浏览器full-browser-final.log实际55/55（8.3m），包含原R1审批/消息/审计及当前所有模块；Mock3/3（28s）与smoke3/3（2.6s）通过，smoke仍保留10888代理拒连且不作为真实API证据。0200052ac7ce72e7cc84bf9b9805847edbde7b6a已推送并启动CI38442802453，结果待归档。
+- 新28独立数据库恢复脚本静态审查阻止首候选的异常清理：杀docker客户端不能证明容器restore已停、Pool.query事务不能保证同连接。改为单checkout事务及关闭失败屏障；复核又发现尚未连PG的容器命令不能靠瞬时0 backend证明停止，正在改为异常exec结果不确定就保留targetDB/store。脚本尚未执行，不把静态检查/备份当恢复成功。
+
+- 审计恢复run d14bdf01-c934-4291-b970-1bd1ca5d301e 实际verified-after-cleanup，73全表计数与摘要/28迁移、5,338,158byte dump（SHA2560da9d4cd14533fabe6a298442df4c823756a5a0c154e1293c14f96632a1fb02c）；目标原会话/原fact/projection一致、字段mask/nullactor/撤权/API对象重启、源原会话/fact/projection不改，targetDB/store删除确认后verified。只DB、同一物理PG，不称文件bytes或新机器/二进制回退；首次a129guards因硬编码envfileflag拒绝无业务效果，兼容显式非空--env-file但实际所有source/session/migguard保持后通过。恢复工具6a22a68已提交。
+- CI38442802453精确0200052，verify/290SQL通过，浏览器54/55，equipment首次等待误抓首页pageSize5旧响应造成CDPbody已丢；9921809精确匹配workflowCenter current/pageSize10并即时捕获完成响应body，原ID/link/kind/UI/审批断言保留，单项真实12.8s通过。CI38446409131精确9921809b0ec7e70da642330c50046082248064a1实际全绿，远端303数据库/API（含独立formatter13）与55完整真实浏览器（9.6m）；run.json/workflow.log/real-business-evidence已归档。
+- FP031真实CSV/XLSX/PDF renderer15d0b33已提交，Root临时独立CJS编译/原字体license/13实际bytes测试全部通过，临时目录回收。当前durable backend和029pending尚候选；独立复核修空结果姓名query元数据的字段绕过（绑定capture principal当前namegrant）和目录list/count同SQL快照。first15候选被PLpgSQL IF内CASE无括号语法阻断，所有失败日志保留、randomDB确认移除；仅pending SQL补括号后重跑，未应用source29、未把artifact归档标志当原审计事件归档。
+
+- FP031实际15/15数据库/API（21.9s）、完整318/318（146.7s）、全站首轮752单测和types/lint/生产构建通过。029仅在pre29一致备份后应用专属demo，SHA a2e3b9095c63a7416dffdf9261c21bf1268ad38428f1be395d3b0e69a3f1d30f冻结，001–028不改；GC保留audit job/artifact未purge预留key，审计登记仅受控标量，后台按同tenant同job creator当前scope复验，不借报告ACL。
+- 新privileges演示初始化最初误取authorization.roleIds而实际DTO提供roles，修形状后普通HTTP管理员仍正确403 PRIVILEGE_BOUNDS阻止自增新权限。保留两次失败；仅对专属合成a-admin/b-admin用部署bootstrap追加6新导出码并保留全部原direct/roles，同事务写service-actor事实，不降低线上delegate bounds；普通角色/权限API不变。
+- 首轮真实浏览器两个失败保留browser-target-first：系统事实2974超过2000cap，改唯一实际操作者创建/修改12角色并按literal姓名scope筛选>20完整事实，不删历史不升cap；另一条新page被真实navigation拒绝，因持久menu_route_catalogue漏注册。029已冻结不回写，pre30备份后追加030_audit_export_menu，SHA de317d346acdedfd72f50f55ab3917179f8ff95a5d51de44b41a1243db2e4d22冻结，注册controlledcomponent及当前租户资源，保留原菜单/tombstone/权限。原R1与专属API/worker正常，页面重建后重跑。
+- 前端review修复异步hash后身份复验、旧selected私密详情刷新、invalidURL迟到cap禁止宽创建、create-only和显式offpage job详情刷新/轮询/命令连续性。单测17通过，真实PDF现在验中文标题/完整ID；当前/锁定Vue兼容nullablecallback已用显式runtime guard修复。该源码修复不等于浏览器/当前增量CI/实际audit filebytes恢复全部完成；逻辑event归档/保留policy仍需后续FP031实现。
+
+- FP031导出后台48f83f4及真实前端9d9b508已提交。最终browser-target-pdf-decoder-final两条29.4s通过：三真实格式实际native saved file、SHA/size/MIME/全部>20事实ID/中文、空CSV0rows、归档与撤权/跨租户/错误恢复。CDP CSVresponse.body会移除BOM的失败保留；改为实际saved bytes验证且仅允许HTTPbody精确相差BOM。PDF测试reader误将任意hex作为CMap覆盖字形映射，改xref指定Type0 ToUnicode+正文BT..ET后现存真实PDF正确重读，不改producer或削弱中文/完整ID断言。全量57浏览器和本增量CI已启动，结果尚待归档，逻辑原始事件归档/保留policy及30版一致实际auditbytes恢复仍未完成。
+
+### FP-031 导出回归失败定位与修复接续
+
+- 首轮完整57浏览器实际55通过/2失败，`full-browser-final.log` 保留。审计事实由服务端 `newToken()` 生成的 base64url ID 可合法以 `-` 或 `_` 开头，但旧捕获复核/生成器首字符限制拒绝了实际登录事实。仅在事件、操作者、对象和trace的不透明ID分支接受这两个首字符，保留100字符、安全字符集及精确保留名称限制；模块和对象类型仍使用原语义校验。不重写旧事实、不缩小查询夹具绕过。
+- `opaque-id-contract-generators.log` 实际45/45、`opaque-id-integration.log` 16/16，通过真实用户创建/口令验证/登录事务，仅控制ID熵源确定触发两种前缀，核验原始事实→固定捕获→复核→实际CSV/ClamAV/下载与原始行未改。CSV公式防护和三种实际文件格式仍成立；`browser-opaque-id-final.log` 两条真实浏览器30.1秒通过。
+- 请假失败的只读事实 `leave-flow-diagnosis/ea2595b4-readonly.json` 证明原申请固定v89、真实manager1→manager2任务、第一主管待办rank7/210，产品分配正确。旧测试误抓首页pageSize5响应且在组件未挂载时把loading元素0视为完成，跳过第1页。精确等待workflowCenter的current/pageSize10响应并保留已完成响应body、可见组件和表格aria-busy，再按真实requestId/recordLink/kind逐页定位；两主管、通知和审计断言不改。真实专项1条8.5秒通过。
+- [CI38457066817](https://github.com/wzfdhr/af-ideal-admin/actions/runs/38457066817) 精确9d9b508，verify因menu缩进与旧Prettier类型索引写法两处失败；real-business的318项数据库全部通过、57浏览器55通过/2失败，均为新环境platform-demo遗漏六项P6导出权限导致403。最终run.json、workflow.log和实际artifact已存 `audit-exports-20261013/ci-38457066817/`。初始化器仅在明确demo数据库对tenant-a/a-admin及tenant-b/b-admin追加缺失码，保留原权限/角色，每次实际增加与revision/空服务主体审计同事务；重复无新增事实，普通HTTP授权边界不降低。
+- 初始化专项 `demo-init-integration-reviewed.log` 17/17。初轮新增测试误用不存在的role_ids列，修为实际member_roles子查询，失败日志保留。随后完整321首轮318通过/3失败：测试调用既有全平台初始化留下主管演示字段权限，导致两个后续报表脱敏负向失败及一个后续worker用例失败。仅修测试完整成员状态还原并断言，不放松产品权限或原断言；第二轮完整数据库与修复后57浏览器仍在运行，未据专项结果宣称全量或CI通过。
+- 独立只读安全复核未发现ID/P6初始化/请假等待修复的阻断问题。实际30版文件字节恢复工具仍在候选审查：六类引用锁与真实size/SHA、精确既有41缺失ID、未知CREATE/容器/关闭结果保留屏障；尚未执行，不把静态检查写成恢复成功。逻辑事件归档契约与后端另行实现，001–030已应用迁移原字节保持冻结，整个Goal维持active。
+- 修复后 `repairs-integration-all-isolation.log` 实际321/321（148.9秒），报表脱敏与worker负向恢复全部通过；`repairs-full-browser.log` 实际57/57（8.3分钟），包含原R1及当前所有真实模块。独立复核发现测试把JS Date写回会丢PG微秒，后仅恢复初始化实际改动的权限/部门/revision，以updated_at::text比较原精度且不写回；`demo-init-isolation-precision-final.log` 最终17/17（22.1秒）。生产变更全workspace类型、所改生产文件lint和锁定Prettier2检查通过。本次源码修复的远程CI尚待触发/结果，原始事件逻辑归档、保留策略、实际30版文件恢复和全产品最终门禁继续开放。

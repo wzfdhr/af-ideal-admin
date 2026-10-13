@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import {
   DEPARTMENT_PERMISSIONS,
   POSITION_PERMISSIONS,
@@ -20,9 +21,11 @@ import {
   REPORT_EXPORT_PERMISSIONS,
   REPORT_SCHEDULE_PERMISSIONS,
   DATA_SCREEN_PERMISSIONS,
+  AUDIT_EXPORT_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
+import { audit, sequential } from './support'
 import type { Pool } from 'pg'
 
 export const initializePlatformDemo = async (pool: Pool) => {
@@ -35,6 +38,42 @@ export const initializePlatformDemo = async (pool: Pool) => {
     throw new Error('A dedicated demo database is required')
   await seedDemo(pool)
   await transaction(pool, async (client) => {
+    const auditAdmins = await client.query<{
+      tenant_id: string
+      user_id: string
+      permissions: string[]
+    }>(
+      "SELECT m.tenant_id,m.user_id,m.permissions FROM memberships m JOIN users u ON u.id=m.user_id JOIN tenants t ON t.id=m.tenant_id WHERE (m.tenant_id,m.user_id) IN (('tenant-a','a-admin'),('tenant-b','b-admin')) AND m.role='admin' AND m.status='enabled' AND m.deleted_at IS NULL AND u.status='enabled' AND t.status='enabled' ORDER BY m.tenant_id,m.user_id FOR UPDATE OF m"
+    )
+    await sequential(auditAdmins.rows, async (member) => {
+      const added = Object.values(AUDIT_EXPORT_PERMISSIONS).filter(
+        (code) => !member.permissions.includes(code)
+      )
+      if (!added.length) return
+      const updated = await client.query<{ revision: number }>(
+        'UPDATE memberships SET permissions=$3::jsonb,revision=revision+1 WHERE tenant_id=$1 AND user_id=$2 RETURNING revision',
+        [
+          member.tenant_id,
+          member.user_id,
+          JSON.stringify([...member.permissions, ...added]),
+        ]
+      )
+      await audit(
+        client,
+        {
+          tenantId: member.tenant_id,
+          userId: null,
+          name: '演示初始化服务',
+          traceId: randomUUID(),
+        },
+        'system',
+        'demo.audit-export-initialize',
+        'membership',
+        member.user_id,
+        'success',
+        { revision: updated.rows[0].revision, addedCount: added.length }
+      )
+    })
     await client.query(
       "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT code) FROM jsonb_array_elements(permissions || $1::jsonb) code) WHERE user_id IN('a-employee','b-employee','a-manager-1','a-manager-2','b-manager-1','b-manager-2')",
       [

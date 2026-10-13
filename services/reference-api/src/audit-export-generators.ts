@@ -101,9 +101,16 @@ const boundedText = (input: unknown, maxBytes = 512): string => {
     fail('AUDIT_EXPORT_TEXT_INVALID', '审计导出文本包含无效Unicode或控制字符')
   return input
 }
-const identifier = (value: unknown) => {
+const identifier = (value: unknown, opaque = false) => {
   const output = boundedText(value, 100)
-  if (!/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/.test(output)) malformed()
+  const pattern = opaque
+    ? /^[A-Za-z0-9_-][A-Za-z0-9_.:-]*$/
+    : /^[A-Za-z0-9][A-Za-z0-9_.:-]*$/
+  if (
+    !pattern.test(output) ||
+    ['__proto__', 'prototype', 'constructor'].includes(output.toLowerCase())
+  )
+    malformed()
   return output
 }
 const iso = (value: unknown) => {
@@ -201,7 +208,7 @@ const validate = (input: AuditExportSnapshotV1): AuditExportSnapshotV1 => {
       'visibleFields',
       'hiddenFields',
     ])
-    const id = identifier(row.id)
+    const id = identifier(row.id, true)
     if (ids.has(id)) malformed()
     ids.add(id)
     if (
@@ -213,7 +220,7 @@ const validate = (input: AuditExportSnapshotV1): AuditExportSnapshotV1 => {
       malformed()
     boundedText(row.module, 64)
     boundedText(row.action, 256)
-    identifier(row.traceId)
+    identifier(row.traceId, true)
     iso(row.occurredAt)
     const operator = object(row.operator, ['id', 'name', 'role'])
     const visible = array(row.visibleFields, AUDIT_ACTOR_FIELDS.length)
@@ -234,12 +241,12 @@ const validate = (input: AuditExportSnapshotV1): AuditExportSnapshotV1 => {
       if (hidden.includes(field)) {
         if (operator[key] !== null) malformed()
       } else if (operator[key] === null) malformed()
-      else if (key === 'id') identifier(operator[key])
+      else if (key === 'id') identifier(operator[key], true)
       else boundedText(operator[key], 400)
     })
     const target = object(row.target, ['type', 'id'])
     identifier(target.type)
-    if (target.id !== null) identifier(target.id)
+    if (target.id !== null) identifier(target.id, true)
     const rawDetail = row.detail
     if (!rawDetail || typeof rawDetail !== 'object' || Array.isArray(rawDetail))
       malformed()

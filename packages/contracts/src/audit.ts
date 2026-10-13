@@ -116,7 +116,7 @@ const identifier = (input: unknown, field: string, max = 100) => {
   const value = optionalPlainText(input, field, max)
   if (
     value &&
-    (!/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/.test(value) ||
+    (!/^[A-Za-z0-9_-][A-Za-z0-9_.:-]*$/.test(value) ||
       ['__proto__', 'prototype', 'constructor'].includes(value.toLowerCase()))
   )
     invalid(field, '必须为安全的精确标识')

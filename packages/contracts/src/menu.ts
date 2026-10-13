@@ -241,7 +241,7 @@ export const createR1Menu = (permissions: string[]) => {
                 meta: {
                   requireAuth: true,
                   locale: 'menu.audit.exports',
-              order: 1,
+                  order: 1,
                   access: { permissions: auditExportAccess },
                 },
               },

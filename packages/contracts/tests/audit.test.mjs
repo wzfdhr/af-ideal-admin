@@ -127,9 +127,17 @@ test('trace and target filters preserve exact bounded registered identifiers', (
     )
     assert.equal(parse({ [field]: 'a'.repeat(100) })[field].length, 100)
     for (const value of [
+      '-opaque_auth_0',
+      '_opaque-auth-1',
+      '-',
+      '_',
+      `_${'a'.repeat(99)}`,
+    ])
+      assert.equal(parse({ [field]: value })[field], value)
+    for (const value of [
       'a'.repeat(101),
       '%',
-      '_',
+      '..',
       'a b',
       '../path',
       'x;DROP TABLE',
@@ -153,6 +161,8 @@ test('unknown safe modules remain valid literal filters and unsafe module syntax
     'x'.repeat(65),
     'unknown module',
     '1module',
+    '-opaque-module',
+    '_opaque_module',
     'request%',
     'module/path',
     'm;select',

@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import submitLogin from './helpers/login'
-import type { Page } from '@playwright/test'
+import type { Page, Response } from '@playwright/test'
 
 const apiUrl = process.env.R1_API_URL || 'http://127.0.0.1:10888'
 
@@ -20,6 +20,42 @@ const confirm = async (page: Page) => {
   await dialog.getByRole('button', { name: '确认', exact: true }).click()
   await expect(dialog).not.toBeVisible()
 }
+interface TodoPage {
+  current: number
+  pageSize: number
+  list: {
+    requestId: string
+    recordLink: string
+    businessKind: string
+  }[]
+  total: number
+}
+const readTodoPage = async (response: Response): Promise<TodoPage> => {
+  expect(response.status()).toBe(200)
+  const body = response.json()
+  expect(await response.finished()).toBeNull()
+  const requestUrl = new URL(response.url())
+  const payload = await body
+  expect(payload.code).toBe(20000)
+  return {
+    current: Number(requestUrl.searchParams.get('current')),
+    pageSize: Number(requestUrl.searchParams.get('pageSize')),
+    list: payload.data.list,
+    total: payload.data.total,
+  }
+}
+const waitForTodoPage = (page: Page, current: number, pageSize: number) =>
+  page
+    .waitForResponse((response) => {
+      const requestUrl = new URL(response.url())
+      return (
+        requestUrl.pathname === '/api/workflow-todos' &&
+        requestUrl.searchParams.get('current') === String(current) &&
+        requestUrl.searchParams.get('pageSize') === String(pageSize) &&
+        response.request().method() === 'GET'
+      )
+    })
+    .then(readTodoPage)
 
 test('a revoked session keeps unsaved input for an explicit restore after reauthentication', async ({
   browser,
@@ -223,33 +259,46 @@ test('real production frontend supports saved drafts, two reviewers, result noti
     const url = await create(employee, '浏览器完整链路验收')
     await login(first, 'a-manager-1')
     const detailPath = new URL(url).pathname
-    const firstTasks = first.waitForResponse(
-      (response) => new URL(response.url()).pathname === '/api/workflow-todos'
-    )
-    await first.getByRole('link', { name: '查看更多', exact: true }).click()
-    expect((await firstTasks).status()).toBe(200)
+    const firstTasks = waitForTodoPage(first, 1, 10)
+    await first.goto('/Scalability/workflowCenter')
+    await expect(first).toHaveURL(/\/Scalability\/workflowCenter$/)
     const taskList = first.getByTestId('leave-runtime')
-    const taskLink = taskList.locator(`a[href="${detailPath}"]`)
-    const findTask = async (): Promise<void> => {
-      await expect(taskList.locator('.arco-spin-loading')).toHaveCount(0)
-      if (await taskLink.count()) return
-      const next = taskList.locator('.arco-pagination-item-next')
-      if (
-        await next
-          .getAttribute('class')
-          .then((value) => value?.includes('disabled'))
+    await expect(taskList).toBeVisible()
+    const findTask = async (taskPage: TodoPage): Promise<void> => {
+      await expect(taskList.locator('.pro-table')).toHaveAttribute(
+        'aria-busy',
+        'false'
       )
+      const index = taskPage.list.findIndex(
+        (task) =>
+          task.requestId === detailPath.split('/').pop() &&
+          task.recordLink === detailPath &&
+          task.businessKind === 'leave'
+      )
+      if (index >= 0) {
+        const taskLink = taskList
+          .locator('tbody tr')
+          .nth(index)
+          .getByRole('link', { name: '查看并处理', exact: true })
+        await expect(taskLink).toHaveAttribute('href', detailPath)
+        await taskLink.click()
         return
-      const loaded = first.waitForResponse(
-        (response) => new URL(response.url()).pathname === '/api/workflow-todos'
+      }
+      expect(
+        taskPage.current * taskPage.pageSize,
+        'the assigned leave task must exist within the server-reported todo total'
+      ).toBeLessThan(taskPage.total)
+      const next = taskList.locator('.arco-pagination-item-next')
+      await expect(next).not.toHaveClass(/arco-pagination-item-disabled/)
+      const loaded = waitForTodoPage(
+        first,
+        taskPage.current + 1,
+        taskPage.pageSize
       )
       await next.click()
-      expect((await loaded).status()).toBe(200)
-      await findTask()
+      await findTask(await loaded)
     }
-    await findTask()
-    await expect(taskLink).toBeVisible()
-    await taskLink.click()
+    await findTask(await firstTasks)
     await expect(first).toHaveURL(url)
     await expect(first.getByTestId('leave-review-panel')).toBeVisible()
     await first.getByTestId('leave-review-comment').fill('第一主管已核实')

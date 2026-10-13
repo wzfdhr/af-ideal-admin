@@ -9,6 +9,7 @@ import type {
   APIRequestContext,
   BrowserContext,
   Page,
+  Response,
   TestInfo,
 } from '@playwright/test'
 import type { AuditExportJobV1, ManagedRole } from '@af-admin/contracts'
@@ -56,6 +57,29 @@ const waitResponse = (page: Page, path: string, method: string) =>
       new URL(response.url()).pathname === `/api${path}` &&
       response.request().method() === method
   )
+const createdAuditExport = async (
+  response: Response,
+  label: string
+): Promise<AuditExportJobV1> => {
+  const payload: unknown = await response.json()
+  const envelope =
+    payload && typeof payload === 'object'
+      ? (payload as Record<string, unknown>)
+      : undefined
+  const traceId =
+    typeof envelope?.traceId === 'string' ? envelope.traceId : 'missing'
+  expect(response.status(), `${label} traceId=${traceId}`).toBe(200)
+  const data = envelope?.data
+  expect(data, `${label} omitted job data traceId=${traceId}`).toBeDefined()
+  expect(data, `${label} returned no job traceId=${traceId}`).not.toBeNull()
+  if (
+    !data ||
+    typeof data !== 'object' ||
+    typeof (data as Record<string, unknown>).id !== 'string'
+  )
+    throw new Error(`${label} returned an invalid job traceId=${traceId}`)
+  return data as AuditExportJobV1
+}
 const attach = async (testInfo: TestInfo, name: string, facts: unknown) => {
   const path = testInfo.outputPath(`${name}.json`)
   await writeFile(path, JSON.stringify(facts, null, 2))
@@ -362,8 +386,10 @@ test('real audit exports capture the complete matching set and produce scanned C
       await page.getByTestId('audit-export-format').selectOption(format)
       const createdResponse = waitResponse(page, '/audit/exports', 'POST')
       await page.getByTestId('audit-export-create').click()
-      const created = (await (await createdResponse).json())
-        .data as AuditExportJobV1
+      const created = await createdAuditExport(
+        await createdResponse,
+        `${format} audit export creation`
+      )
       jobIds.push(created.id)
       const card = page.getByTestId(`audit-export-job-${created.id}`)
       await expect(card).toContainText('已完成', { timeout: 120000 })
@@ -456,7 +482,10 @@ test('real audit exports capture the complete matching set and produce scanned C
     await zeroUrl
     const zeroCreated = waitResponse(page, '/audit/exports', 'POST')
     await page.getByTestId('audit-export-create').click()
-    const zeroJob = (await (await zeroCreated).json()).data as AuditExportJobV1
+    const zeroJob = await createdAuditExport(
+      await zeroCreated,
+      'zero-row audit export creation'
+    )
     jobIds.push(zeroJob.id)
     await expect(
       page.getByTestId(`audit-export-job-${zeroJob.id}`)
@@ -619,8 +648,10 @@ test('audit export metadata remains current-scope, field revocation restricts ar
     await openExports(reader)
     const createdResponse = waitResponse(reader, '/audit/exports', 'POST')
     await reader.getByTestId('audit-export-create').click()
-    const created = (await (await createdResponse).json())
-      .data as AuditExportJobV1
+    const created = await createdAuditExport(
+      await createdResponse,
+      'scoped audit export creation'
+    )
     jobId = created.id
     const card = reader.getByTestId(`audit-export-job-${created.id}`)
     await expect(card).toContainText('已完成', { timeout: 120000 })

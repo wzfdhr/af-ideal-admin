@@ -20,6 +20,7 @@ import {
   appendAuditExportEvent,
 } from './audit-export-access'
 import type { AuditExportJobRow } from './audit-export-access'
+import type { AuditExportFormat } from '@af-admin/contracts'
 import type { Pool, PoolClient } from 'pg'
 import type { FileRuntime } from './files'
 import type { FaultInjector } from './support'
@@ -58,7 +59,7 @@ export const auditExportCapabilities = async (files: FileRuntime = {}) => {
     reason = '审计导出存储或真实ClamAV扫描当前不可用'
   }
   const formats: {
-    format: (typeof AUDIT_EXPORT_FORMATS)[number]
+    format: AuditExportFormat
     available: boolean
     reason: string | null
   }[] = []

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { randomUUID, createHash } from 'node:crypto'
+import { createRequire } from 'node:module'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -16,6 +17,8 @@ import jobs from '../../services/reference-api/dist/audit-export-jobs.js'
 import support from '../../services/reference-api/dist/support.js'
 import storage from '../../services/reference-api/dist/file-storage.js'
 import scanners from '../../services/reference-api/dist/file-scanner.js'
+import security from '../../services/reference-api/dist/security.js'
+import demo from '../../services/reference-api/dist/platform-demo.js'
 import contracts from '@af-admin/contracts'
 import { before, after, test } from 'node:test'
 
@@ -1090,4 +1093,224 @@ test('job listing returns page and total from one SQL snapshot despite a concurr
     await response
   }
   ok(await command(await detail(first, owner), owner, 'cancel'))
+})
+
+test('actual authenticated login facts with leading dash/underscore opaque IDs capture, recheck, scan and download without rewriting stored identities', async (context) => {
+  const crypto = createRequire(import.meta.url)('node:crypto')
+  const nativeUuid = crypto.randomUUID
+  const nativeToken = security.newToken
+  for (const prefix of ['-', '_']) {
+    const principalId = `${prefix}${nativeToken().slice(1)}`
+    const factId = `${prefix}${nativeToken().slice(1)}`
+    // Only entropy factories are controlled: the user-create transaction and its
+    // authorization still run through the real API, and no persisted ID is edited.
+    let uuidCalls = 0
+    const identityFactory = context.mock.method(crypto, 'randomUUID', () => {
+      uuidCalls += 1
+      return uuidCalls === 2 ? principalId : nativeUuid()
+    })
+    let owner
+    try {
+      owner = await user()
+    } finally {
+      identityFactory.mock.restore()
+    }
+    assert.equal(
+      owner.id,
+      principalId,
+      'The real user-create writer must mint the intended opaque identity'
+    )
+    let tokenCalls = 0
+    const auditIdFactory = context.mock.method(security, 'newToken', () => {
+      tokenCalls += 1
+      // auth.ts creates the real random session token first and the audit ID second.
+      return tokenCalls === 2 ? factId : nativeToken()
+    })
+    let response
+    try {
+      response = await server.inject({
+        method: 'POST',
+        url: '/api/user/login',
+        payload: {
+          username: owner.username,
+          password: passwords.get(owner.username),
+        },
+      })
+    } finally {
+      auditIdFactory.mock.restore()
+    }
+    assert.equal(response.statusCode, 200)
+    assert.equal(tokenCalls, 2)
+    const loggedIn = response.json()
+    tokens.set(owner.username, loggedIn.data.token)
+    const original = (
+      await pool.query(
+        "SELECT id,actor_id,target_id,trace_id,module,action,result,created_at FROM audit_events WHERE tenant_id='tenant-a' AND id=$1",
+        [factId]
+      )
+    ).rows[0]
+    assert.ok(original)
+    assert.equal(original.actor_id, principalId)
+    assert.equal(original.target_id, principalId)
+    assert.equal(original.module, 'auth')
+    assert.equal(original.action, 'login')
+    assert.equal(original.result, 'success')
+    assert.equal(original.trace_id, loggedIn.traceId)
+    const filter = {
+      module: 'auth',
+      targetId: principalId,
+      traceId: loggedIn.traceId,
+    }
+    const page = ok(
+      await call(`/audit/events?${new URLSearchParams(filter)}`, {
+        user: owner.username,
+      })
+    )
+    assert.equal(page.total, 1)
+    assert.equal(page.list[0].id, factId)
+    const created = ok(await create(owner, filter, 'csv'))
+    const captured = await stored(created)
+    assert.deepEqual(captured.event_ids, [factId])
+    assert.equal(captured.snapshot.rows[0].operator.id, principalId)
+    assert.equal(captured.snapshot.rows[0].target.id, principalId)
+    await processOne(created)
+    const completed = await detail(created, owner)
+    assert.equal(completed.status, 'completed')
+    assert.equal(completed.restricted, false)
+    assert.match(completed.artifact.scanEngine, /^ClamAV /)
+    const output = await download(created, owner)
+    assert.equal(output.status, 200)
+    assert.ok(output.bytes.toString('utf8').includes(factId))
+    assert.ok(output.bytes.toString('utf8').includes(principalId))
+    assert.equal(
+      createHash('sha256').update(output.bytes).digest('hex'),
+      completed.artifact.sha256
+    )
+    const retained = (
+      await pool.query(
+        "SELECT id,actor_id,target_id,trace_id,module,action,result,created_at FROM audit_events WHERE tenant_id='tenant-a' AND id=$1",
+        [factId]
+      )
+    ).rows[0]
+    assert.deepEqual(retained, original)
+  }
+})
+
+test('fresh platform demo initialization grants audit exports to the exact synthetic admins with one transactional fact and no employee grant', async () => {
+  const codes = Object.values(contracts.AUDIT_EXPORT_PERMISSIONS)
+  // The initializer also establishes earlier platform demo capabilities. Keep
+  // those fixture-only effects out of later files sharing this disposable DB.
+  const membershipBaseline = (
+    await pool.query(
+      'SELECT tenant_id,user_id,permissions,department_id,revision,updated_at::text AS updated_at FROM memberships ORDER BY tenant_id,user_id'
+    )
+  ).rows
+  const admins = (
+    await pool.query(
+      "SELECT m.tenant_id,m.user_id,m.permissions,(SELECT COALESCE(jsonb_agg(mr.role_id ORDER BY mr.role_id),'[]'::jsonb) FROM member_roles mr WHERE mr.tenant_id=m.tenant_id AND mr.user_id=m.user_id) AS role_ids FROM memberships m WHERE (m.tenant_id,m.user_id) IN (('tenant-a','a-admin'),('tenant-b','b-admin')) ORDER BY m.tenant_id"
+    )
+  ).rows
+  const employees = (
+    await pool.query(
+      "SELECT tenant_id,user_id,permissions FROM memberships WHERE user_id IN ('a-employee','b-employee') ORDER BY tenant_id"
+    )
+  ).rows
+  const previous = Number(
+    (
+      await pool.query(
+        "SELECT count(*) FROM audit_events WHERE module='system' AND action='demo.audit-export-initialize'"
+      )
+    ).rows[0].count
+  )
+  try {
+    for (const member of admins)
+      await pool.query(
+        'UPDATE memberships SET permissions=$3::jsonb WHERE tenant_id=$1 AND user_id=$2',
+        [
+          member.tenant_id,
+          member.user_id,
+          JSON.stringify(
+            member.permissions.filter((code) => !codes.includes(code))
+          ),
+        ]
+      )
+    const denied = await call('/audit/export-capabilities')
+    assert.equal(denied.status, 403)
+    await demo.initializePlatformDemo(pool)
+    assert.equal((await call('/audit/export-capabilities')).status, 200)
+    for (const member of admins) {
+      const current = (
+        await pool.query(
+          "SELECT m.permissions,(SELECT COALESCE(jsonb_agg(mr.role_id ORDER BY mr.role_id),'[]'::jsonb) FROM member_roles mr WHERE mr.tenant_id=m.tenant_id AND mr.user_id=m.user_id) AS role_ids FROM memberships m WHERE m.tenant_id=$1 AND m.user_id=$2",
+          [member.tenant_id, member.user_id]
+        )
+      ).rows[0]
+      assert.ok(codes.every((code) => current.permissions.includes(code)))
+      assert.ok(
+        member.permissions.every((code) => current.permissions.includes(code))
+      )
+      assert.deepEqual(current.role_ids, member.role_ids)
+    }
+    for (const member of employees) {
+      const current = (
+        await pool.query(
+          'SELECT permissions FROM memberships WHERE tenant_id=$1 AND user_id=$2',
+          [member.tenant_id, member.user_id]
+        )
+      ).rows[0]
+      for (const code of codes)
+        assert.equal(
+          current.permissions.includes(code),
+          member.permissions.includes(code)
+        )
+    }
+    const facts = (
+      await pool.query(
+        "SELECT tenant_id,actor_id,target_type,target_id,result,detail FROM audit_events WHERE module='system' AND action='demo.audit-export-initialize' ORDER BY created_at,id"
+      )
+    ).rows
+    assert.equal(facts.length, previous + 2)
+    facts.slice(previous).forEach((fact) => {
+      assert.equal(fact.actor_id, null)
+      assert.equal(fact.target_type, 'membership')
+      assert.equal(
+        fact.target_id,
+        fact.tenant_id === 'tenant-a' ? 'a-admin' : 'b-admin'
+      )
+      assert.equal(fact.result, 'success')
+      assert.equal(fact.detail.addedCount, codes.length)
+      assert.ok(Number.isSafeInteger(fact.detail.revision))
+    })
+    await demo.initializePlatformDemo(pool)
+    assert.equal(
+      Number(
+        (
+          await pool.query(
+            "SELECT count(*) FROM audit_events WHERE module='system' AND action='demo.audit-export-initialize'"
+          )
+        ).rows[0].count
+      ),
+      previous + 2
+    )
+  } finally {
+    for (const member of membershipBaseline)
+      await pool.query(
+        'UPDATE memberships SET permissions=$3::jsonb,department_id=$4,revision=$5 WHERE tenant_id=$1 AND user_id=$2',
+        [
+          member.tenant_id,
+          member.user_id,
+          JSON.stringify(member.permissions),
+          member.department_id,
+          member.revision,
+        ]
+      )
+    assert.deepEqual(
+      (
+        await pool.query(
+          'SELECT tenant_id,user_id,permissions,department_id,revision,updated_at::text AS updated_at FROM memberships ORDER BY tenant_id,user_id'
+        )
+      ).rows,
+      membershipBaseline
+    )
+  }
 })
