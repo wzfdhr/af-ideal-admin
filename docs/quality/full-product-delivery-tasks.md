@@ -537,4 +537,4 @@
 - 已保存 `docs/architecture/full-product-reporting-design.md`，独立只读调研确认现有reports/export/schedule仅Mock，无真实API/表/文件；原占位下载及客户端scenario不能作为验收。拆为受控真实查询/固定与自定义快照、真实生成/扫描/授权下载/归档、持久周期运行/恢复/告警，CSV首条路径不删除后续XLSX/PDF及原冻结要求。
 - 首源为真实generic业务记录；将抽取record-access当前授权谓词，让本人/真实审核参与/抄送三条路径与撤权规则统一作用于明细和聚合。来源同租户release绑定、旧字段按原快照解释；应用管理/报告权限不扩大记录权，关键词/分组/排序/导出不得利用隐藏字段。
 - 文件字节可复用LocalObjectStore，但普通owner-only附件会绕过报表/字段撤权，必须增加专属制品授权或完整文件绑定，并扩展对象清理引用避免合法归档误删。实际export审计由服务端事务产生，原telemetry不当作导出事实；定时接收者不得下载发起者更宽范围文件。
-- 已开始 `packages/contracts/src/reporting.ts` 的闭合v1定义/查询契约，当前未提交、未接共享index/API/UI，仍在必要边界校验阶段；不能据此称真实报表已可查询。FP-025标进行中，FP-026/027仍未开始实现；下一步完成契约失败回归、服务端当前授权查询及真实页面，再沿依赖推进导出和调度。
+- 已开始 `packages/contracts/src/reporting.ts` 的闭合v1定义/查询契约，当前未提交、未接共享index/API/UI；独立临时目录编译和11项真实日历/时区/未知键/未来格式/字段表达式/分页/稀疏数组边界回归通过，证据 `test-results/full-product/reporting-20261013/contracts-scoped.log` 及源码摘要manifest。不能据此称真实报表已可查询。FP-025标进行中，FP-026/027仍未开始实现；下一步接共享契约、服务端当前授权查询及真实页面，再沿依赖推进导出和调度。
