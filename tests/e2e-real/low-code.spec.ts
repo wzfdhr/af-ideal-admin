@@ -96,10 +96,13 @@ test('configured low-code business page saves and reopens, then all five actions
     const page = (await (await created).json()).data
     const editor = admin.getByTestId('persistent-page-editor')
     await expect(editor).toBeVisible()
-    await editor.getByLabel('低代码页面标题', { exact: true }).fill(title)
-    await editor
-      .getByLabel('低代码布局宽度', { exact: true })
-      .selectOption('24')
+    const titleInput = editor.getByLabel('低代码页面标题', { exact: true })
+    const layout = editor.getByLabel('低代码布局宽度', { exact: true })
+    await titleInput.fill(title)
+    await expect(titleInput).toHaveValue(title)
+    await layout.selectOption('24')
+    await expect(layout).toHaveValue('24')
+    await expect(titleInput).toHaveValue(title)
     await editor
       .getByRole('button', { name: '查看当前配置JSON', exact: true })
       .click()
@@ -112,17 +115,20 @@ test('configured low-code business page saves and reopens, then all five actions
     const json = editor.getByLabel('低代码配置JSON', { exact: true })
     const valid = await json.inputValue()
     const future = JSON.parse(valid)
+    expect(future.title).toBe(title)
     future.version = 3
     await json.fill(JSON.stringify(future))
     await editor
       .getByRole('button', { name: '校验并载入配置', exact: true })
       .click()
+    await expect(titleInput).toHaveValue(title)
     await expect(admin.getByTestId('persistent-page-error')).toBeVisible()
     await expect(json).toHaveValue(JSON.stringify(future))
     await json.fill(valid)
     await editor
       .getByRole('button', { name: '校验并载入配置', exact: true })
       .click()
+    await expect(titleInput).toHaveValue(title)
     const savedResponse = admin.waitForResponse(
       (value) =>
         new URL(value.url()).pathname === `/api/low-code/pages/${page.id}` &&
