@@ -2,8 +2,10 @@ import request from '@/api/request'
 import type {
   AuditCatalogueV1,
   AuditEventPageV1,
+  AuditEventPageV2,
   AuditEventRecordV1,
   AuditQueryV1,
+  AuditQueryV2,
 } from '@af-admin/contracts'
 
 export type AuditEventType = 'operation' | 'security' | 'permission' | 'export'
@@ -74,8 +76,24 @@ export const fetchAuditEvents = async (params: AuditEventQuery) => {
   return response.data
 }
 
-export const fetchAuditEventPage = async (params: AuditQueryV1) =>
-  (await request.get<AuditEventPageV1>('/audit/events', { params })).data
+export function fetchAuditEventPage(
+  params: AuditQueryV1
+): Promise<AuditEventPageV1>
+export function fetchAuditEventPage(
+  params: AuditQueryV2
+): Promise<AuditEventPageV2>
+export function fetchAuditEventPage(
+  params: AuditQueryV1 | AuditQueryV2
+): Promise<AuditEventPageV1 | AuditEventPageV2>
+export async function fetchAuditEventPage(
+  params: AuditQueryV1 | AuditQueryV2
+): Promise<AuditEventPageV1 | AuditEventPageV2> {
+  return (
+    await request.get<AuditEventPageV1 | AuditEventPageV2>('/audit/events', {
+      params,
+    })
+  ).data
+}
 
 export const fetchAuditCatalogue = async () =>
   (await request.get<AuditCatalogueV1>('/audit/catalogue')).data

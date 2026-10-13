@@ -5,12 +5,13 @@ import {
   AUDIT_EVENT_TYPES,
   AUDIT_RESULTS,
   parseAuditQuery,
+  parseAuditQueryV2,
   record,
   invalid,
 } from '@af-admin/contracts'
 import { authenticate } from './auth'
 import { authorizedTransaction, noFault } from './support'
-import { queryAuditEvents } from './audit-query'
+import { queryAuditEvents, queryAuditEventsV2 } from './audit-query'
 import { auditCatalogue } from './audit-policy'
 import type { FastifyInstance } from 'fastify'
 import type { Pool } from 'pg'
@@ -37,6 +38,10 @@ export const auditHttpQuery = (input: unknown) => {
   const old = Object.hasOwn(query, 'dateRange')
   const brackets = Object.hasOwn(query, 'dateRange[]')
   if (old && brackets) invalid('dateRange', '日期参数存在歧义')
+  if (query.version === '2' || query.version === 2) {
+    if (old || brackets) invalid('dateRange', '查询v2必须使用独立日期参数')
+    return parseAuditQueryV2(query)
+  }
   if (!old && !brackets) return parseAuditQuery(query)
   if (Object.hasOwn(query, 'from') || Object.hasOwn(query, 'to'))
     invalid('dateRange', '不能混用旧日期和独立日期参数')
@@ -76,7 +81,12 @@ export const registerAudit = (
       actor,
       AUDIT_PERMISSIONS.read,
       async (db, current) =>
-        ok(await queryAuditEvents(db, current, query), request.id)
+        ok(
+          await (query.version === 2
+            ? queryAuditEventsV2(db, current, query)
+            : queryAuditEvents(db, current, query)),
+          request.id
+        )
     )
   })
   server.get('/api/audit/catalogue', async (request) => {

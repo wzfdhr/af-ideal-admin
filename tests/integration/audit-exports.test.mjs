@@ -1198,6 +1198,7 @@ test('actual authenticated login facts with leading dash/underscore opaque IDs c
 
 test('fresh platform demo initialization grants audit exports to the exact synthetic admins with one transactional fact and no employee grant', async () => {
   const codes = Object.values(contracts.AUDIT_EXPORT_PERMISSIONS)
+  const manage = contracts.AUDIT_RETENTION_PERMISSIONS.manage
   // The initializer also establishes earlier platform demo capabilities. Keep
   // those fixture-only effects out of later files sharing this disposable DB.
   const membershipBaseline = (
@@ -1222,6 +1223,13 @@ test('fresh platform demo initialization grants audit exports to the exact synth
       )
     ).rows[0].count
   )
+  const retentionFactsBefore = Number(
+    (
+      await pool.query(
+        "SELECT count(*) FROM audit_events WHERE module='system' AND action='demo.audit-retention-initialize'"
+      )
+    ).rows[0].count
+  )
   try {
     for (const member of admins)
       await pool.query(
@@ -1230,7 +1238,9 @@ test('fresh platform demo initialization grants audit exports to the exact synth
           member.tenant_id,
           member.user_id,
           JSON.stringify(
-            member.permissions.filter((code) => !codes.includes(code))
+            member.permissions.filter(
+              (code) => !codes.includes(code) && code !== manage
+            )
           ),
         ]
       )
@@ -1246,6 +1256,7 @@ test('fresh platform demo initialization grants audit exports to the exact synth
         )
       ).rows[0]
       assert.ok(codes.every((code) => current.permissions.includes(code)))
+      assert.ok(current.permissions.includes(manage))
       assert.ok(
         member.permissions.every((code) => current.permissions.includes(code))
       )
@@ -1282,6 +1293,21 @@ test('fresh platform demo initialization grants audit exports to the exact synth
       assert.ok(Number.isSafeInteger(fact.detail.revision))
     })
     await demo.initializePlatformDemo(pool)
+    const retentionFacts = (
+      await pool.query(
+        "SELECT tenant_id,actor_id,target_type,target_id,detail FROM audit_events WHERE module='system' AND action='demo.audit-retention-initialize' ORDER BY created_at,id"
+      )
+    ).rows
+    assert.equal(retentionFacts.length, retentionFactsBefore + 2)
+    retentionFacts.slice(retentionFactsBefore).forEach((row) => {
+      assert.equal(row.actor_id, null)
+      assert.equal(row.target_type, 'membership')
+      assert.equal(
+        row.target_id,
+        row.tenant_id === 'tenant-a' ? 'a-admin' : 'b-admin'
+      )
+      assert.equal(row.detail.addedCount, 1)
+    })
     assert.equal(
       Number(
         (

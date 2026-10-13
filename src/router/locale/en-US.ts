@@ -47,6 +47,7 @@ export default {
   'menu.audit': 'Audit center',
   'menu.audit.logs': 'Audit logs',
   'menu.audit.exports': 'Audit exports',
+  'menu.audit.retention': 'Audit archive and retention',
   'menu.tenant': 'Tenants',
   'menu.tenant.center': 'Tenant center',
   'menu.resource': 'Resource center',

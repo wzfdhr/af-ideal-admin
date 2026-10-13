@@ -14,6 +14,7 @@ interface AuditRule {
     | 'message'
     | 'timer'
     | 'audit-export'
+    | 'audit-archive'
     | 'membership'
 }
 const rules: AuditRule[] = []
@@ -59,6 +60,41 @@ register(
   { revision: 'integer', addedCount: 'integer' },
   'permission',
   'membership'
+)
+register(
+  'system',
+  ['demo.audit-retention-initialize'],
+  { revision: 'integer', addedCount: 'integer' },
+  'permission',
+  'membership'
+)
+register('audit-retention', ['policy.updated'], {}, 'permission')
+register(
+  'audit-retention',
+  ['policy.capture-failed'],
+  { code: 'code', policyRevision: 'integer' },
+  'operation',
+  'membership',
+  true
+)
+register(
+  'audit-retention',
+  [
+    'run.created',
+    'run.completed',
+    'run.cancel',
+    'run.retry',
+    'run.blocked',
+    'batch.claimed',
+    'batch.completed',
+    'batch.failed',
+    'batch.infected',
+    'artifact.downloaded',
+    'reservation.expired',
+  ],
+  { code: 'code', attempt: 'integer', ordinal: 'integer' },
+  'export',
+  'audit-archive'
 )
 register(
   'system',
@@ -374,6 +410,7 @@ const moduleLabels: Record<string, string> = {
   'report': '真实报表',
   'report-export': '报表导出',
   'audit-export': '审计导出',
+  'audit-retention': '审计归档与保留',
   'report-schedule': '报表调度',
   'data-screen': '真实大屏',
   'messaging': '消息治理',

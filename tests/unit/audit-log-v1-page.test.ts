@@ -8,9 +8,11 @@ import { ApiRequestError } from '@/api/request-client'
 import useUserStore from '@/store/modules/user'
 import type {
   AuditCatalogueV1,
+  AuditEventPageV2,
   AuditEventPageV1,
   AuditEventRecordV1,
   AuditQueryV1,
+  AuditQueryV2,
 } from '@af-admin/contracts'
 import type { Component } from 'vue'
 import type { RouteLocationNormalizedLoaded } from 'vue-router'
@@ -51,6 +53,15 @@ const query = (overrides: Partial<AuditQueryV1> = {}): AuditQueryV1 => ({
   timeZone: 'Asia/Shanghai',
   ...overrides,
 })
+const queryV2 = (
+  archiveState: AuditQueryV2['archiveState'],
+  overrides: Partial<Omit<AuditQueryV2, 'version' | 'archiveState'>> = {}
+): AuditQueryV2 => ({
+  ...query(overrides),
+  ...overrides,
+  version: 2,
+  archiveState,
+})
 const event = (
   id: string,
   overrides: Partial<AuditEventRecordV1> = {}
@@ -77,6 +88,21 @@ const page = (
   total = list.length
 ): AuditEventPageV1 => ({
   version: 1,
+  source: 'server',
+  projectionVersion: 1,
+  query: applied,
+  queriedAt: '2026-10-13T10:00:01.000Z',
+  list,
+  total,
+  current: applied.current,
+  pageSize: applied.pageSize,
+})
+const pageV2 = (
+  applied: AuditQueryV2,
+  list: AuditEventRecordV1[] = [event('one')],
+  total = list.length
+): AuditEventPageV2 => ({
+  version: 2,
   source: 'server',
   projectionVersion: 1,
   query: applied,
@@ -126,8 +152,9 @@ describe('reference audit v1 page', () => {
     localStorage.setItem('token', 'audit-token')
     localStorage.setItem('userId', 'auditor-1')
     api.fetchAuditCatalogue.mockResolvedValue(catalogue)
-    api.fetchAuditEventPage.mockImplementation(async (value: AuditQueryV1) =>
-      page(value)
+    api.fetchAuditEventPage.mockImplementation(
+      async (value: AuditQueryV1 | AuditQueryV2) =>
+        value.version === 2 ? pageV2(value) : page(value)
     )
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
@@ -224,8 +251,100 @@ describe('reference audit v1 page', () => {
     wrapper.unmount()
   })
 
+  it('restores explicit v2 archive state and submits archived or hot as raw v2 params', async () => {
+    const restored = await mountPage(
+      '/audit/logs?archiveState=hot&timeZone=Asia%2FShanghai'
+    )
+    expect(api.fetchAuditEventPage).toHaveBeenCalledWith(queryV2('hot'))
+    expect(
+      (
+        restored.wrapper.get('[data-testid="audit-archive-state"]')
+          .element as HTMLSelectElement
+      ).value
+    ).toBe('hot')
+    expect(restored.router.currentRoute.value.query.version).toBe('2')
+    expect(restored.router.currentRoute.value.query.archiveState).toBe('hot')
+    api.fetchAuditEventPage.mockClear()
+    await restored.wrapper.get('[data-testid="audit-refresh"]').trigger('click')
+    await flushPromises()
+    expect(api.fetchAuditEventPage).toHaveBeenLastCalledWith(queryV2('hot'))
+    restored.wrapper.unmount()
+
+    api.fetchAuditEventPage.mockClear()
+    const explicitAll = await mountPage(
+      '/audit/logs?version=2&archiveState=all&timeZone=Asia%2FShanghai'
+    )
+    expect(api.fetchAuditEventPage).toHaveBeenLastCalledWith(queryV2('all'))
+    explicitAll.wrapper.unmount()
+
+    api.fetchAuditEventPage.mockClear()
+    const submitted = await mountPage()
+    expect(api.fetchAuditEventPage).toHaveBeenLastCalledWith(query())
+    await submitted.wrapper
+      .get('[data-testid="audit-archive-state"]')
+      .setValue('archived')
+    await submitted.wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(api.fetchAuditEventPage).toHaveBeenLastCalledWith(
+      queryV2('archived')
+    )
+    expect(submitted.router.currentRoute.value.query.version).toBe('2')
+    expect(submitted.router.currentRoute.value.query.archiveState).toBe(
+      'archived'
+    )
+    submitted.wrapper.unmount()
+  })
+
+  it('keeps an absent archive state on the canonical v1 request and clears facts when a v2 query fails', async () => {
+    const { wrapper, router } = await mountPage('/audit/logs?module=workflow')
+    expect(api.fetchAuditEventPage).toHaveBeenLastCalledWith(
+      query({ module: 'workflow' })
+    )
+    expect(router.currentRoute.value.query).not.toHaveProperty('archiveState')
+    expect(wrapper.text()).toContain('trace-one')
+
+    api.fetchAuditEventPage.mockRejectedValueOnce(
+      new ApiRequestError({
+        kind: 'business',
+        message: '归档查询暂不可用',
+        displayMessage: '归档查询暂不可用',
+        httpStatus: 422,
+        errors: { archiveState: ['暂不可用'] },
+      })
+    )
+    await wrapper.get('[data-testid="audit-archive-state"]').setValue('hot')
+    await wrapper.get('form').trigger('submit')
+    await flushPromises()
+    expect(api.fetchAuditEventPage).toHaveBeenLastCalledWith(
+      queryV2('hot', { module: 'workflow' })
+    )
+    expect(wrapper.get('[data-testid="audit-error"]').text()).toContain(
+      '失败字段：archiveState'
+    )
+    expect(wrapper.findAll('tbody tr')).toHaveLength(0)
+    expect(
+      (
+        wrapper.get('[data-testid="audit-archive-state"]')
+          .element as HTMLSelectElement
+      ).value
+    ).toBe('hot')
+    wrapper.unmount()
+  })
+
   it.each([
     ['/audit/logs?targetId=record%3Aone&version=2', '审计查询仅支持v1'],
+    [
+      '/audit/logs?archiveState=cold&version=2',
+      '归档筛选仅支持all、hot或archived',
+    ],
+    [
+      '/audit/logs?archiveState=hot&version=3',
+      '归档状态检索必须明确使用查询v2',
+    ],
+    [
+      '/audit/logs?archiveState=hot&dateRange=2026-10-01&version=2',
+      'URL包含未知审计参数 dateRange',
+    ],
     ['/audit/logs?from=2026-02-30', '真实YYYY-MM-DD'],
     [
       '/audit/logs?targetId=record%3Aone&targetId=record%3Atwo',

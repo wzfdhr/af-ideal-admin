@@ -3,8 +3,10 @@ import {
   AUDIT_PROJECTION_VERSION,
   AUDIT_EXPORT_MAX_ROWS,
   AUDIT_EXPORT_MAX_SNAPSHOT_BYTES,
+  AUDIT_ARCHIVE_MAX_CANDIDATES,
   DomainError,
   parseAuditQuery,
+  parseAuditQueryV2,
 } from '@af-admin/contracts'
 import { requirePermission } from '@af-admin/workflow-core'
 import { one, rows, contentCanonical } from './support'
@@ -17,6 +19,10 @@ import type {
   AuditEventType,
   AuditResult,
   AuditExportSnapshotV1,
+  AuditArchiveCandidateV1,
+  AuditArchiveState,
+  AuditQueryV2,
+  AuditEventPageV2,
 } from '@af-admin/contracts'
 import type { Database } from './support'
 import type { Actor } from './auth'
@@ -64,14 +70,37 @@ const dto = (row: ProjectedRow): AuditEventRecordV1 => {
 }
 
 /** Actor/field projection, filtering, total and page share the same PostgreSQL statement snapshot. */
-const runAuditQuery = async (
+const runAuditStatement = async <T = ProjectedRow>(
   db: Database,
   actor: Actor,
   query: AuditQueryV1,
-  internal?: { eventIds?: readonly string[]; capture: boolean }
-): Promise<AuditEventPageV1> => {
+  internal?: {
+    eventIds?: readonly string[]
+    capture: boolean
+    archiveManifest?: boolean
+    archiveState?: AuditArchiveState
+  }
+): Promise<{ queried_at: Date; total: string; items: T[] }> => {
+  const matchingSource = internal?.archiveManifest ? 'bounded' : 'matching'
+  let limit = query.pageSize
+  if (internal?.capture) limit = AUDIT_EXPORT_MAX_ROWS + 1
+  if (internal?.archiveManifest) limit = AUDIT_ARCHIVE_MAX_CANDIDATES + 1
+  let archiveMembership = ''
+  if (internal?.archiveState === 'hot')
+    archiveMembership =
+      'AND NOT EXISTS (SELECT 1 FROM audit_archive_memberships am WHERE am.tenant_id=$1 AND am.event_id=projected.id)'
+  if (internal?.archiveState === 'archived')
+    archiveMembership =
+      'AND EXISTS (SELECT 1 FROM audit_archive_memberships am WHERE am.tenant_id=$1 AND am.event_id=projected.id)'
+  const selected = internal?.archiveManifest
+    ? `jsonb_build_object('eventId',page.id,'occurredAt',page.created_at,
+        'requiredVisibleFields',array_remove(ARRAY[
+          CASE WHEN page.operator_id IS NOT NULL THEN 'operator.id' END,
+          CASE WHEN page.operator_name IS NOT NULL THEN 'operator.name' END
+        ]::text[],NULL),'targetIdVisible',page.visible_target_id IS NOT NULL)`
+    : 'to_jsonb(page)'
   const result = one(
-    await rows<{ queried_at: Date; total: string; items: ProjectedRow[] }>(
+    await rows<{ queried_at: Date; total: string; items: T[] }>(
       db,
       `
     WITH policy AS (SELECT * FROM jsonb_to_recordset($12::jsonb) AS p(module text,action text,"eventType" text,"detailKeys" text[],failure boolean,"ownerKind" text)),
@@ -84,6 +113,7 @@ const runAuditQuery = async (
           UNION ALL SELECT s.created_by FROM report_schedules s WHERE p."ownerKind"='schedule' AND e.target_type='report-schedule' AND s.tenant_id=e.tenant_id AND s.id=e.target_id
           UNION ALL SELECT j.created_by FROM report_export_jobs j WHERE p."ownerKind"='export' AND e.target_type='report-export' AND j.tenant_id=e.tenant_id AND j.id=e.target_id
           UNION ALL SELECT j.created_by FROM audit_export_jobs j WHERE p."ownerKind"='audit-export' AND e.target_type='audit-export' AND j.tenant_id=e.tenant_id AND j.id=e.target_id
+          UNION ALL SELECT r.executor_id FROM audit_archive_runs r WHERE p."ownerKind"='audit-archive' AND e.target_type='audit-archive-run' AND r.tenant_id=e.tenant_id AND r.id=e.target_id
           UNION ALL SELECT m.user_id FROM memberships m WHERE p."ownerKind"='membership' AND e.target_type='membership' AND m.tenant_id=e.tenant_id AND m.user_id=e.target_id
           UNION ALL SELECT j.created_by FROM message_recipients r JOIN message_send_jobs j ON j.tenant_id=r.tenant_id AND j.id=r.job_id WHERE p."ownerKind"='message' AND e.target_type='message-recipient' AND r.tenant_id=e.tenant_id AND r.id=e.target_id
           UNION ALL SELECT r.applicant_id FROM workflow_timers t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id JOIN business_records r ON r.tenant_id=i.tenant_id AND r.id=i.request_id WHERE p."ownerKind"='timer' AND e.target_type='workflow-timer' AND t.tenant_id=e.tenant_id AND t.id=e.target_id
@@ -112,9 +142,14 @@ const runAuditQuery = async (
       SELECT * FROM projected WHERE ($5='' OR visible_target_id=$5 OR selected_detail->>'requestId'=$5 OR selected_detail->>'instanceId'=$5)
       AND ($6='' OR projected_result=$6) AND ($7='' OR event_type=$7)
       AND ($11='' OR operator_name ILIKE $13 ESCAPE '!')
-    ), page AS (SELECT * FROM matching ORDER BY created_at DESC,id LIMIT $14 OFFSET $15)
-    SELECT statement_timestamp() AS queried_at,(SELECT count(*) FROM matching) AS total,
-      COALESCE((SELECT jsonb_agg(to_jsonb(page) ORDER BY created_at DESC,id) FROM page),'[]'::jsonb) AS items`,
+      ${archiveMembership}
+    )${
+      internal?.archiveManifest
+        ? ', bounded AS MATERIALIZED (SELECT * FROM matching LIMIT $14)'
+        : ''
+    }, page AS (SELECT * FROM ${matchingSource} ORDER BY created_at DESC,id LIMIT $14 OFFSET $15)
+    SELECT statement_timestamp() AS queried_at,(SELECT count(*) FROM ${matchingSource}) AS total,
+      COALESCE((SELECT jsonb_agg(${selected} ORDER BY created_at DESC,id) FROM page),'[]'::jsonb) AS items`,
       [
         actor.tenantId,
         actor.userId,
@@ -129,12 +164,21 @@ const runAuditQuery = async (
         query.operatorName,
         JSON.stringify(auditPolicyRows),
         `%${query.operatorName.replace(/[!%_]/g, '!$&')}%`,
-        internal?.capture ? AUDIT_EXPORT_MAX_ROWS + 1 : query.pageSize,
+        limit,
         internal?.capture ? 0 : (query.current - 1) * query.pageSize,
         internal?.eventIds || null,
       ]
     )
   )
+  return result
+}
+const runAuditQuery = async (
+  db: Database,
+  actor: Actor,
+  query: AuditQueryV1,
+  internal?: { eventIds?: readonly string[]; capture: boolean }
+): Promise<AuditEventPageV1> => {
+  const result = await runAuditStatement(db, actor, query, internal)
   return {
     version: 1,
     source: 'server',
@@ -147,6 +191,7 @@ const runAuditQuery = async (
     list: result.items.map(dto),
   }
 }
+
 export const auditReadPermission = AUDIT_PERMISSIONS.read
 
 /** The HTTP reader retains its original bounded paging; capture options are server-only. */
@@ -155,6 +200,33 @@ export const queryAuditEvents = (
   actor: Actor,
   query: AuditQueryV1
 ) => runAuditQuery(db, actor, query)
+
+/** Explicit v2 filtering never changes historical v1 captures or selected-ID authorization rechecks. */
+export const queryAuditEventsV2 = async (
+  db: Database,
+  actor: Actor,
+  input: AuditQueryV2
+): Promise<AuditEventPageV2> => {
+  requirePermission(actor.permissions, AUDIT_PERMISSIONS.read)
+  const query = parseAuditQueryV2(input)
+  const { archiveState, ...filter } = query
+  const v1 = parseAuditQuery({ ...filter, version: 1 })
+  const result = await runAuditStatement(db, actor, v1, {
+    capture: false,
+    archiveState,
+  })
+  return {
+    version: 2,
+    source: 'server',
+    projectionVersion: AUDIT_PROJECTION_VERSION,
+    query,
+    queriedAt: result.queried_at.toISOString(),
+    current: query.current,
+    pageSize: query.pageSize,
+    total: Number(result.total),
+    list: result.items.map(dto),
+  }
+}
 /** Identity-filter text is metadata of the immutable capture principal, even when no facts matched. */
 export const assertAuditIdentityQueryAccess = async (
   db: Database,
@@ -178,6 +250,54 @@ export const assertAuditIdentityQueryAccess = async (
       'AUDIT_EXPORT_QUERY_METADATA_FORBIDDEN',
       '当前无审计查询身份元信息读取权限'
     )
+}
+/** One authorized statement fixes the full candidate manifest without capturing business values or silently truncating a run. */
+export const captureAuditArchiveCandidates = async (
+  db: Database,
+  actor: Actor,
+  input: AuditQueryV1
+): Promise<{
+  query: AuditQueryV1
+  queriedAt: string
+  dataCutoffAt: string
+  total: number
+  candidates: AuditArchiveCandidateV1[]
+}> => {
+  requirePermission(actor.permissions, AUDIT_PERMISSIONS.read)
+  const query = parseAuditQuery(input)
+  await assertAuditIdentityQueryAccess(db, actor, query)
+  const result = await runAuditStatement<
+    Omit<AuditArchiveCandidateV1, 'ordinal'>
+  >(db, actor, query, {
+    capture: true,
+    archiveManifest: true,
+    archiveState: 'hot',
+  })
+  const total = Number(result.total)
+  if (total > AUDIT_ARCHIVE_MAX_CANDIDATES)
+    throw new DomainError(
+      422,
+      'AUDIT_ARCHIVE_TOO_MANY_CANDIDATES',
+      '一次归档最多100000条候选事实，请缩小日期或筛选范围'
+    )
+  if (!Number.isSafeInteger(total) || total !== result.items.length)
+    throw new DomainError(
+      409,
+      'AUDIT_ARCHIVE_CAPTURE_INCOMPLETE',
+      '归档候选清单捕获不完整'
+    )
+  const queriedAt = result.queried_at.toISOString()
+  return {
+    query,
+    queriedAt,
+    dataCutoffAt: queriedAt,
+    total,
+    candidates: result.items.map((candidate, index) => ({
+      ...candidate,
+      ordinal: index + 1,
+      occurredAt: new Date(candidate.occurredAt).toISOString(),
+    })),
+  }
 }
 export const captureAuditEvents = async (
   db: Database,

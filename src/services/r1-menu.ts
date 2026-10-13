@@ -37,6 +37,12 @@ const pagePermissions: Record<string, string[]> = {
     'message:announcement:read',
   ],
   auditLogs: ['audit:read'],
+  auditRetention: [
+    'audit:retention:manage',
+    'audit:read',
+    'audit:export:create',
+    'audit:export:archive',
+  ],
   auditExportJobs: [
     'audit:export:list',
     'audit:export:create',
@@ -60,11 +66,11 @@ export const canVisitR1Page = (
   permissions: string[]
 ) => {
   const required = typeof name === 'string' ? pagePermissions[name] : undefined
-  return (
-    required !== undefined &&
-    (!required.length ||
-      required.some((code) => hasPermission(permissions, code)))
-  )
+  if (required === undefined) return false
+  if (!required.length) return true
+  return name === 'auditRetention'
+    ? required.every((code) => hasPermission(permissions, code))
+    : required.some((code) => hasPermission(permissions, code))
 }
 export const filterR1Menus = (
   nodes: MenuLikeNode[],

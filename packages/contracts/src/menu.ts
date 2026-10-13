@@ -211,6 +211,15 @@ export const createR1Menu = (permissions: string[]) => {
   const canUseAuditExports =
     permissions.includes('*') ||
     auditExportAccess.some((code) => permissions.includes(code))
+  const auditRetentionAccess = [
+    'audit:retention:manage',
+    'audit:read',
+    'audit:export:create',
+    'audit:export:archive',
+  ]
+  const canManageAuditRetention =
+    permissions.includes('*') ||
+    auditRetentionAccess.every((code) => permissions.includes(code))
   if (canReadAudit || canUseAuditExports)
     entries.push({
       path: '/audit',
@@ -243,6 +252,24 @@ export const createR1Menu = (permissions: string[]) => {
                   locale: 'menu.audit.exports',
                   order: 1,
                   access: { permissions: auditExportAccess },
+                },
+              },
+            ]
+          : []),
+        ...(canManageAuditRetention
+          ? [
+              {
+                path: 'retention',
+                name: 'auditRetention',
+                componentKey: 'AuditRetention',
+                meta: {
+                  requireAuth: true,
+                  locale: 'menu.audit.retention',
+                  order: 2,
+                  access: {
+                    permissions: auditRetentionAccess,
+                    mode: 'all' as const,
+                  },
                 },
               },
             ]

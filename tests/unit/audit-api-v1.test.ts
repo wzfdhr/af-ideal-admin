@@ -8,7 +8,9 @@ import {
 import type {
   AuditCatalogueV1,
   AuditEventPageV1,
+  AuditEventPageV2,
   AuditQueryV1,
+  AuditQueryV2,
 } from '@af-admin/contracts'
 
 const requestMock = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }))
@@ -39,6 +41,16 @@ const page: AuditEventPageV1 = {
   current: 3,
   pageSize: 50,
 }
+const queryV2: AuditQueryV2 = {
+  ...query,
+  version: 2,
+  archiveState: 'archived',
+}
+const pageV2: AuditEventPageV2 = {
+  ...page,
+  version: 2,
+  query: queryV2,
+}
 const catalogue: AuditCatalogueV1 = {
   version: 1,
   source: 'server',
@@ -60,6 +72,16 @@ describe('audit v1 api', () => {
     expect(requestMock.get).toHaveBeenCalledWith('/audit/events', {
       params: query,
     })
+  })
+
+  it('passes an explicit archive state as the closed v2 query without changing v1 callers', async () => {
+    requestMock.get.mockResolvedValueOnce({ data: pageV2 })
+    await expect(fetchAuditEventPage(queryV2)).resolves.toBe(pageV2)
+    expect(requestMock.get).toHaveBeenCalledWith('/audit/events', {
+      params: queryV2,
+    })
+    expect(query.version).toBe(1)
+    expect(query).not.toHaveProperty('archiveState')
   })
 
   it('loads only current-scope classification metadata from the catalogue endpoint', async () => {

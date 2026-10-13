@@ -13,6 +13,24 @@ const auditRoutes: AppRouteRecordRaw = {
   },
   children: [
     {
+      path: 'retention',
+      name: 'auditRetention',
+      component: () => import('@/views/audit/retention/index.vue'),
+      meta: {
+        locale: 'menu.audit.retention',
+        requireAuth: true,
+        access: {
+          permissions: [
+            'audit:retention:manage',
+            'audit:read',
+            'audit:export:create',
+            'audit:export:archive',
+          ],
+          mode: 'all',
+        },
+      },
+    },
+    {
       path: 'exports',
       name: 'auditExportJobs',
       component: () => import('@/views/audit/export-jobs/index.vue'),

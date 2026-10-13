@@ -69,6 +69,18 @@
         </select>
       </label>
       <label>
+        归档状态
+        <select
+          v-model="draftArchiveState"
+          data-testid="audit-archive-state"
+          @change="draftArchiveExplicit = true"
+        >
+          <option value="all">全部</option>
+          <option value="hot">未归档</option>
+          <option value="archived">已归档</option>
+        </select>
+      </label>
+      <label>
         对象 ID（精确）
         <input
           v-model="draft.targetId"
@@ -290,14 +302,19 @@ import {
   AUDIT_EVENT_TYPES,
   AUDIT_RESULTS,
   parseAuditQuery,
+  parseAuditQueryV2,
 } from '@af-admin/contracts'
 import type {
+  AuditArchiveState,
   AuditCatalogueV1,
   AuditEventRecordV1,
   AuditEventType,
   AuditQueryV1,
+  AuditQueryV2,
   AuditResult,
 } from '@af-admin/contracts'
+
+type AuditLogQuery = AuditQueryV1 | AuditQueryV2
 
 const route = useRoute()
 const router = useRouter()
@@ -324,6 +341,9 @@ const defaultQuery = (): AuditQueryV1 =>
   })
 const applied = reactive<AuditQueryV1>(defaultQuery())
 const draft = reactive<AuditQueryV1>(defaultQuery())
+const appliedArchiveState = ref<AuditArchiveState | null>(null)
+const draftArchiveState = ref<AuditArchiveState>('all')
+const draftArchiveExplicit = ref(false)
 const allowedRouteKeys = new Set([
   'version',
   'current',
@@ -337,6 +357,7 @@ const allowedRouteKeys = new Set([
   'from',
   'to',
   'timeZone',
+  'archiveState',
 ])
 const routeValue = (key: string, value: unknown) => {
   if (Array.isArray(value)) throw new Error(`URL参数 ${key} 不能重复`)
@@ -356,19 +377,36 @@ const rawRouteQuery = () => {
     ])
   )
 }
-const queryFromRoute = (): AuditQueryV1 => {
+const queryFromRoute = (): AuditLogQuery => {
   const raw = rawRouteQuery()
+  const explicitArchiveState = Object.prototype.hasOwnProperty.call(
+    route.query,
+    'archiveState'
+  )
+  if (explicitArchiveState)
+    return parseAuditQueryV2({
+      ...raw,
+      version: raw.version || 2,
+      current: raw.current || 1,
+      pageSize: raw.pageSize || 20,
+      timeZone: raw.timeZone || AUDIT_DEFAULT_TIME_ZONE,
+    })
+  const legacy = Object.fromEntries(
+    Object.entries(raw).filter(([key]) => key !== 'archiveState')
+  )
   return parseAuditQuery({
-    ...raw,
-    version: raw.version || 1,
-    current: raw.current || 1,
-    pageSize: raw.pageSize || 20,
-    timeZone: raw.timeZone || AUDIT_DEFAULT_TIME_ZONE,
+    ...legacy,
+    version: legacy.version || 1,
+    current: legacy.current || 1,
+    pageSize: legacy.pageSize || 20,
+    timeZone: legacy.timeZone || AUDIT_DEFAULT_TIME_ZONE,
   })
 }
 const preserveRouteInputs = () => {
   const fallback = defaultQuery()
   Object.assign(draft, fallback)
+  draftArchiveState.value = 'all'
+  draftArchiveExplicit.value = false
   allowedRouteKeys.forEach((key) => {
     const value = route.query[key]
     let preserved = ''
@@ -392,13 +430,62 @@ const preserveRouteInputs = () => {
     )
       Object.assign(draft, { [key]: preserved })
   })
+  const preservedArchiveState = route.query.archiveState
+  if (
+    typeof preservedArchiveState === 'string' &&
+    ['all', 'hot', 'archived'].includes(preservedArchiveState)
+  ) {
+    draftArchiveState.value = preservedArchiveState as AuditArchiveState
+    draftArchiveExplicit.value = true
+  }
 }
-const routeQuery = (query: AuditQueryV1) =>
+const routeQuery = (query: AuditLogQuery) =>
   Object.fromEntries(
     Object.entries(query)
       .filter(([, value]) => value !== '')
       .map(([key, value]) => [key, String(value)])
   )
+const legacyQuery = (query: AuditLogQuery): AuditQueryV1 =>
+  parseAuditQuery({
+    ...Object.fromEntries(
+      Object.entries(query).filter(([key]) => key !== 'archiveState')
+    ),
+    version: 1,
+  })
+const syncApplied = (query: AuditLogQuery) => {
+  Object.assign(applied, legacyQuery(query))
+  appliedArchiveState.value =
+    query.version === 2 ? query.archiveState || 'all' : null
+}
+const syncDraft = (query: AuditLogQuery) => {
+  Object.assign(draft, legacyQuery(query))
+  draftArchiveExplicit.value = query.version === 2
+  draftArchiveState.value =
+    query.version === 2 ? query.archiveState || 'all' : 'all'
+}
+const draftQuery = (overrides: Partial<AuditQueryV1> = {}): AuditLogQuery => {
+  if (draftArchiveExplicit.value)
+    return parseAuditQueryV2({
+      ...draft,
+      ...overrides,
+      version: 2,
+      archiveState: draftArchiveState.value,
+    })
+  return parseAuditQuery({ ...draft, ...overrides, version: 1 })
+}
+const currentAppliedQuery = (): AuditLogQuery => {
+  if (appliedArchiveState.value)
+    return parseAuditQueryV2({
+      ...applied,
+      version: 2,
+      archiveState: appliedArchiveState.value,
+    })
+  return parseAuditQuery({ ...applied, version: 1 })
+}
+const withCurrent = (query: AuditLogQuery, current: number): AuditLogQuery =>
+  query.version === 2
+    ? parseAuditQueryV2({ ...query, current })
+    : parseAuditQuery({ ...query, current })
 const identityKey = computed(() =>
   JSON.stringify({
     id: user.id || null,
@@ -479,13 +566,13 @@ const loadCatalogue = async () => {
     }
   }
 }
-const load = async (query: AuditQueryV1) => {
+const load = async (query: AuditLogQuery) => {
   const generation = ++queryGeneration
   const scope = tenantScope.snapshot()
   const token = getToken()
   const authUserId = getUserId()
   const storeIdentity = identityKey.value
-  Object.assign(applied, query)
+  syncApplied(query)
   loading.value = true
   error.value = ''
   rights.value = false
@@ -499,17 +586,22 @@ const load = async (query: AuditQueryV1) => {
       !sameIdentity(scope, token, authUserId, storeIdentity)
     )
       return
-    if (result.source !== 'server' || result.projectionVersion !== 1)
+    if (
+      result.source !== 'server' ||
+      result.projectionVersion !== 1 ||
+      result.version !== query.version
+    )
       throw new Error('审计服务返回了不受支持的事实投影')
     const maxPage = Math.max(1, Math.ceil(result.total / result.pageSize))
     if (query.current > maxPage) {
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      await navigate(parseAuditQuery({ ...query, current: maxPage }))
+      await navigate(withCurrent(query, maxPage))
       return
     }
     records.value = result.list
     total.value = result.total
-    Object.assign(applied, result.query, {
+    syncApplied({
+      ...result.query,
       current: result.current,
       pageSize: result.pageSize,
     })
@@ -533,7 +625,7 @@ const load = async (query: AuditQueryV1) => {
     if (generation === queryGeneration) loading.value = false
   }
 }
-const navigate = async (query: AuditQueryV1) => {
+const navigate = async (query: AuditLogQuery) => {
   const before = route.fullPath
   await router.replace({ query: routeQuery(query) })
   if (before === route.fullPath) await load(query)
@@ -542,7 +634,9 @@ const acceptRoute = () => {
   try {
     const query = queryFromRoute()
     routeInvalid.value = false
-    Object.assign(draft, query)
+    syncDraft(query)
+    if (query.version === 2 && route.query.version !== '2')
+      return navigate(query)
     return load(query)
   } catch (failure) {
     routeInvalid.value = true
@@ -559,7 +653,7 @@ const acceptRoute = () => {
 }
 const submit = async () => {
   try {
-    const query = parseAuditQuery({ ...draft, current: 1 })
+    const query = draftQuery({ current: 1 })
     error.value = ''
     failedFields.value = []
     await navigate(query)
@@ -569,11 +663,11 @@ const submit = async () => {
 }
 const reset = () => navigate(defaultQuery())
 const refresh = () =>
-  routeInvalid.value ? acceptRoute() : load(parseAuditQuery({ ...applied }))
+  routeInvalid.value ? acceptRoute() : load(currentAppliedQuery())
 const goPage = (current: number) =>
-  navigate(parseAuditQuery({ ...applied, current }))
+  navigate(withCurrent(currentAppliedQuery(), current))
 const changePageSize = () =>
-  navigate(parseAuditQuery({ ...draft, current: 1, pageSize: draft.pageSize }))
+  navigate(draftQuery({ current: 1, pageSize: draft.pageSize }))
 
 const operatorName = (record: AuditEventRecordV1) => {
   if (record.operator.name) return record.operator.name

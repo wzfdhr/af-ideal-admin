@@ -477,7 +477,9 @@ test('person-target aliases cannot bypass hidden operator IDs and anonymous fail
 
 test('strict shared query and positional legacy date bridge reject ambiguous or client-fact filters', async () => {
   for (const params of [
-    { version: 2 },
+    { version: 3 },
+    { version: 1, archiveState: 'hot' },
+    { version: 2, archiveState: 'future' },
     { pageSize: 101 },
     { current: '1e4' },
     { to: '2026-02-29' },
@@ -493,6 +495,7 @@ test('strict shared query and positional legacy date bridge reject ambiguous or 
     'dateRange=2026-01-01&dateRange=2026-01-02&dateRange=2026-01-03',
     'dateRange=&dateRange=2026-01-02&to=2026-01-03',
     'dateRange=&dateRange=2026-01-02&dateRange%5B%5D=2026-01-01&dateRange%5B%5D=2026-01-02',
+    'version=2&dateRange=&dateRange=2026-01-02',
   ])
     assert.equal((await call(`/audit/events?${tail}`)).status, 422)
   const endOnly = ok(
@@ -505,6 +508,14 @@ test('strict shared query and positional legacy date bridge reject ambiguous or 
   )
   assert.equal(fromOnly.query.from, '2026-03-08')
   assert.equal(fromOnly.query.to, '')
+  const v1 = ok(await query({ version: 1 }))
+  const v2 = ok(await query({ version: 2 }))
+  assert.equal(v1.version, 1)
+  assert.equal(v2.version, 2)
+  assert.equal(Object.hasOwn(v1.query, 'archiveState'), false)
+  assert.equal(Object.hasOwn(v2.query, 'archiveState'), false)
+  assert.deepEqual({ ...v2.query, version: 1 }, v1.query)
+  assert.equal(v2.total, v1.total)
 })
 
 test('inclusive natural dates use the selected IANA timezone across DST and keep single bounds on the correct side', async () => {

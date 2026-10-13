@@ -47,6 +47,7 @@ export default {
   'menu.audit': '审计中心',
   'menu.audit.logs': '审计日志',
   'menu.audit.exports': '审计导出',
+  'menu.audit.retention': '审计归档与保留',
   'menu.tenant': '多租户',
   'menu.tenant.center': '租户中心',
   'menu.resource': '资源中心',
