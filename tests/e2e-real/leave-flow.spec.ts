@@ -260,7 +260,7 @@ test('real production frontend supports saved drafts, two reviewers, result noti
     await login(first, 'a-manager-1')
     const detailPath = new URL(url).pathname
     const firstTasks = waitForTodoPage(first, 1, 10)
-    await first.goto('/Scalability/workflowCenter')
+    await first.getByRole('link', { name: '查看更多', exact: true }).click()
     await expect(first).toHaveURL(/\/Scalability\/workflowCenter$/)
     const taskList = first.getByTestId('leave-runtime')
     await expect(taskList).toBeVisible()
