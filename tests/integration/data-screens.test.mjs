@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict'
 import { randomUUID, createHash } from 'node:crypto'
+import { spawn } from 'node:child_process'
+import { once } from 'node:events'
+import { fileURLToPath } from 'node:url'
 import { before, after, test } from 'node:test'
 import db from '../../services/reference-api/dist/database.js'
 import migration from '../../services/reference-api/dist/migrate.js'
@@ -14,6 +17,7 @@ const tokens = new Map()
 const passwords = new Map()
 const scopedUsers = []
 const scopedRoles = []
+const apiChildren = new Set()
 let server,
   failure = '',
   originals = [],
@@ -49,6 +53,9 @@ before(async () => {
   await server.ready()
 })
 after(async () => {
+  const stoppedChildren = await Promise.allSettled(
+    Array.from(apiChildren).map((child) => stopApiChild(child))
+  )
   if (server) await server.close()
   if (isolated)
     for (const row of originals)
@@ -67,6 +74,10 @@ after(async () => {
     )
   }
   await pool.end()
+  const stopFailure = stoppedChildren.find(
+    (result) => result.status === 'rejected'
+  )
+  if (stopFailure) throw stopFailure.reason
 })
 const login = async (user) => {
   if (tokens.has(user)) return tokens.get(user)
@@ -1177,6 +1188,227 @@ test('screen release digest binds exact canonical bytes and rejects forged SQL p
     1
   )
   assert.equal(ok(await run(screen)).sources.length, 3)
+})
+
+const stopApiChild = async (child, signal = 'SIGTERM') => {
+  if (!apiChildren.has(child)) return [child.exitCode, child.signalCode]
+  if (!child.pid) {
+    apiChildren.delete(child)
+    return [child.exitCode, child.signalCode]
+  }
+  if (child.exitCode !== null || child.signalCode !== null) {
+    apiChildren.delete(child)
+    return [child.exitCode, child.signalCode]
+  }
+  const exited = once(child, 'exit')
+  const force = setTimeout(() => {
+    if (child.exitCode === null && child.signalCode === null)
+      child.kill('SIGKILL')
+  }, 5000)
+  let deadline
+  try {
+    child.kill(signal)
+    const outcome = await Promise.race([
+      exited,
+      new Promise((_, reject) => {
+        deadline = setTimeout(
+          () => reject(new Error('Tracked isolated API process did not exit')),
+          10000
+        )
+      }),
+    ])
+    apiChildren.delete(child)
+    return outcome
+  } finally {
+    clearTimeout(force)
+    clearTimeout(deadline)
+  }
+}
+const launchApiChild = async () => {
+  // The static program creates its own pool. Response logs are routed to stderr;
+  // stdout contains only the readiness address and never any environment/token.
+  const script = `const {createServer}=require('./services/reference-api/dist/index.js');
+    const ready=process.stdout.write.bind(process.stdout);
+    process.stdout.write=process.stderr.write.bind(process.stderr);
+    const app=createServer();
+    process.once('SIGTERM',()=>{app.close().catch(()=>{process.exitCode=1})});
+    app.listen({host:'127.0.0.1',port:0}).then(address=>ready(JSON.stringify({ready:true,address,pid:process.pid})+'\\n')).catch(()=>{process.stderr.write('Isolated screen API startup failed\\n');process.exitCode=1;app.close()});`
+  const child = spawn(process.execPath, ['-e', script], {
+    cwd: fileURLToPath(new URL('../..', import.meta.url)),
+    env: { ...process.env },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  })
+  apiChildren.add(child)
+  child.stderr.resume()
+  let buffer = '',
+    timer
+  try {
+    const address = await new Promise((resolve, reject) => {
+      timer = setTimeout(
+        () => reject(new Error('Isolated screen API readiness timed out')),
+        10000
+      )
+      child.once('error', () =>
+        reject(new Error('Isolated screen API failed to spawn'))
+      )
+      child.once('exit', () =>
+        reject(new Error('Isolated screen API exited before readiness'))
+      )
+      child.stdout.on('data', (chunk) => {
+        buffer += chunk.toString('utf8')
+        if (buffer.length > 4096) {
+          reject(new Error('Unexpected isolated API readiness output'))
+          return
+        }
+        const newline = buffer.indexOf('\n')
+        if (newline < 0) return
+        try {
+          const message = JSON.parse(buffer.slice(0, newline))
+          if (
+            message.ready !== true ||
+            message.pid !== child.pid ||
+            !/^http:\/\/127\.0\.0\.1:\d+$/.test(message.address)
+          )
+            throw new Error('Invalid readiness')
+          resolve(message.address)
+        } catch {
+          reject(new Error('Invalid isolated API readiness output'))
+        }
+      })
+    })
+    return { child, address }
+  } catch (error) {
+    await stopApiChild(child)
+    throw error
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+test('published layout, hashes and authorized real rows survive replacement of the actual API OS process', async () => {
+  const f = await fixture()
+  const ownRecord = await record(f.release)
+  await record(f.release, 'a-employee')
+  const screen = ok(await command(await create(f.draft), 'publish'))
+  const token = await login('a-admin'),
+    otherToken = await login('b-admin')
+  const http = async (address, path, body, otherTenant = false) => {
+    const response = await fetch(`${address}/api${path}`, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: {
+        'x-access-token': otherTenant ? otherToken : token,
+        'x-tenant-id': otherTenant ? 'tenant-b' : 'tenant-a',
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(10000),
+    })
+    return { status: response.status, ...(await response.json()) }
+  }
+  const stableRun = (result) => ({
+    ...result,
+    sources: result.sources.map(
+      ({ queriedAt, dataCutoffAt, result: data, ...source }) => ({
+        ...source,
+        result:
+          data &&
+          (({ queriedAt: queryTime, dataCutoffAt: cutoff, ...stable }) =>
+            stable)(data),
+      })
+    ),
+  })
+  const readPath = `/data-screens/definitions/${screen.id}`
+  const runPath = `${readPath}/run`
+  const runBody = { releaseId: screen.activeReleaseId }
+  const children = []
+  const permissions = (
+    await pool.query(
+      "SELECT permissions FROM memberships WHERE tenant_id='tenant-a' AND user_id='a-admin'"
+    )
+  ).rows[0].permissions
+  try {
+    const first = await launchApiChild()
+    children.push(first.child)
+    assert.ok(first.child.pid > 0)
+    const initial = ok(await http(first.address, readPath))
+    assert.deepEqual(initial, screen)
+    const firstRun = ok(await http(first.address, runPath, runBody))
+    for (const source of firstRun.sources) {
+      assert.equal(source.status, 'ready')
+      assert.equal(source.result.total, 1)
+      assert.deepEqual(
+        source.result.rows.map((row) => row.id),
+        [ownRecord.id]
+      )
+      assert.ok(source.queriedAt && source.dataCutoffAt)
+    }
+    const [, signal] = await stopApiChild(first.child, 'SIGKILL')
+    assert.equal(signal, 'SIGKILL')
+    assert.equal(first.child.signalCode, 'SIGKILL')
+    const second = await launchApiChild()
+    children.push(second.child)
+    assert.notEqual(second.child.pid, first.child.pid)
+    const reopened = ok(await http(second.address, readPath))
+    assert.deepEqual(reopened, initial)
+    assert.equal(reopened.activeReleaseId, screen.activeReleaseId)
+    assert.deepEqual(
+      reopened.versions.map((version) => ({
+        snapshot: version.snapshot,
+        hash: version.contentHash,
+        bindings: version.sourceBindings,
+      })),
+      initial.versions.map((version) => ({
+        snapshot: version.snapshot,
+        hash: version.contentHash,
+        bindings: version.sourceBindings,
+      }))
+    )
+    const resumed = ok(await http(second.address, runPath, runBody))
+    assert.deepEqual(stableRun(resumed), stableRun(firstRun))
+    assert.ok(
+      resumed.sources.every(
+        (source, index) =>
+          Date.parse(source.queriedAt) >=
+          Date.parse(firstRun.sources[index].queriedAt)
+      )
+    )
+    assert.equal(
+      (await http(second.address, readPath, undefined, true)).status,
+      404
+    )
+    assert.equal(
+      (await http(second.address, runPath, runBody, true)).status,
+      404
+    )
+    await pool.query(
+      "UPDATE memberships SET permissions=$1::jsonb WHERE tenant_id='tenant-a' AND user_id='a-admin'",
+      [
+        JSON.stringify(
+          permissions.filter((permission) => permission !== 'report:query')
+        ),
+      ]
+    )
+    const revoked = ok(await http(second.address, runPath, runBody))
+    assert.ok(
+      revoked.sources.every(
+        (source) =>
+          source.errorCode === 'permission-denied' &&
+          source.result === null &&
+          source.actualQuery === null &&
+          source.dataCutoffAt === null
+      )
+    )
+  } finally {
+    await pool.query(
+      "UPDATE memberships SET permissions=$1::jsonb WHERE tenant_id='tenant-a' AND user_id='a-admin'",
+      [JSON.stringify(permissions)]
+    )
+    const outcomes = await Promise.allSettled(
+      children.map((child) => stopApiChild(child))
+    )
+    const failed = outcomes.find((outcome) => outcome.status === 'rejected')
+    if (failed) throw failed.reason
+  }
 })
 
 // Keep this last: the deliberately invalid immutable release is confined to this
