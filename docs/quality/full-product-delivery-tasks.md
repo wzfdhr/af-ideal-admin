@@ -538,3 +538,19 @@
 - 首源为真实generic业务记录；将抽取record-access当前授权谓词，让本人/真实审核参与/抄送三条路径与撤权规则统一作用于明细和聚合。来源同租户release绑定、旧字段按原快照解释；应用管理/报告权限不扩大记录权，关键词/分组/排序/导出不得利用隐藏字段。
 - 文件字节可复用LocalObjectStore，但普通owner-only附件会绕过报表/字段撤权，必须增加专属制品授权或完整文件绑定，并扩展对象清理引用避免合法归档误删。实际export审计由服务端事务产生，原telemetry不当作导出事实；定时接收者不得下载发起者更宽范围文件。
 - 已开始 `packages/contracts/src/reporting.ts` 的闭合v1定义/查询契约，当前未提交、未接共享index/API/UI；独立临时目录编译和11项真实日历/时区/未知键/未来格式/字段表达式/分页/稀疏数组边界回归通过，证据 `test-results/full-product/reporting-20261013/contracts-scoped.log` 及源码摘要manifest。不能据此称真实报表已可查询。FP-025标进行中，FP-026/027仍未开始实现；下一步接共享契约、服务端当前授权查询及真实页面，再沿依赖推进导出和调度。
+
+### FP-025 真实配置、固定发布源及授权查询增量
+
+- 024新增报告草稿/控制版本、不可变发布版、固定来源复合FK/字段别名映射与当前记录授权函数。发布版须匹配实际草稿/revision、当前启用generic应用的有效发布版与真实source版本；active指针绑定同租户同报告，不改历史发布。001至023校验和保留，024在独立新库实际应用两次，后已用于原专属demo，禁止再改该文件校验和。
+- 记录详情与报表共用af_record_visible：本人当前业务读、当前审核能力及真实任务/转交历史、当前读/审核及真实copy事实三条路径保持，历史任务不加终态过滤，当前成员/用户/租户及权限复验。业务资料管理/报告权限不扩大源记录访问。普通消息不产生copy授权。
+- 真实配置API实现创建、保存重开、版本/幂等/并发、发布/比较及启停；治理使用当前历史创建者范围，query-only只读本租户发布库，不能取得私有草稿。sourceReleaseId/字段alias→rawUID/type固定，来源以后换版不重解释旧报告，当前首版明确只统计固定来源版。
+- 来源目录最初无分页LIMIT100使完整库中新建来源被遗漏，integration-first.log保留197通过/8失败；改正式current/pageSize/keyword/精确applicationId及同可见集合计数/分页，不改夹具名称凑前100。前端搜索/翻页保留已选源与字段，保存重开精确查源，query-only不猜active源。独立复核还确认旧版唯一审核参与不能借旧记录查看新源字段目录；修成同一release实际参与，新版只有真正生成新task后才准入，旧固定版仍可读。
+- applicant身份字段需独立字段能力及当前成员字段范围，业务字段需独立能力及当前成员行范围；不获准值在服务端先投影/标记hiddenFieldKeys，关键词和排序使用投影值，不能按隐藏原JSON筛出数量。未知字段/表达式/JSONPath/未来schema拒绝，decimal保留原字符串与数值排序，LIKE显式literal转义。明细/count/按IANA日历趋势/状态分布来自同一SQL快照，返回实际查询/截止时间及口径版本。
+- integration-paging.log最新207项数据库/API通过，其中10项报告覆盖原key/冲突/故障/撤权、来源/字段/角色范围、literal输入、固定旧版、正式分页、真实API两次替换；原197项R1/流程/消息/文件等保留。contracts-first.log为60契约/25领域；unit-first.log594前端单测，types-final全workspace类型及build-first完整构建通过，lint-final无错误/19警告（原17加2提升函数顺序）。纯文案调整的Prettier构建失败保留，修正后build-copy-repaired.log前端再次通过。
+- before-024.dump实际备份原专属demo，demo-migrate/demo-initialize仅应用该库并显式初始化合成账户权限；新API10890和前端4189运行，原R1 API11888/容器/卷保留且ready正常。无客户部署、正式tag或发布结论。真实浏览器及独立恢复仍需结果，目标环境/全主题容量/跨版本统计、真实文件导出/归档与周期调度仍开放，FP-025及整个Goal不标完成。
+
+- 目标真实浏览器首轮完成三视图/来源换版/字段撤权后发现停用catalogue误落Gov守卫返回403，browser-first-failure.log及四账户截图保留。修为有query能力时先明确REPORT_DISABLED409，不改数据授权；integration-disabled-final.log最终207项全部通过，browser-disabled-final.log加强实际catalogue/direct-query状态码后18.2秒通过，未删原停用文案、清空结果/日期保留断言。
+- 四账户实际UI保存重开、三个发布版本/趋势/分布/10+2明细、源升级v2不混旧v1、字段撤权/隐藏过滤/真实403、查询撤权路由拒绝、跨租户404、键盘来源Enter搜索与原R1 release/revision保持已通过。三张reporting-trend/distribution/detail-1280最终截图已检查并另存browser-target-final-evidence：实际数据只有1天，趋势为当天12条单点，分布草稿12条，不伪造历史趋势/销售数据。完整49条回归仍须结果，独立恢复脚本准备中，对应提交远端CI尚未运行。
+
+- full-browser.log完整49条真实浏览器通过，包含本次报告及原R1/应用/流程/消息/菜单/文件扫描/权限回归；mock-browser和smoke-browser各3通过。旧10888未运行代理错误仍只属于Mock边界，不当作真实API结果。lint-release保持0错误/19警告。当前需提交该实现并实际运行对应远端CI。
+- verify-reporting-recovery.mjs实际在明确预期本地专属库、API10890下创建合成设备源/真实draft业务记录及未发布报告，再用pg_export_snapshot一致性快照执行pg_dump/pg_restore。recovery-database.log及database-copy/report.json证明37表计数和24迁移校验和一致、原session保持；仅恢复库保存/发布/查询1条真实记录，12.34金额字符串及固定别名未丢，改名/停用/启用后原库原名/未发布/无恢复版保持。随机恢复库清理后才写成功报告。拒绝URL query/hash覆盖连接host，源库名须匹配明确预期，禁止原af_admin_r1库；未改其他源数据库。此是现有PostgreSQL内独立库恢复，不是新机器或完整文件bytes恢复。

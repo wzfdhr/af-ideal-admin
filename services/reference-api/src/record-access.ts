@@ -43,30 +43,14 @@ export const readRecordRow = async (
   )
 export const visibleRecord = async (db: Database, actor: Actor, id: string) => {
   const row = await readRecordRow(db, actor, id)
-  const prefix = row.record_kind === 'leave' ? 'leave' : 'business'
-  const owner =
-    row.applicant_id === actor.userId &&
-    hasPermission(actor.permissions, `${prefix}:read:self`)
-  const review = ['workflow:todo', 'workflow:approve', 'workflow:reject'].some(
-    (code) => hasPermission(actor.permissions, code)
+  const access = one(
+    await rows<{ visible: boolean }>(
+      db,
+      'SELECT af_record_visible($1,$2,$3) AS visible',
+      [actor.tenantId, actor.userId, id]
+    )
   )
-  const participated = review
-    ? await rows(
-        db,
-        'SELECT t.id FROM workflow_tasks t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id WHERE i.tenant_id=$1 AND i.request_id=$2 AND (t.assignee_id=$3 OR EXISTS(SELECT 1 FROM workflow_assignment_events e WHERE e.tenant_id=t.tenant_id AND e.instance_id=t.instance_id AND e.task_id=t.id AND (e.from_user_id=$3 OR e.to_user_id=$3))) LIMIT 1',
-        [actor.tenantId, id, actor.userId]
-      )
-    : []
-  const copied =
-    hasPermission(actor.permissions, `${prefix}:read:self`) || review
-      ? await rows(
-          db,
-          "SELECT id FROM outbox WHERE tenant_id=$1 AND recipient_id=$2 AND payload->>'requestId'=$3 AND payload->>'access'='copy' LIMIT 1",
-          [actor.tenantId, actor.userId, id]
-        )
-      : []
-  if (!owner && !participated.length && !copied.length)
-    throw new DomainError(404, 'NOT_FOUND', '资源不存在')
+  if (!access.visible) throw new DomainError(404, 'NOT_FOUND', '资源不存在')
   return row
 }
 export const businessDto = (row: RecordRow, actor: Actor): BusinessRecord => {

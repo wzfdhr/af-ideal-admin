@@ -468,6 +468,31 @@ export const createR1Menu = (permissions: string[]) => {
         },
       ],
     })
+  if (
+    permissions.includes('*') ||
+    ['report:list', 'report:query'].some((code) => permissions.includes(code))
+  )
+    entries.push({
+      path: '/visualization',
+      name: 'visualization',
+      componentKey: 'DefaultLayout',
+      meta: { requireAuth: true, locale: 'menu.visualization', order: 1 },
+      children: [
+        {
+          path: 'reportCenter',
+          name: 'reportCenter',
+          componentKey: 'ReportCenterPage',
+          meta: {
+            requireAuth: true,
+            locale: 'menu.visualization.reportCenter',
+            access: {
+              permissions: ['report:list', 'report:query'],
+              mode: 'any',
+            },
+          },
+        },
+      ],
+    })
   return entries
 }
 

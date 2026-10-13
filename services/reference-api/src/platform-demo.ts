@@ -16,6 +16,7 @@ import {
   LOW_CODE_PERMISSIONS,
   MENU_PERMISSIONS,
   MESSAGING_PERMISSIONS,
+  REPORTING_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -31,6 +32,16 @@ export const initializePlatformDemo = async (pool: Pool) => {
     throw new Error('A dedicated demo database is required')
   await seedDemo(pool)
   await transaction(pool, async (client) => {
+    await client.query(
+      "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT code) FROM jsonb_array_elements(permissions || $1::jsonb) code) WHERE user_id IN('a-employee','b-employee','a-manager-1','a-manager-2','b-manager-1','b-manager-2')",
+      [
+        JSON.stringify([
+          REPORTING_PERMISSIONS.query,
+          REPORTING_PERMISSIONS.fieldApplicant,
+          REPORTING_PERMISSIONS.fieldBusiness,
+        ]),
+      ]
+    )
     await client.query(
       "UPDATE memberships SET permissions=(SELECT jsonb_agg(DISTINCT code) FROM jsonb_array_elements(permissions || $1::jsonb) code) WHERE user_id IN('a-employee','b-employee','a-manager-1','a-manager-2','b-manager-1','b-manager-2')",
       [
@@ -78,6 +89,7 @@ export const initializePlatformDemo = async (pool: Pool) => {
           ...Object.values(LOW_CODE_PERMISSIONS),
           ...Object.values(MENU_PERMISSIONS),
           ...Object.values(MESSAGING_PERMISSIONS),
+          ...Object.values(REPORTING_PERMISSIONS),
         ]),
       ]
     )

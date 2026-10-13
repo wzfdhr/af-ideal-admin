@@ -1,4 +1,5 @@
 import { MESSAGING_PERMISSIONS } from './messaging'
+import { REPORTING_PERMISSIONS } from './reporting'
 
 export interface PermissionDefinition {
   code: string
@@ -6,6 +7,22 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  ...Object.entries(REPORTING_PERMISSIONS).map(([key, code]) => ({
+    code,
+    title: (
+      {
+        list: '查看报表配置',
+        create: '创建报表',
+        update: '编辑报表草稿',
+        publish: '发布报表快照',
+        disable: '启停报表',
+        query: '查询授权报表',
+        fieldApplicant: '读取报表申请人字段',
+        fieldBusiness: '读取报表业务字段',
+      } as Record<string, string>
+    )[key],
+    module: '真实报表',
+  })),
   ...Object.entries(MESSAGING_PERMISSIONS).map(([key, code]) => ({
     code,
     title: (

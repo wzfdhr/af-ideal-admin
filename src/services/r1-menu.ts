@@ -22,6 +22,7 @@ const pagePermissions: Record<string, string[]> = {
   leaveApplication: ['application:configure'],
   workflowCenter: ['workflow:todo', 'workflow:recover', 'workflow:timer:read'],
   messageCenter: ['message:list'],
+  reportCenter: ['report:list', 'report:query'],
   messageTemplates: [
     'message:template:list',
     'message:template:approve',

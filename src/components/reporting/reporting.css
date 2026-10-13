@@ -1,0 +1,216 @@
+.reporting-page {
+  min-height: 100%;
+  padding: 24px;
+  color: var(--color-text-1, #1d2129);
+  background: var(--color-fill-1, #f5f7fb);
+}
+.reporting-page h1 {
+  margin: 0;
+  font-size: 24px;
+}
+.reporting-page h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+}
+.reporting-page h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+.reporting-page header,
+.reporting-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.reporting-page header {
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.reporting-panel {
+  min-width: 0;
+  padding: 20px;
+  margin-bottom: 18px;
+  border: 1px solid var(--color-border-2, #e4e7ec);
+  border-radius: 8px;
+  background: var(--color-bg-2, #fff);
+}
+.reporting-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(320px, 2fr);
+  gap: 18px;
+}
+.reporting-form {
+  display: grid;
+  gap: 12px;
+}
+.reporting-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.reporting-page input,
+.reporting-page select {
+  box-sizing: border-box;
+  max-width: 100%;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-3, #cbd2dc);
+  border-radius: 5px;
+  background: var(--color-bg-2, #fff);
+  color: inherit;
+  font: inherit;
+}
+.reporting-page button {
+  min-height: 34px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-border-3, #cbd2dc);
+  border-radius: 5px;
+  background: var(--color-bg-2, #fff);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.reporting-page button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.reporting-page button:focus-visible,
+.reporting-page input:focus-visible,
+.reporting-page select:focus-visible {
+  outline: 3px solid #6b9bff;
+  outline-offset: 2px;
+}
+.reporting-page .reporting-primary {
+  color: #fff;
+  background: #165dff;
+  border-color: #165dff;
+}
+.reporting-page .reporting-check {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+.reporting-check input {
+  width: auto;
+}
+.reporting-page fieldset {
+  padding: 12px;
+  margin: 0;
+  border: 1px solid var(--color-border-2, #e4e7ec);
+  border-radius: 5px;
+}
+.reporting-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  max-height: 240px;
+  overflow: auto;
+  gap: 8px;
+}
+.reporting-page [role='alert'] {
+  color: var(--color-danger-6, #c23b32);
+  white-space: pre-wrap;
+}
+.reporting-page [role='status'] {
+  color: #175cd3;
+}
+.reporting-muted {
+  color: var(--color-text-3, #667085);
+  font-size: 13px;
+}
+.reporting-copy {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.reporting-list {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+}
+.reporting-list li,
+.reporting-record {
+  padding: 12px;
+  border: 1px solid var(--color-border-2, #e4e7ec);
+  border-radius: 5px;
+}
+.reporting-list button {
+  width: 100%;
+  text-align: left;
+}
+.reporting-selected {
+  border-color: #165dff !important;
+}
+.reporting-scroll {
+  overflow: auto;
+}
+.reporting-page table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 580px;
+}
+.reporting-page th,
+.reporting-page td {
+  padding: 10px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--color-border-2, #e4e7ec);
+}
+.reporting-metadata {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+}
+.reporting-metadata dt {
+  color: var(--color-text-3, #667085);
+}
+.reporting-metadata dd {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+}
+.reporting-pagination {
+  justify-content: center;
+  margin-top: 12px;
+}
+.reporting-chart {
+  width: 100%;
+  max-height: 280px;
+  background: var(--color-fill-1, #f5f7fb);
+  border-radius: 5px;
+}
+.reporting-bars {
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  padding: 0;
+}
+.reporting-bars li {
+  display: grid;
+  grid-template-columns: 80px 1fr 60px;
+  align-items: center;
+  gap: 10px;
+}
+.reporting-bar {
+  height: 18px;
+  background: #e9efff;
+  border-radius: 4px;
+}
+.reporting-bar span {
+  display: block;
+  height: 100%;
+  background: #165dff;
+  border-radius: inherit;
+}
+@media (max-width: 900px) {
+  .reporting-page {
+    padding: 16px;
+  }
+  .reporting-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .reporting-panel {
+    padding: 14px;
+  }
+}

@@ -1,10 +1,9 @@
 <template>
-  <main class="p-6 h-full w-full">
-    <s-navs :navs="['menu.visualization', 'menu.visualization.reportCenter']" />
-    <report-center class="mt-4" />
-  </main>
+  <RealReportCenter v-if="dataMode === 'reference'" />
+  <MockReportCenter v-else />
 </template>
-
 <script setup lang="ts">
-import ReportCenter from '@/components/report-center/index.vue'
+import RealReportCenter from '@/components/reporting/index.vue'
+import { dataMode } from '../../../../config/data-mode'
+import MockReportCenter from './mock.vue'
 </script>
