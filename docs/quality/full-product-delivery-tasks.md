@@ -42,7 +42,7 @@
 | FP-024 | 发送任务、重试去重、实时推送重鉴权、重启及发送审计 | FP-016/023 | 消息规划 | 进行中 |
 | FP-025 | 真实报表查询、字段口径/脱敏及趋势/分布/明细 | FP-006/010 | T-354 | 进行中 |
 | FP-026 | 异步真实导出、授权下载、进度/失败、归档/审计 | FP-021/025 | T-354/614 | 进行中 |
-| FP-027 | 可启停的定时报表、重启恢复、唯一执行及告警 | FP-016/026 | 报表规划 | 未开始 |
+| FP-027 | 可启停的定时报表、重启恢复、唯一执行及告警 | FP-016/026 | 报表规划 | 进行中 |
 | FP-028 | 大屏画布/布局快照/主题、保存重开、预览/发布/回滚 | FP-018/025 | T-353 | 未开始 |
 | FP-029 | 运营/销售/设备三套模板及真实刷新、过期/空/错误/全屏 | FP-028 | T-611 | 未开始 |
 | FP-030 | 授权/发布/文件/导出/业务事实审计及失败/trace 检索 | FP-005/024/026 | T-402/404 | 未开始 |
@@ -573,3 +573,14 @@
 - `before-025.dump` 为真实原专属 demo 备份，025 SHA256 `a5b8d384f833e13828d635c93582e01468fa5d272376cc3e1996c9bc88c3f192` 已应用后冻结，001 至 024 校验和保持。新 API10890/worker及前端4189可用，原 R1 API11888 仍 ready，原容器/卷未改。
 - `verify-report-export-recovery.mjs` 独立只读复核修正目录 realpath 别名和丢响应后晚提交清理屏障：源库/HTTP严格限定，fresh session 与实际源库绑定后才业务写入；源 worker 暂停，失败只禁用/取消本 run 资源并等命令 gate。实际 `export-recovery-first.log` 及 `test-results/full-product/report-exports-20261013/database-and-file-copy/report.json` 证明一致 pg_export_snapshot/pg_dump/pg_restore、63 全表计数/25 校验和、24 对象共 326225 bytes 校验恢复、原会话下载既有 CSV/XLSX，恢复库接续一个 queued 导出仅一次真实制品/完成事件/审计，12.34 与映射保留；目标独立改名/pubv2，原库保持原名/无目标版本，原 queued fixture 确认无目标效果后以 API 取消，目标库和 store 清理后才 verified。
 - 恢复报告明确 41 个既有演示库 stored_files 对象原本缺字节，`allPreexistingStoredFileBytesRecovered=false`，不伪造修复、不称恢复全部历史附件。此次为现有本地 PostgreSQL 中独立库及独立 store 恢复；全新机器/物理实例、长期容量、原生 Excel 客户端全兼容、兼容回退、外部条件和正式交付仍开放，FP-026 和完整 Goal 不勾全部完成。下一步提交该实现并实际对应 CI 后归档，再接 FP-027。
+
+### FP-026 实现提交与实际远端门禁
+
+- 干净实现 SHA `d44fe5cceb9bccb430a1ec8c003559f28b2ca5b4` 已推送开发分支，实际 [CI 38369201950](https://github.com/wzfdhr/af-ideal-admin/actions/runs/38369201950) headSha 精确匹配；verify/real-business 均 success。远端最终新生成规则全部 50 条真实浏览器、232 数据库/API、623 单测、66 契约/25 领域、Mock/smoke 各 3、类型/构建/lint实际通过，没有用旧生成规则本地全量结果代替。
+- 已下载 `test-results/full-product/reporting-20261013/ci-38369201950/real-business-evidence`，保存完整 export-workflow.log、最终 export-remote-ci.json 和 artifact 元数据；export-verification-manifest.json 保存对应实现 SHA、实际检查及日志摘要。仍只有 real-business-evidence artifact，frontend 空 artifact 不称为已下载。
+- 后续文档和 FP-027 开发不改此提交的证据；无正式 tag/合并/公开发布/客户部署结论，41 历史缺失对象和最终安全/新部署/回退/正式交付仍在全产品已知门禁内。完整 Goal 保持 active。
+
+### FP-027 闭合周期与收件权限实施启动
+
+- 已保存 `docs/architecture/full-product-report-scheduling-design.md`，明确日/周/月、HH:mm/IANA、月缺日跳过/DST gap 跳过与 fold 首次、前一自然期/当前期日期窗，以及 immutable rule/activation period/cursor/slot 事实。编辑/停用关闭旧期间，保留已经到期的旧版运行，不补停用区间或删历史。
+- 创建者与每个收件人的当前行/字段交集独立导出，专属 grant/current role/department 复验、通知唯一真实效果和失败/部分成功事实；不共享宽权限文件、不共享私有关键词、不发未配置外部邮件。当前只有未提交契约和纯日历实现，耐久后端/UI/026 迁移/真实调度尚在实现，不以该方案或 Mock 种子称运行成功。
