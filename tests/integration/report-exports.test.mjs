@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID, randomBytes, createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
-import { mkdtemp, rm, stat } from 'node:fs/promises'
+import { mkdtemp, rm, stat, utimes } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { before, after, test } from 'node:test'
@@ -17,6 +17,7 @@ import {
 } from '@af-admin/reference-api/dist/report-export-jobs.js'
 import { clamavScanner } from '@af-admin/reference-api/dist/file-scanner.js'
 import { LocalObjectStore } from '@af-admin/reference-api/dist/file-storage.js'
+import { cleanupFileObjects } from '@af-admin/reference-api/dist/file-jobs.js'
 import { contentHash } from '@af-admin/reference-api/dist/support.js'
 import { generateReportExport } from '@af-admin/reference-api/dist/report-export-generators.js'
 
@@ -859,6 +860,36 @@ test('archive expiry deletes actual bytes while immutable completed and scan fac
     (await content(completed, user)).businessCode,
     'REPORT_EXPORT_EXPIRED'
   )
+  // Reproduce a worker dying after the expiry status commit and before byte
+  // purge. A backup's artifact lock must also protect against generic orphan GC.
+  await pool.query(
+    "UPDATE report_export_artifacts SET status='expired',expired_at=now() WHERE tenant_id='tenant-a' AND job_id=$1",
+    [id]
+  )
+  await utimes(path.join(storageRoot, objectKey), new Date(0), new Date(0))
+  const backup = await pool.connect()
+  try {
+    await backup.query('BEGIN')
+    await backup.query(
+      "SELECT id FROM report_export_artifacts WHERE tenant_id='tenant-a' AND job_id=$1 FOR SHARE",
+      [id]
+    )
+    await cleanupFileObjects(pool, storageRoot)
+    const retained = await new LocalObjectStore(storageRoot).get(objectKey)
+    assert.equal(digest(retained), completed.artifact.sha256)
+    assert.equal(
+      (
+        await backup.query(
+          "SELECT purged_at FROM report_export_artifacts WHERE tenant_id='tenant-a' AND job_id=$1",
+          [id]
+        )
+      ).rows[0].purged_at,
+      null
+    )
+  } finally {
+    await backup.query('ROLLBACK')
+    backup.release()
+  }
   await expireReportExports(pool, { storageRoot })
   const expired = await detail(completed, user)
   assert.equal(expired.status, 'completed')
