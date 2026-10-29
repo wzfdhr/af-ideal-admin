@@ -22,6 +22,7 @@ import contracts from '@af-admin/contracts'
 const pool = db.createPool(),
   tokens = new Map(),
   passwords = new Map(),
+  loginIps = new Map(),
   members = [],
   roles = [],
   privateTenants = [],
@@ -198,9 +199,12 @@ const startArchiveChild = (run, { haltAfterWrite = false } = {}) => {
 }
 const login = async (user) => {
   if (tokens.has(user)) return tokens.get(user)
+  if (!loginIps.has(user))
+    loginIps.set(user, `10.20.0.${(loginIps.size % 240) + 1}`)
   const response = await server.inject({
     method: 'POST',
     url: '/api/user/login',
+    remoteAddress: loginIps.get(user),
     payload: { username: user, password: passwords.get(user) || user },
   })
   assert.equal(response.statusCode, 200, response.body)
