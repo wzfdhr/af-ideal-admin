@@ -70,6 +70,26 @@ register(
 )
 register('audit-retention', ['policy.updated'], {}, 'permission')
 register(
+  'system',
+  ['demo.tenant-brand-initialize'],
+  { revision: 'integer', addedCount: 'integer' },
+  'permission',
+  'membership'
+)
+register(
+  'tenant-branding',
+  ['draft.saved', 'applied'],
+  { revision: 'integer', draftRevision: 'integer', versionNumber: 'integer' },
+  'permission'
+)
+register(
+  'tenant-branding',
+  ['preferences.updated'],
+  { revision: 'integer' },
+  'operation',
+  'membership'
+)
+register(
   'audit-retention',
   ['policy.capture-failed'],
   { code: 'code', policyRevision: 'integer' },
@@ -411,6 +431,7 @@ const moduleLabels: Record<string, string> = {
   'report-export': '报表导出',
   'audit-export': '审计导出',
   'audit-retention': '审计归档与保留',
+  'tenant-branding': '租户品牌',
   'report-schedule': '报表调度',
   'data-screen': '真实大屏',
   'messaging': '消息治理',

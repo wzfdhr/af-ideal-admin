@@ -21,19 +21,26 @@ export const listStoredFiles = async (recordId?: string) =>
 export const uploadStoredFile = async (
   file: File,
   recordId?: string,
-  onProgress?: (completed: number) => void
+  onProgress?: (completed: number) => void,
+  operationGuard: () => boolean = () => true
 ) => {
+  const assertCurrent = () => {
+    if (!operationGuard()) throw new Error('文件上传身份或租户已变化')
+  }
+  assertCurrent()
   if (!file.size || file.size > FILE_MAX_SIZE)
     throw new Error('文件需为1字节至20MiB')
   const extension = file.name.split('.').slice(-1)[0].toLowerCase()
   const mimeType = FILE_TYPES[extension]
   if (!mimeType) throw new Error('文件类型不受支持')
   const bytes = await file.arrayBuffer()
+  assertCurrent()
   const sha256 = Array.from(
     new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
   )
     .map((value) => value.toString(16).padStart(2, '0'))
     .join('')
+  assertCurrent()
   const upload = (
     await request.post<{ id: string; revision: number }>(
       '/files/uploads',
@@ -42,34 +49,43 @@ export const uploadStoredFile = async (
     )
   ).data
   try {
+    assertCurrent()
     const parts = Array.from(
       { length: Math.ceil(file.size / FILE_CHUNK_SIZE) },
       (_, index) => index
     )
     const revision = await parts.reduce(async (previous, index) => {
       await previous
+      assertCurrent()
       const result = await request.put<{ revision: number }>(
         `/files/uploads/${upload.id}/parts/${index}`,
         bytes.slice(index * FILE_CHUNK_SIZE, (index + 1) * FILE_CHUNK_SIZE),
         { headers: { 'Content-Type': 'application/octet-stream' } }
       )
+      assertCurrent()
       onProgress?.(Math.min(file.size, (index + 1) * FILE_CHUNK_SIZE))
       return result.data.revision
     }, Promise.resolve(upload.revision))
-    return (
+    assertCurrent()
+    const completed = (
       await request.post<{ id: string }>(
         `/files/uploads/${upload.id}/complete`,
         { expectedRevision: revision },
         { headers: { 'Idempotency-Key': crypto.randomUUID() } }
       )
     ).data
+    assertCurrent()
+    return completed
   } catch (failure) {
+    if (!operationGuard()) throw failure
     try {
+      assertCurrent()
       const current = (
         await request.get<{ status: string; revision: number }>(
           `/files/uploads/${upload.id}`
         )
       ).data
+      assertCurrent()
       if (current.status === 'uploading')
         await request.post(
           `/files/uploads/${upload.id}/cancel`,

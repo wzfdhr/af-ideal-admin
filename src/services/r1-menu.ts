@@ -3,6 +3,7 @@ import type { MenuLikeNode } from './access'
 
 const pagePermissions: Record<string, string[]> = {
   workplace: [],
+  tenantBranding: [],
   lowCodeBuilder: ['low-code:page:list'],
   lowCodeRuntimePages: ['low-code:page:run'],
   lowCodeRuntime: ['low-code:page:run'],

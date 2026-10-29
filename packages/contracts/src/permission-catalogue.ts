@@ -3,6 +3,7 @@ import { REPORTING_PERMISSIONS } from './reporting'
 import { REPORT_EXPORT_PERMISSIONS } from './report-exports'
 import { REPORT_SCHEDULE_PERMISSIONS } from './report-schedules'
 import { DATA_SCREEN_PERMISSIONS } from './data-screens'
+import { TENANT_BRAND_PERMISSIONS } from './tenant-branding'
 import {
   AUDIT_EXPORT_PERMISSIONS,
   AUDIT_RETENTION_PERMISSIONS,
@@ -14,6 +15,11 @@ export interface PermissionDefinition {
   module: string
 }
 export const PLATFORM_PERMISSION_CATALOGUE: PermissionDefinition[] = [
+  {
+    code: TENANT_BRAND_PERMISSIONS.manage,
+    title: '管理租户品牌',
+    module: '租户品牌',
+  },
   ...Object.entries(AUDIT_EXPORT_PERMISSIONS).map(([key, code]) => ({
     code,
     title: (

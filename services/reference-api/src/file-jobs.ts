@@ -3,14 +3,18 @@ import { transaction } from './database'
 import { LocalObjectStore, fileDigest } from './file-storage'
 import { clamavScanner } from './file-scanner'
 import { audit, rows } from './support'
+import { validatedFileScanScope } from './file-scan-scope'
+import type { FileScanScope } from './file-scan-scope'
 import type { VirusScanner } from './file-scanner'
 import type { Pool } from 'pg'
 import type { Actor } from './auth'
 
 export const processFileScan = async (
   pool: Pool,
-  options: { storageRoot?: string; scanner?: VirusScanner } = {}
+  options: { storageRoot?: string; scanner?: VirusScanner } = {},
+  requestedScope: FileScanScope | undefined = undefined
 ) => {
+  const scope = await validatedFileScanScope(pool, requestedScope)
   const root = options.storageRoot || process.env.FILE_STORAGE_DIR
   if (!root) return false
   const claim = randomUUID()
@@ -25,7 +29,8 @@ export const processFileScan = async (
       attempts: number
     }>(
       client,
-      "SELECT * FROM stored_files WHERE (status IN ('scanning','scan-failed') AND next_attempt_at<=now() AND attempts<5) OR (status='processing' AND lease_until<=now() AND attempts<5) ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1"
+      "SELECT * FROM stored_files WHERE ((status IN ('scanning','scan-failed') AND next_attempt_at<=now() AND attempts<5) OR (status='processing' AND lease_until<=now() AND attempts<5)) AND ($1::text IS NULL OR (tenant_id=$1 AND id=ANY($2::text[]))) ORDER BY created_at,id FOR UPDATE SKIP LOCKED LIMIT 1",
+      [scope?.tenantId ?? null, scope?.fileIds ?? null]
     )
     if (!selected.length) return undefined
     const value = selected[0]

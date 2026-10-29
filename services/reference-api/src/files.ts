@@ -21,6 +21,7 @@ import {
 } from './support'
 import { visibleRecord } from './record-access'
 import { writableAttachment } from './file-policy'
+import { assertTenantBrandFileDeletable } from './tenant-branding'
 import { LocalObjectStore, fileDigest } from './file-storage'
 import type { Actor } from './auth'
 import type { Pool, PoolClient } from 'pg'
@@ -557,6 +558,7 @@ export const registerFiles = (
           if (file.record_id)
             await writableAttachment(client, current, file.record_id)
           assertRevision(file.revision, input.expectedRevision)
+          await assertTenantBrandFileDeletable(client, current.tenantId, id)
           await client.query(
             "UPDATE stored_files SET status='deleted',revision=revision+1,updated_at=now() WHERE tenant_id=$1 AND id=$2",
             [current.tenantId, id]

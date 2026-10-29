@@ -1,9 +1,9 @@
 <template>
-  <header>
+  <header class="brand-toolbar">
     <div class="left-sec">
-      <img src="@/assets/logo-temp.svg" />
+      <img :src="brandRuntime.logoUrl || defaultLogo" alt="当前租户品牌 Logo" />
       <h1>
-        AF-Ideal-Admin
+        {{ brandRuntime.brandName }}
         <span v-if="title">
           <a-divider :direction="'vertical'" />
           <span>{{ title }}</span>
@@ -41,8 +41,8 @@
             </a-button>
           </a-tooltip>
           <template #content>
-            <a-doption @click="changeLocale('zh-CN')">中文</a-doption>
-            <a-doption @click="changeLocale('en-US')">English</a-doption>
+            <a-doption @click="selectLocale('zh-CN')">中文</a-doption>
+            <a-doption @click="selectLocale('en-US')">English</a-doption>
           </template>
         </a-dropdown>
       </li>
@@ -86,8 +86,11 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store'
 import useLogout from '@/hooks/use-logout'
 import useLocale from '@/hooks/use-locale'
+import { tenantBrandRuntime } from '@/services/tenant-brand-runtime'
+import defaultLogo from '@/assets/logo-temp.svg'
 import MessageBox from './message-box/index.vue'
 import TenantSwitcher from './tenant-switcher.vue'
+import type { TenantBrandLocale } from '@af-admin/contracts'
 
 defineProps({
   title: {
@@ -99,6 +102,14 @@ const router = useRouter()
 
 const userStore = useUserStore()
 const { changeLocale } = useLocale()
+const brandRuntime = tenantBrandRuntime
+const selectLocale = async (locale: TenantBrandLocale) => {
+  try {
+    await changeLocale(locale)
+  } catch {
+    // The shared runtime exposes the actionable error and retry control.
+  }
+}
 const avatar = computed(() => userStore.avatar)
 const { logout } = useLogout()
 const handleLogout = () => {

@@ -49,7 +49,7 @@ before(async () => {
   ) {
     const sql = await readFile(
       new URL(
-        '../../services/reference-api/migrations/031_audit_event_archive.sql.pending',
+        '../../services/reference-api/migrations/031_audit_event_archive.sql',
         import.meta.url
       ),
       'utf8'

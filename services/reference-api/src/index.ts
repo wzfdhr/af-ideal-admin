@@ -10,6 +10,7 @@ import { registerDataScreens } from './data-screens'
 import { registerAudit } from './audit'
 import { registerAuditExports } from './audit-exports'
 import { registerAuditRetention } from './audit-retention'
+import { registerTenantBranding } from './tenant-branding'
 import { registerMenuResources } from './menu-resources'
 import { registerPackagePages } from './package-pages'
 import { registerLowCodeSources } from './low-code-sources'
@@ -162,6 +163,7 @@ export const createServer = (
   registerAudit(server, pool, fault)
   registerAuditExports(server, pool, fault, files)
   registerAuditRetention(server, pool, fault, files)
+  registerTenantBranding(server, pool, fault, files)
   if (!database)
     server.addHook('onClose', async () => {
       await pool.end()

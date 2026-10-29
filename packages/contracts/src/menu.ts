@@ -46,6 +46,20 @@ export const createR1Menu = (permissions: string[]) => {
   }))
   const entries: CapabilityMenuNode[] = [
     {
+      path: '/theme',
+      name: 'theme',
+      componentKey: 'DefaultLayout',
+      meta: { requireAuth: true, locale: 'menu.theme', order: 11 },
+      children: [
+        {
+          path: 'branding',
+          name: 'tenantBranding',
+          componentKey: 'TenantBranding',
+          meta: { requireAuth: true, locale: 'menu.theme.branding' },
+        },
+      ],
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       componentKey: 'DefaultLayout',

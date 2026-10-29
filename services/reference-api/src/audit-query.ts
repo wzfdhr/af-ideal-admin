@@ -104,8 +104,9 @@ const runAuditStatement = async <T = ProjectedRow>(
       db,
       `
     WITH policy AS (SELECT * FROM jsonb_to_recordset($12::jsonb) AS p(module text,action text,"eventType" text,"detailKeys" text[],failure boolean,"ownerKind" text)),
-    scoped AS MATERIALIZED (
+    source AS MATERIALIZED (
       SELECT e.*,p."eventType",p."detailKeys",p.failure
+        ,COALESCE(e.actor_id,background.owner_id) AS scope_user
       FROM audit_events e LEFT JOIN policy p ON p.module=e.module AND p.action=e.action
       LEFT JOIN LATERAL (
         SELECT CASE WHEN count(*)=1 THEN min(owner_id) END AS owner_id FROM (
@@ -119,17 +120,33 @@ const runAuditStatement = async <T = ProjectedRow>(
           UNION ALL SELECT r.applicant_id FROM workflow_timers t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id JOIN business_records r ON r.tenant_id=i.tenant_id AND r.id=i.request_id WHERE p."ownerKind"='timer' AND e.target_type='workflow-timer' AND t.tenant_id=e.tenant_id AND t.id=e.target_id
         ) owners
       ) background ON e.actor_id IS NULL
-      WHERE e.tenant_id=$1 AND af_historical_member_scope_visible($1,$2,'audit:read',COALESCE(e.actor_id,background.owner_id))
+      WHERE e.tenant_id=$1
         AND ($16::text[] IS NULL OR e.id=ANY($16::text[]))
         AND ($3='' OR e.module=$3) AND ($4='' OR e.trace_id=$4)
         AND (NULLIF($8,'')::date IS NULL OR e.created_at >= (NULLIF($8,'')::date::timestamp AT TIME ZONE $10))
         AND (NULLIF($9,'')::date IS NULL OR e.created_at < ((NULLIF($9,'')::date+1)::timestamp AT TIME ZONE $10))
+    ), scope AS MATERIALIZED (
+      SELECT candidates.scope_user,
+        af_historical_member_scope_visible($1,$2,'audit:read',candidates.scope_user) AS visible
+      FROM (SELECT DISTINCT scope_user FROM source WHERE scope_user IS NOT NULL) candidates
+    ), scoped AS MATERIALIZED (
+      SELECT source.*
+      FROM source JOIN scope ON scope.scope_user=source.scope_user AND scope.visible
+    ), actor_fields AS MATERIALIZED (
+      SELECT candidates.actor_id,
+        af_member_field_visible($1,$2,'audit:read',candidates.actor_id,'username') AS id_visible,
+        af_member_field_visible($1,$2,'audit:read',candidates.actor_id,'name') AS name_visible
+      FROM (SELECT DISTINCT actor_id FROM scoped WHERE actor_id IS NOT NULL) candidates
+    ), target_fields AS MATERIALIZED (
+      SELECT candidates.target_id,
+        af_member_field_visible($1,$2,'audit:read',candidates.target_id,'username') AS id_visible
+      FROM (SELECT DISTINCT target_id FROM scoped WHERE target_type IN ('user','membership','session') AND target_id IS NOT NULL) candidates
     ), projected AS MATERIALIZED (
       SELECT e.id,e.module,e.action,e.target_type,e.trace_id,e.created_at,
         COALESCE(e."eventType",'operation') AS event_type,CASE WHEN e.failure THEN 'failure' ELSE e.result END AS projected_result,
-        CASE WHEN e.actor_id IS NOT NULL AND af_member_field_visible($1,$2,'audit:read',e.actor_id,'username') THEN e.actor_id ELSE NULL END AS operator_id,
-        CASE WHEN e.actor_id IS NOT NULL AND af_member_field_visible($1,$2,'audit:read',e.actor_id,'name') THEN e.actor_name ELSE NULL END AS operator_name,
-        CASE WHEN e.target_type IN ('user','membership','session') AND NOT af_member_field_visible($1,$2,'audit:read',e.target_id,'username') THEN NULL ELSE e.target_id END AS visible_target_id,
+        CASE WHEN e.actor_id IS NOT NULL AND actor.id_visible THEN e.actor_id ELSE NULL END AS operator_id,
+        CASE WHEN e.actor_id IS NOT NULL AND actor.name_visible THEN e.actor_name ELSE NULL END AS operator_name,
+        CASE WHEN e.target_type IN ('user','membership','session') AND NOT target.id_visible THEN NULL ELSE e.target_id END AS visible_target_id,
         COALESCE((SELECT jsonb_object_agg(key,e.detail->key) FROM unnest(COALESCE(e."detailKeys",ARRAY[]::text[])) key
           WHERE e.detail ? key AND (key NOT IN ('requestId','instanceId') OR
             EXISTS(SELECT 1 FROM workflow_tasks t JOIN workflow_instances i ON i.tenant_id=t.tenant_id AND i.id=t.instance_id
@@ -138,6 +155,8 @@ const runAuditStatement = async <T = ProjectedRow>(
             OR EXISTS(SELECT 1 FROM workflow_timers t WHERE e.module='workflow' AND e.target_type='workflow-timer' AND t.tenant_id=e.tenant_id AND t.id=e.target_id AND key='instanceId' AND e.detail->>key=t.instance_id)
           )), '{}'::jsonb) AS selected_detail
       FROM scoped e
+      LEFT JOIN actor_fields actor ON actor.actor_id=e.actor_id
+      LEFT JOIN target_fields target ON target.target_id=e.target_id
     ), matching AS MATERIALIZED (
       SELECT * FROM projected WHERE ($5='' OR visible_target_id=$5 OR selected_detail->>'requestId'=$5 OR selected_detail->>'instanceId'=$5)
       AND ($6='' OR projected_result=$6) AND ($7='' OR event_type=$7)

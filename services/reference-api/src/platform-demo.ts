@@ -23,6 +23,7 @@ import {
   DATA_SCREEN_PERMISSIONS,
   AUDIT_EXPORT_PERMISSIONS,
   AUDIT_RETENTION_PERMISSIONS,
+  TENANT_BRAND_PERMISSIONS,
 } from '@af-admin/contracts'
 import { createPool, transaction } from './database'
 import { seedDemo } from './seed'
@@ -57,6 +58,10 @@ export const initializePlatformDemo = async (pool: Pool) => {
           {
             codes: Object.values(AUDIT_RETENTION_PERMISSIONS),
             action: 'demo.audit-retention-initialize',
+          },
+          {
+            codes: Object.values(TENANT_BRAND_PERMISSIONS),
+            action: 'demo.tenant-brand-initialize',
           },
         ],
         async (group) => {

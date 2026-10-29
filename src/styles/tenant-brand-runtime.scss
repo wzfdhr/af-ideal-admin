@@ -1,0 +1,40 @@
+body.tenant-brand-compact {
+  .brand-toolbar {
+    min-height: 52px;
+    height: 52px;
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .brand-toolbar .right-sec li {
+    margin-left: 14px;
+  }
+
+  .arco-form-item {
+    margin-bottom: 12px;
+  }
+
+  .arco-table-th,
+  .arco-table-td {
+    padding-top: 7px;
+    padding-bottom: 7px;
+  }
+
+  .arco-input-wrapper,
+  .arco-select-view-single,
+  .arco-btn {
+    min-height: 30px;
+  }
+}
+
+body[arco-theme='dark'] .brand-toolbar {
+  color: var(--color-text-1);
+  border-color: var(--color-border-2);
+  background: var(--color-bg-2);
+}
+
+body[arco-theme='dark'] .brand-toolbar .btn {
+  color: var(--color-text-2);
+  border-color: var(--color-border-2);
+  background: var(--color-bg-3);
+}

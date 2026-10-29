@@ -1,4 +1,5 @@
 import { createI18n } from 'vue-i18n'
+import { dataMode } from '../../config/data-mode'
 import zh from './zh-CN'
 import en from './en-US'
 
@@ -7,7 +8,8 @@ export const localeOptions = [
   { label: 'English', value: 'en-US' },
 ]
 
-const defaultLocale = localStorage.getItem('locale') || 'zh-CN'
+const defaultLocale =
+  dataMode === 'mock' ? localStorage.getItem('locale') || 'zh-CN' : 'zh-CN'
 
 const i18n = createI18n({
   locale: defaultLocale,

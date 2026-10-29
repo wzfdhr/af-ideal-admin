@@ -1,4 +1,5 @@
 export default {
+  'menu.theme.branding': 'Tenant branding and preferences',
   'menu.message.announcements': 'Announcements',
   'menu.lowCode': 'Business pages',
   'menu.lowCode.runtime': 'Published pages',

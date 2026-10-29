@@ -14,6 +14,16 @@ const themeRoutes: AppRouteRecordRaw = {
   },
   children: [
     {
+      path: 'branding',
+      name: 'tenantBranding',
+      component: () => import('@/views/theme/branding/index.vue'),
+      meta: {
+        locale: 'menu.theme.branding',
+        requireAuth: true,
+        roles: ['*'],
+      },
+    },
+    {
       path: 'center',
       name: 'themeCenter',
       component: () => import('@/views/theme/center/index.vue'),
