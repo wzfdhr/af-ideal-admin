@@ -17,10 +17,10 @@ export const TENANT_BRAND_LOGO_MIN_DIMENSION = 1
 export const TENANT_BRAND_LOGO_MAX_DIMENSION = 1024
 export const TENANT_BRAND_DEFAULT_PRIMARY_COLOR = '#165DFF'
 
-export type TenantBrandLocale = (typeof TENANT_BRAND_LOCALES)[number]
-export type TenantBrandAppearance = (typeof TENANT_BRAND_APPEARANCES)[number]
+export type TenantBrandLocale = typeof TENANT_BRAND_LOCALES[number]
+export type TenantBrandAppearance = typeof TENANT_BRAND_APPEARANCES[number]
 export type TenantBrandLogoMimeType =
-  (typeof TENANT_BRAND_LOGO_MIME_TYPES)[number]
+  typeof TENANT_BRAND_LOGO_MIME_TYPES[number]
 
 const has = (value: object, key: string) =>
   Object.prototype.hasOwnProperty.call(value, key)
