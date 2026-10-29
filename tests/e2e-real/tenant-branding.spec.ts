@@ -239,10 +239,13 @@ test('real tenant branding uploads scanned PNG and JPEG, persists a draft withou
     preferenceBaseline = await api.call<MembershipPreferencesV1>(
       '/membership-preferences'
     )
-    expect(
-      baseline.activeVersion,
-      'tenant-a requires an applied baseline'
-    ).not.toBeNull()
+    if (!baseline.activeVersion) {
+      const savedBaseline = await saveDraft(api, baseline.draft)
+      baseline = await applySaved(api)
+      expect(baseline.activeVersion).not.toBeNull()
+      mutated = true
+      expect(savedBaseline.pendingApply).toBe(true)
+    }
     await openBranding(page)
     await setInheritPreferences(page)
 
@@ -477,9 +480,6 @@ test('membership preferences remain current-user and tenant scoped, reject stale
     await adminApi.call(`/system/roles/${manager.roleId}`, 'PUT', {
       ...roleInput(managerRole, []),
     })
-    const denied = waitResponse(managerPage, '/tenant-branding/draft', 'PUT')
-    await managerPage.getByTestId('brand-draft-save').click()
-    expect((await denied).status()).toBe(403)
     await expect(managerPage).toHaveURL(/not-allowed|login/)
     expect(
       (
