@@ -13,6 +13,7 @@ import scans from '../../services/reference-api/dist/file-jobs.js'
 const pool = db.createPool()
 const tokens = new Map()
 let server, root, originals
+const createdFiles = new Set()
 before(async () => {
   assert.equal(process.env.APP_MODE, 'demo')
   assert.match(
@@ -38,6 +39,11 @@ before(async () => {
   await server.ready()
 })
 after(async () => {
+  if (createdFiles.size)
+    await pool.query(
+      "UPDATE stored_files SET status='deleted',claimed_by=NULL,lease_until=NULL,revision=revision+1 WHERE id=ANY($1::text[])",
+      [[...createdFiles]]
+    )
   if (server) await server.close()
   if (originals)
     for (const row of originals)
@@ -94,6 +100,7 @@ const upload = async (user, label) => {
       expectedRevision: part.revision,
     })
   )
+  createdFiles.add(file.id)
   return { file, bytes }
 }
 const fact = async (id) =>

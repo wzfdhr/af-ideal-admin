@@ -737,6 +737,12 @@ export const registerTenantBranding = (
             '请先保存品牌草稿'
           )
         assertRevision(config.revision, input.expectedRevision)
+        const binding = await bindLogo(
+          db,
+          current,
+          config.draft_logo_file_id,
+          files
+        )
         const alreadyApplied = (
           await rows<BrandVersion>(
             db,
@@ -745,12 +751,6 @@ export const registerTenantBranding = (
           )
         )[0]
         if (alreadyApplied) return { tenantId: current.tenantId }
-        const binding = await bindLogo(
-          db,
-          current,
-          config.draft_logo_file_id,
-          files
-        )
         const metadata = binding ? logoMetadata(binding) : null
         const payload = { snapshot: config.draft, logoBinding: metadata }
         const id = randomUUID()

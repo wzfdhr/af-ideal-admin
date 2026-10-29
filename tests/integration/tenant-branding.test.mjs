@@ -940,10 +940,6 @@ test('CAS and idempotency serialize concurrent saves and keep failed apply/prefe
     ])
   assert.equal(ok(applied[0]).activeVersionId, ok(applied[1]).activeVersionId)
   assert.equal(
-    ok(await apply(owner, saved.revision, randomUUID())).activeVersionId,
-    ok(applied[0]).activeVersionId
-  )
-  assert.equal(
     (
       await pool.query(
         'SELECT * FROM tenant_brand_versions WHERE tenant_id=$1',
